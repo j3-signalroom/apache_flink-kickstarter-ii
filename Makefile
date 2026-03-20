@@ -384,6 +384,16 @@ kafka-ui-uninstall: ## Uninstall Kafka UI (safe to run even if not installed)
 		|| echo "→ kafka-ui not installed, skipping."
 
 # ------------------------------------------------------------------------------
+# Phase 9: Build Flink JARs
+# ------------------------------------------------------------------------------
+.PHONY: build-cp-java-ptf-udf
+build-cp-java-ptf-udf: ## Build the ptf_udf fat JAR (requires Maven)
+	@command -v mvn >/dev/null 2>&1 || (echo "✘ mvn not found. Install Maven: brew install maven" && exit 1)
+	@echo "→ Building ptf_udf JAR..."
+	mvn -f cp_java_examples/ptf_udf/pom.xml clean package -q
+	@echo "✔ JAR built: cp_java_examples/ptf_udf/target/$$(ls cp_java_examples/ptf_udf/target/*.jar | grep -v original | head -1 | xargs basename)"
+
+# ------------------------------------------------------------------------------
 # Composite workflows
 # ------------------------------------------------------------------------------
 .PHONY: cp-up
