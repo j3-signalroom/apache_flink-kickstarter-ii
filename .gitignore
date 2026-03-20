@@ -11,7 +11,7 @@ Thumbs.db
 .settings/
 
 # Build output
-target/
+cp_java_examples/ptf_udf/target/
 build/
 out/
 
