@@ -236,6 +236,35 @@ flink-ui: ## Port-forward the Flink UI and open it in your browser
 	(sleep 2 && open http://localhost:$(FLINK_UI_PORT)) & \
 	kubectl port-forward -n $(NAMESPACE) $$FLINK_POD $(FLINK_UI_PORT):$(FLINK_UI_PORT)
 
+.PHONY: flink-ui-bg
+flink-ui-bg: ## Port-forward the Flink UI in the background (returns prompt; 'make flink-ui-stop' to kill)
+	@FLINK_POD=$$(kubectl get pods -n $(NAMESPACE) -l component=jobmanager --no-headers -o custom-columns=":metadata.name" | head -1); \
+	if [ -z "$$FLINK_POD" ]; then \
+		echo "✘ No Flink JobManager pod found. Is the cluster deployed?"; exit 1; \
+	fi; \
+	echo "→ Forwarding Flink UI to http://localhost:$(FLINK_UI_PORT) (background)"; \
+	echo "   Pod: $$FLINK_POD"; \
+	kubectl port-forward -n $(NAMESPACE) $$FLINK_POD $(FLINK_UI_PORT):$(FLINK_UI_PORT) >/dev/null 2>&1 & \
+	echo $$! > /tmp/flink-ui-pf.pid; \
+	sleep 1; \
+	if kill -0 $$(cat /tmp/flink-ui-pf.pid) 2>/dev/null; then \
+		echo "✔ Port-forward running (PID $$(cat /tmp/flink-ui-pf.pid)). Stop with 'make flink-ui-stop'."; \
+		open http://localhost:$(FLINK_UI_PORT); \
+	else \
+		echo "✘ Port-forward failed to start."; exit 1; \
+	fi
+
+.PHONY: flink-ui-stop
+flink-ui-stop: ## Stop the background Flink UI port-forward
+	@if [ -f /tmp/flink-ui-pf.pid ] && kill -0 $$(cat /tmp/flink-ui-pf.pid) 2>/dev/null; then \
+		kill $$(cat /tmp/flink-ui-pf.pid); \
+		rm -f /tmp/flink-ui-pf.pid; \
+		echo "✔ Flink UI port-forward stopped."; \
+	else \
+		echo "→ No active Flink UI port-forward found."; \
+		rm -f /tmp/flink-ui-pf.pid; \
+	fi
+
 .PHONY: flink-delete
 flink-delete: ## Delete the Flink session cluster (safe to run even if cluster is down or not deployed)
 	@# Also remove any stale plain Deployment left from a previous OSS Flink setup
