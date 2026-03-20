@@ -1,0 +1,34 @@
+# Confluent FlinkDeployment CR — managed by the Confluent Flink Kubernetes Operator.
+# Image and version are injected at deploy-time by `make flink-deploy` via envsubst.
+#
+# This is a SESSION CLUSTER (no job.jarURI), meaning it runs continuously and accepts
+# job submissions via the Flink REST API / Flink UI. Good for development / exploration.
+#
+# For a production APPLICATION CLUSTER (one job per cluster), add a `job:` section.
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: flink-basic
+  namespace: confluent
+spec:
+  image: ${FLINK_IMAGE}
+  flinkVersion: ${FLINK_VERSION}
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "2"
+    # Dev-friendly: low memory footprint for Minikube
+    jobmanager.memory.process.size: "1024m"
+    taskmanager.memory.process.size: "1024m"
+  serviceAccount: flink
+  jobManager:
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+    replicas: 1
+  taskManager:
+    resource:
+      memory: "1024m"
+      cpu: 0.5
+    replicas: 1
+  # No `job:` section = session cluster mode.
+  # Submit jobs via:  make flink-ui  → Submit Job in the Flink UI
+  # Or via REST:      curl http://localhost:8081/jars/upload ...
