@@ -11,9 +11,14 @@ Thumbs.db
 .settings/
 
 # Build output
-cp_java_examples/ptf_udf/target/
+target/
 build/
 out/
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
 
 # Java/JVM
 *.class
