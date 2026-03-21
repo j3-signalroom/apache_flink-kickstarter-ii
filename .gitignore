@@ -34,7 +34,7 @@ hs_err_pid*
 *.log
 
 # Environment/secrets
-.env
+.ptf_udf_cc_java
 *.pem
 
 .claude/
