@@ -1,4 +1,4 @@
-# ![apache-flink-logo](docs/images/apache-flink_squirrel-logo.png) Apache Flink Kickstarter II
+# ![apache-flink-logo](docs/images/apache-flink_squirrel-logo.png) Apache Flink Kickstarter II **[UNDER CONSTRUCTION]**
 
 **Apache Flink Kickstarter II** is the 2026 evolution of my original Kickstarter project; rebuilt to showcase the cutting edge of **Apache Flink 2.1.x**.
 
