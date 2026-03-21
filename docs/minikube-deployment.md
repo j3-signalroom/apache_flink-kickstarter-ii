@@ -30,8 +30,7 @@ A Makefile-driven quickstart that deploys a full local streaming stack on Miniku
 + [**7.0 Configuration**](#70-configuration)
 + [**8.0 Repository Layout**](#80-repository-layout)
 + [**9.0 Teardown**](#90-teardown)
-+ [**10.0 Manual Deployment Instructions**](#100-manual-deployment-instructions)
-+ [**11.0 Resources**](#110-resources)
++ [**10.0 Resources**](#100-resources)
 <!-- tocstop -->
 
 ---
@@ -407,9 +406,23 @@ make flink-deploy FLINK_IMAGE=confluentinc/cp-flink:2.1.1-cp1-java21-arm64 FLINK
 ├── LICENSE.md
 ├── LICENSE.pdf
 ├── .gitignore
-├── docs
-│   ├── manual_deployment.md                # Step-by-step manual deployment instructions (without Makefile)
-│   └── manual_deployment.pdf  
+├── cp_java_examples/
+│   └── ptf_udf/                            # ProcessTimeFunction UDF Flink job (Gradle project)
+│       ├── settings.gradle.kts
+│       ├── gradlew / gradlew.bat
+│       ├── gradle/wrapper/
+│       ├── README.md
+│       ├── README.pdf
+│       └── app/
+│           ├── build.gradle.kts
+│           └── src/main/java/ptf/
+│               ├── FlinkJob.java           # Job entry point
+│               └── UserEventEnricher.java  # Stateful PTF enrichment logic
+├── docs/
+│   ├── images/
+│   │   └── apache-flink_squirrel-logo.png
+│   ├── minikube-deployment.md              # This file
+│   └── minikube-deployment.pdf
 └── k8s/
     └── base/
         ├── confluent-platform-c3++.yaml    # Confluent Platform manifest (KRaft + all components)
@@ -437,13 +450,7 @@ make cp-down      # CP + Kafka UI + CFK Operator
 
 ---
 
-## **10.0 Manual Deployment Instructions**
-
-For users who want to understand the underlying steps without using the Makefile, see [docs/manual_deployment.md](docs/manual_deployment.md).
-
----
-
-## **11.0 Resources**
+## **10.0 Resources**
 - [Manage Confluent Platform with Confluent for Kubernetes](https://docs.confluent.io/operator/current/co-manage-overview.html)
 
 - [Get Started with Confluent Platform for Apache Flink](https://docs.confluent.io/platform/current/flink/get-started/overview.html)
