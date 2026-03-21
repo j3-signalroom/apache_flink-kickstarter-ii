@@ -9,7 +9,7 @@ A hands-on project for running **Apache Flink** on **Confluent Platform** locall
 macOS with Homebrew and Docker Desktop running.
 
 ```bash
-make install-prereqs   # installs docker, kubectl, minikube, helm, envsubst
+make install-prereqs   # installs docker, kubectl, minikube, helm, maven, envsubst
 ```
 
 ## Deploy the Platform
