@@ -510,8 +510,8 @@ consume-ptf-udf-output: ## Consume records from the enriched-events topic (Ctrl+
 .PHONY: build-cp-java-ptf-udf
 build-cp-java-ptf-udf: ## Build the ptf_udf fat JAR (requires Gradle)
 	@echo "→ Building ptf_udf JAR..."
-	cd cp_java_examples/ptf_udf && ./gradlew clean shadowJar -q
-	@echo "✔ JAR built: $$(ls cp_java_examples/ptf_udf/app/build/libs/*.jar | head -1)"
+	cd examples/ptf_udf/cp_java && ./gradlew clean shadowJar -q
+	@echo "✔ JAR built: $$(ls examples/ptf_udf/cp_java/app/build/libs/*.jar | head -1)"
 
 .PHONY: deploy-cp-java-ptf-udf
 deploy-cp-java-ptf-udf: build-cp-java-ptf-udf delete-ptf-udf-topics create-ptf-udf-topics ## Build, recreate topics, upload, and submit the ptf_udf job to the Flink cluster
@@ -537,7 +537,7 @@ deploy-cp-java-ptf-udf: build-cp-java-ptf-udf delete-ptf-udf-topics create-ptf-u
 			fi; \
 		done; \
 	fi; \
-	JAR_PATH=$$(ls cp_java_examples/ptf_udf/app/build/libs/*.jar | head -1); \
+	JAR_PATH=$$(ls examples/ptf_udf/cp_java/app/build/libs/*.jar | head -1); \
 	echo "→ Uploading $$JAR_PATH to Flink..."; \
 	UPLOAD_RESP=$$(curl -sf -X POST http://localhost:$(FLINK_UI_PORT)/jars/upload \
 		-H "Expect:" \

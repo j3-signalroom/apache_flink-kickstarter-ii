@@ -20,6 +20,9 @@ out/
 gradle-app.setting
 !gradle-wrapper.jar
 
+# Ignore Kotlin plugin data
+.kotlin
+
 # Java/JVM
 *.class
 *.jar
