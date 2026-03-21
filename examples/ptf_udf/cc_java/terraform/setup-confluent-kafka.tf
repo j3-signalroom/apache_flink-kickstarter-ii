@@ -11,8 +11,8 @@ resource "confluent_kafka_cluster" "ptf_udf_cc_java" {
   }
 }
 
-# 'app_manager' service account is required in this configuration to create 'user_events' and 'enriched_events' topics and grant ACLs
-# to 'app_producer' and 'app_consumer' service accounts.
+# 'app_manager' service account is required in this configuration to create 'user_events' and 'enriched_events'
+# topics and grant ACLs to 'app_producer' and 'app_consumer' service accounts.
 resource "confluent_service_account" "app_manager" {
   display_name = "ptf_udf_cc_java_app_manager"
   description  = "Apache Flink Kickstarter Service account to manage Kafka cluster"
