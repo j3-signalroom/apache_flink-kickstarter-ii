@@ -151,12 +151,12 @@ All commands below are run from the **project root** (where the `Makefile` lives
 ### **4.1 Prerequisites**
 
 - macOS with Homebrew and Docker Desktop running
-- Java 17+ and Maven (`brew install maven`)
+- Java 17+
 
-Install the infrastructure tooling if you haven't already:
+Install all required tooling (including Maven) if you haven't already:
 
 ```bash
-make install-prereqs        # installs docker, kubectl, minikube, helm, envsubst
+make install-prereqs        # installs docker, kubectl, minikube, helm, maven, envsubst
 ```
 
 ### **4.2 Start the platform**
