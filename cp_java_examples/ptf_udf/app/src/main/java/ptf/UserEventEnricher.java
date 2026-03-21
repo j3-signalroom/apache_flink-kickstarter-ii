@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) 2026 Jeffrey Jonathan Jennings
+ * 
+ * @author Jeffrey Jonathan Jennings (J3)
+ * 
+ * 
+ */
 package ptf;
 
 import org.apache.flink.table.annotation.ArgumentHint;
@@ -39,7 +46,6 @@ public class UserEventEnricher extends ProcessTableFunction<Row> {
     }
 
     // ── eval ──────────────────────────────────────────────────────────────────
-
     public void eval(
             Context ctx,
 
@@ -55,7 +61,6 @@ public class UserEventEnricher extends ProcessTableFunction<Row> {
         String payload   = input.getFieldAs("payload");
 
         // ── State transitions ─────────────────────────────────────────────────
-
         // New session on every "login" event
         if ("login".equalsIgnoreCase(eventType)) {
             state.sessionId++;
