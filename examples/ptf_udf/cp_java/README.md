@@ -137,11 +137,17 @@ Kafka (user-events)
 ## **3.0 Project structure**
 
 ```
-ptf_udf/
-├── app/build.gradle.kts                 # Gradle build (Flink 2.1.0, Java 17)
-└── src/main/java/ptf/
-    ├── FlinkJob.java                    # Entry point: wires tables + invokes PTF
-    └── UserEventEnricher.java           # The ProcessTableFunction implementation
+examples/ptf_udf/cp_java/
+├── app/
+│   ├── build.gradle.kts                 # Gradle build (Flink 2.1.0, Java 17)
+│   └── src/main/java/ptf/
+│       ├── FlinkJob.java                # Entry point: wires tables + invokes PTF
+│       └── UserEventEnricher.java       # The ProcessTableFunction implementation
+├── gradle/wrapper/
+│   └── gradle-wrapper.properties        # Gradle wrapper version config
+├── gradlew                              # Gradle wrapper script (Unix)
+├── gradlew.bat                          # Gradle wrapper script (Windows)
+└── settings.gradle.kts                  # Gradle settings (project name)
 ```
 
 ## **4.0 How to run**
