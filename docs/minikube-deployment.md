@@ -340,6 +340,21 @@ make cmf-proxy-inject
 | `kafka-ui-open` | Port-forward Kafka UI and open `http://localhost:8080` |
 | `kafka-ui-uninstall` | Remove Kafka UI |
 
+### **6.9 Phase 9 — Kafka Topics**
+
+| Target | Description |
+|--------|-------------|
+| `create-ptf-udf-topics` | Create the `user-events` and `enriched-events` topics required by the ptf_udf job |
+| `delete-ptf-udf-topics` | Delete the `user-events` and `enriched-events` topics |
+| `list-topics` | List all Kafka topics in the cluster |
+
+### **6.10 Phase 10 — Build & Deploy Flink JARs**
+
+| Target | Description |
+|--------|-------------|
+| `build-cp-java-ptf-udf` | Build the `ptf_udf` fat JAR (requires Maven) |
+| `deploy-cp-java-ptf-udf` | Build, create topics, upload to the Flink cluster, and submit the `ptf_udf` job |
+
 ---
 
 ## **7.0 Configuration**
