@@ -140,6 +140,21 @@ graph TD
         KUI_UN["kafka-ui-uninstall"]
     end
 
+    %% ── Phase 9: Kafka Topics ───────────────────────────────────────────
+    subgraph P9["Phase 9 — Kafka Topics"]
+        CREATE_TOPICS["create-ptf-udf-topics\nuser-events · enriched-events"]
+        DELETE_TOPICS["delete-ptf-udf-topics"]
+        LIST_TOPICS["list-topics"]
+        PRODUCE_SAMPLE["produce-ptf-udf-sample\n6 JSON records → user-events"]
+        CONSUME_OUTPUT["consume-ptf-udf-output\nenriched-events → console"]
+    end
+
+    %% ── Phase 10: Build & Deploy Flink JARs ──────────────────────────────
+    subgraph P10["Phase 10 — Build & Deploy Flink JARs"]
+        BUILD_PTF["build-cp-java-ptf-udf\n./gradlew clean shadowJar"]
+        DEPLOY_PTF["deploy-cp-java-ptf-udf\nupload JAR → REST API → submit job"]
+    end
+
     %% ── Manifests / Templates ───────────────────────────────────────────
     subgraph FS["k8s/base/"]
         MANIFEST[("flink-basic-deployment.yaml\nFLINK_IMAGE · FLINK_VERSION")]
@@ -163,6 +178,11 @@ graph TD
     FLINK_UP --> FL_DEPLOY
     FL_OP --> NS
     FL_DEPLOY --> MANIFEST
+
+    %% ── make deploy-cp-java-ptf-udf dependency chain ────────────────────
+    DEPLOY_PTF --> BUILD_PTF
+    DEPLOY_PTF --> DELETE_TOPICS
+    DEPLOY_PTF --> CREATE_TOPICS
 
     %% ── make cp-down dependency chain ────────────────────────────────────
     CP_DOWN --> KUI_UN
@@ -188,6 +208,10 @@ graph TD
     CMF_INSTALL -.->|"C3 Flink tab"| CMF_PROXY
     KUI_INSTALL -.->|"once Running"| KUI_OPEN
 
+    %% ── Data flow ────────────────────────────────────────────────────────
+    PRODUCE_SAMPLE -.->|"JSON → Kafka"| CREATE_TOPICS
+    CONSUME_OUTPUT -.->|"Kafka → console"| CREATE_TOPICS
+
     %% ── Styles ───────────────────────────────────────────────────────────
     classDef entry    fill:#1a1a2e,stroke:#e94560,color:#fff,font-weight:bold
     classDef install  fill:#16213e,stroke:#0f3460,color:#a8dadc
@@ -195,13 +219,15 @@ graph TD
     classDef ui       fill:#1b2d1b,stroke:#2d6a2d,color:#b3ffb3
     classDef file     fill:#2d2b1b,stroke:#8b7500,color:#ffe680
     classDef composite fill:#2a1a2e,stroke:#9b59b6,color:#dbb8ff
+    classDef data     fill:#1b2d2d,stroke:#2d6a6a,color:#b3ffff
 
     class CP_UP,FLINK_UP,CP_DOWN,FLINK_DOWN,TEARDOWN entry
-    class CP_CORE_UP composite
-    class CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL install
-    class MK_STOP,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN remove
+    class CP_CORE_UP,DEPLOY_PTF composite
+    class CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF install
+    class MK_STOP,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN,DELETE_TOPICS remove
     class C3,FL_UI,CMF_OPEN,KUI_OPEN ui
     class MANIFEST file
+    class CREATE_TOPICS,LIST_TOPICS,PRODUCE_SAMPLE,CONSUME_OUTPUT data
 ```
 
 ---
@@ -406,8 +432,9 @@ make flink-deploy FLINK_IMAGE=confluentinc/cp-flink:2.1.1-cp1-java21-arm64 FLINK
 ├── LICENSE.md
 ├── LICENSE.pdf
 ├── .gitignore
-├── cp_java_examples/
-│   └── ptf_udf/                            # ProcessTimeFunction UDF Flink job (Gradle project)
+├── examples/
+│   └── ptf_udf/
+│       └── cp_java/                         # ProcessTimeFunction UDF Flink job (Gradle project)
 │       ├── settings.gradle.kts
 │       ├── gradlew / gradlew.bat
 │       ├── gradle/wrapper/
