@@ -352,7 +352,7 @@ make cmf-proxy-inject
 
 | Target | Description |
 |--------|-------------|
-| `build-cp-java-ptf-udf` | Build the `ptf_udf` fat JAR (requires Maven) |
+| `build-cp-java-ptf-udf` | Build the `ptf_udf` fat JAR (requires Gradle) |
 | `deploy-cp-java-ptf-udf` | Build, create topics, upload to the Flink cluster, and submit the `ptf_udf` job |
 
 ---

@@ -49,10 +49,10 @@ help: ## Show this help message
 # Phase 1: Prerequisites (macOS)
 # ------------------------------------------------------------------------------
 .PHONY: install-prereqs
-install-prereqs: ## Install docker, kubectl, minikube, helm, and maven via Homebrew (macOS)
+install-prereqs: ## Install docker, kubectl, minikube, helm, and gradle via Homebrew (macOS)
 	@echo "→ Installing prerequisites..."
 	@(test -d /Applications/Docker.app || test -f /usr/local/bin/kubectl.docker) || brew install --cask docker
-	brew install kubernetes-cli minikube helm gettext maven
+	brew install kubernetes-cli minikube helm gettext gradle
 	@echo "✔ Prerequisites installed. Launch Docker Desktop before running 'make minikube-start'."
 	
 .PHONY: check-prereqs
@@ -165,10 +165,34 @@ cp-delete: ## Remove all CP components, wait for termination, and clean up PVCs
 # Phase 5: Control Center access
 # ------------------------------------------------------------------------------
 .PHONY: c3-open
-c3-open: ## Port-forward Control Center and open it in your browser
-	@echo "→ Forwarding Control Center to http://localhost:$(C3_PORT)"
-	@echo "   Press Ctrl+C to stop."
-	@CURRENT_PGID=`ps -o "pgid=" -p $$PPID`; 	trap "kill -TERM -$$CURRENT_PGID 2>/dev/null" EXIT INT TERM; 	(sleep 2 && open http://localhost:$(C3_PORT)) & 	kubectl port-forward -n $(NAMESPACE) controlcenter-0 $(C3_PORT):$(C3_PORT)
+c3-open: ## Port-forward Control Center in the background and open it in your browser ('make c3-stop' to kill)
+	@if lsof -iTCP:$(C3_PORT) -sTCP:LISTEN -t >/dev/null 2>&1; then \
+		echo "→ Port $(C3_PORT) is already in use."; \
+		echo "  Opening http://localhost:$(C3_PORT) in your browser."; \
+		open http://localhost:$(C3_PORT); \
+		exit 0; \
+	fi
+	@echo "→ Forwarding Control Center to http://localhost:$(C3_PORT) (background)"
+	@kubectl port-forward -n $(NAMESPACE) controlcenter-0 $(C3_PORT):$(C3_PORT) >/dev/null 2>&1 & \
+	echo $$! > /tmp/c3-pf.pid; \
+	sleep 1; \
+	if kill -0 $$(cat /tmp/c3-pf.pid) 2>/dev/null; then \
+		echo "✔ Port-forward running (PID $$(cat /tmp/c3-pf.pid)). Stop with 'make c3-stop'."; \
+		open http://localhost:$(C3_PORT); \
+	else \
+		echo "✘ Port-forward failed to start."; exit 1; \
+	fi
+
+.PHONY: c3-stop
+c3-stop: ## Stop the background Control Center port-forward
+	@if [ -f /tmp/c3-pf.pid ] && kill -0 $$(cat /tmp/c3-pf.pid) 2>/dev/null; then \
+		kill $$(cat /tmp/c3-pf.pid); \
+		rm -f /tmp/c3-pf.pid; \
+		echo "✔ Control Center port-forward stopped."; \
+	else \
+		echo "→ No active Control Center port-forward found."; \
+		rm -f /tmp/c3-pf.pid; \
+	fi
 
 # ------------------------------------------------------------------------------
 # Phase 6: Apache Flink
@@ -223,21 +247,13 @@ flink-status: ## Show status of all Flink pods and FlinkDeployment CRs
 	kubectl get flinkdeployment -n $(NAMESPACE)
 
 .PHONY: flink-ui
-flink-ui: ## Port-forward the Flink UI and open it in your browser
-	@echo "→ Forwarding Flink UI to http://localhost:$(FLINK_UI_PORT)"
-	@echo "   Press Ctrl+C to stop."
-	@CURRENT_PGID=`ps -o "pgid=" -p $$PPID`; \
-	trap "kill -TERM -$$CURRENT_PGID 2>/dev/null" EXIT INT TERM; \
-	FLINK_POD=$$(kubectl get pods -n $(NAMESPACE) -l component=jobmanager --no-headers -o custom-columns=":metadata.name" | head -1); \
-	if [ -z "$$FLINK_POD" ]; then \
-		echo "✘ No Flink JobManager pod found. Is the cluster deployed?"; exit 1; \
-	fi; \
-	echo "   Forwarding from pod: $$FLINK_POD"; \
-	(sleep 2 && open http://localhost:$(FLINK_UI_PORT)) & \
-	kubectl port-forward -n $(NAMESPACE) $$FLINK_POD $(FLINK_UI_PORT):$(FLINK_UI_PORT)
-
-.PHONY: flink-ui-bg
-flink-ui-bg: ## Port-forward the Flink UI in the background (returns prompt; 'make flink-ui-stop' to kill)
+flink-ui: ## Port-forward the Flink UI in the background and open it in your browser ('make flink-ui-stop' to kill)
+	@if lsof -iTCP:$(FLINK_UI_PORT) -sTCP:LISTEN -t >/dev/null 2>&1; then \
+		echo "→ Port $(FLINK_UI_PORT) is already in use."; \
+		echo "  Opening http://localhost:$(FLINK_UI_PORT) in your browser."; \
+		open http://localhost:$(FLINK_UI_PORT); \
+		exit 0; \
+	fi
 	@FLINK_POD=$$(kubectl get pods -n $(NAMESPACE) -l component=jobmanager --no-headers -o custom-columns=":metadata.name" | head -1); \
 	if [ -z "$$FLINK_POD" ]; then \
 		echo "✘ No Flink JobManager pod found. Is the cluster deployed?"; exit 1; \
@@ -476,14 +492,13 @@ consume-ptf-udf-output: ## Consume records from the enriched-events topic (Ctrl+
 # Phase 10: Build & Deploy Flink JARs
 # ------------------------------------------------------------------------------
 .PHONY: build-cp-java-ptf-udf
-build-cp-java-ptf-udf: ## Build the ptf_udf fat JAR (requires Maven)
-	@command -v mvn >/dev/null 2>&1 || (echo "✘ mvn not found. Install Maven: brew install maven" && exit 1)
+build-cp-java-ptf-udf: ## Build the ptf_udf fat JAR (requires Gradle)
 	@echo "→ Building ptf_udf JAR..."
-	mvn -f cp_java_examples/ptf_udf/pom.xml clean package -q
-	@echo "✔ JAR built: cp_java_examples/ptf_udf/target/$$(ls cp_java_examples/ptf_udf/target/*.jar | grep -v original | head -1 | xargs basename)"
+	cd cp_java_examples/ptf_udf && ./gradlew clean shadowJar -q
+	@echo "✔ JAR built: $$(ls cp_java_examples/ptf_udf/app/build/libs/*.jar | head -1)"
 
 .PHONY: deploy-cp-java-ptf-udf
-deploy-cp-java-ptf-udf: build-cp-java-ptf-udf create-ptf-udf-topics ## Build, create topics, upload, and submit the ptf_udf job to the Flink cluster
+deploy-cp-java-ptf-udf: build-cp-java-ptf-udf delete-ptf-udf-topics create-ptf-udf-topics ## Build, recreate topics, upload, and submit the ptf_udf job to the Flink cluster
 	@FLINK_POD=$$(kubectl get pods -n $(NAMESPACE) -l component=jobmanager --no-headers -o custom-columns=":metadata.name" | head -1); \
 	if [ -z "$$FLINK_POD" ]; then \
 		echo "✘ No Flink JobManager pod found. Is the cluster deployed?"; exit 1; \
@@ -506,7 +521,7 @@ deploy-cp-java-ptf-udf: build-cp-java-ptf-udf create-ptf-udf-topics ## Build, cr
 			fi; \
 		done; \
 	fi; \
-	JAR_PATH=$$(ls cp_java_examples/ptf_udf/target/*.jar | grep -v original | head -1); \
+	JAR_PATH=$$(ls cp_java_examples/ptf_udf/app/build/libs/*.jar | head -1); \
 	echo "→ Uploading $$JAR_PATH to Flink..."; \
 	UPLOAD_RESP=$$(curl -sf -X POST http://localhost:$(FLINK_UI_PORT)/jars/upload \
 		-H "Expect:" \

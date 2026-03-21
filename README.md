@@ -24,7 +24,7 @@ Every **example** is delivered end-to-end--from schema design to fully operation
 macOS with Homebrew and Docker Desktop running.
 
 ```bash
-make install-prereqs   # installs docker, kubectl, minikube, helm, maven, envsubst
+make install-prereqs   # installs docker, kubectl, minikube, helm, gradle, envsubst
 ```
 
 ## **2.0 Deploy the Platform**
