@@ -434,7 +434,7 @@ make flink-deploy FLINK_IMAGE=confluentinc/cp-flink:2.1.1-cp1-java21-arm64 FLINK
 ├── .gitignore
 ├── examples/
 │   └── ptf_udf/
-│       └── cp_java/                         # ProcessTimeFunction UDF Flink job (Gradle project)
+│       └── cp_java/                        # ProcessTimeFunction UDF Flink job (Gradle project)
 │       ├── settings.gradle.kts
 │       ├── gradlew / gradlew.bat
 │       ├── gradle/wrapper/
