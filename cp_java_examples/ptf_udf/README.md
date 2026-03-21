@@ -138,7 +138,7 @@ Kafka (user-events)
 
 ```
 ptf_udf/
-├── pom.xml                              # Maven build (Flink 2.1.0, Java 17)
+├── app/build.gradle.kts                 # Gradle build (Flink 2.1.0, Java 17)
 └── src/main/java/ptf/
     ├── FlinkJob.java                    # Entry point: wires tables + invokes PTF
     └── UserEventEnricher.java           # The ProcessTableFunction implementation
@@ -153,10 +153,10 @@ All commands below are run from the **project root** (where the `Makefile` lives
 - macOS with Homebrew and Docker Desktop running
 - Java 17+
 
-Install all required tooling (including Maven) if you haven't already:
+Install all required tooling (including Gradle) if you haven't already:
 
 ```bash
-make install-prereqs        # installs docker, kubectl, minikube, helm, maven, envsubst
+make install-prereqs        # installs docker, kubectl, minikube, helm, gradle, envsubst
 ```
 
 ### **4.2 Start the platform**
@@ -185,7 +185,7 @@ Behind the scenes this runs:
 
 | Step | Target | What it does |
 |---|---|---|
-| 1 | `build-cp-java-ptf-udf` | `mvn clean package` -- produces the uber JAR |
+| 1 | `build-cp-java-ptf-udf` | `./gradlew clean shadowJar` -- produces the uber JAR |
 | 2 | `create-ptf-udf-topics` | Creates `user-events` and `enriched-events` topics via `kafka-topics` on the broker pod |
 | 3 | *(inline)* | Port-forwards to the Flink JobManager, uploads the JAR via the REST API, and submits the job with entry class `ptf.FlinkJob` |
 
