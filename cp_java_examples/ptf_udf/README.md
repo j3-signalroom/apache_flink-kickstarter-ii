@@ -95,12 +95,12 @@ For every incoming event the function maintains three pieces of **per-user state
 Each incoming row is emitted immediately with these three extra fields appended, so the output schema is:
 
 ```
-user_id  STRING        -- passed through automatically via PARTITION BY
+user_id     STRING    -- passed through automatically via PARTITION BY
 event_type  STRING
-payload  STRING
-session_id  BIGINT     -- which session this event belongs to
-event_count  BIGINT    -- position of this event within the session
-last_event  STRING     -- the event type just processed
+payload     STRING
+session_id  BIGINT    -- which session this event belongs to
+event_count BIGINT    -- position of this event within the session
+last_event  STRING    -- the event type just processed
 ```
 
 ### **2.2 How it works end-to-end**
