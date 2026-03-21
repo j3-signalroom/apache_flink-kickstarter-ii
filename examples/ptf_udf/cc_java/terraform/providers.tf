@@ -1,5 +1,0 @@
-
-provider "confluent" {
-  cloud_api_key    = var.confluent_api_key
-  cloud_api_secret = var.confluent_api_secret
-}
