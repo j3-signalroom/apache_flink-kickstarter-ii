@@ -1,9 +1,25 @@
 # ==============================================================================
-# Confluent Platform on Minikube - Quickstart Makefile
-# Deploys CP Core Components using Confluent for Kubernetes (CFK) in KRaft mode
-# + Apache Flink 2.1.1 via Confluent Flink Kubernetes Operator 1.130
-# + Confluent Manager for Apache Flink (CMF) 2.1
-# + Kafka UI via Provectus Helm chart
+# Copyright (c) 2026 Jeffrey Jonathan Jennings
+#
+# @author Jeffrey Jonathan Jennings (J3)
+#
+# Confluent Platform + Apache Flink on Minikube — End-to-End Makefile
+#
+# Orchestrates the full lifecycle of a local Confluent Platform environment
+# running on Minikube, from prerequisite installation through Flink job
+# deployment.  Phases include:
+#   1. Prerequisite tooling (Docker, kubectl, Minikube, Helm, Gradle)
+#   2. Minikube cluster management (start, stop, delete)
+#   3. Confluent for Kubernetes (CFK) operator
+#   4. Confluent Platform components in KRaft mode (Kafka, Schema Registry,
+#      Connect, ksqlDB, REST Proxy, Control Center)
+#   5. Control Center browser access via port-forwarding
+#   6. Apache Flink 2.1.1 (cert-manager, Confluent Flink Kubernetes Operator
+#      1.130, session cluster deployment, Flink UI)
+#   7. Confluent Manager for Apache Flink (CMF) 2.1
+#   8. Kafka UI (Provectus Helm chart)
+#   9. Kafka topic management and sample data production/consumption
+#  10. Flink JAR build (Gradle shadow JAR) and REST API job submission
 # ==============================================================================
 
 CONFLUENT_MANIFEST  ?= k8s/base/confluent-platform-c3++.yaml
