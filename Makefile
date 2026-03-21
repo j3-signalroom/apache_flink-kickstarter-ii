@@ -388,7 +388,7 @@ kafka-ui-install: ## Install Kafka UI and connect it to the Confluent Kafka clus
 	helm upgrade --install kafka-ui kafka-ui/kafka-ui \
 		--namespace $(NAMESPACE) \
 		--set yamlApplicationConfig.kafka.clusters[0].name="confluent" \
-		--set yamlApplicationConfig.kafka.clusters[0].bootstrapServers="kafka:9092" \
+		--set yamlApplicationConfig.kafka.clusters[0].bootstrapServers="kafka:9071" \
 		--set yamlApplicationConfig.kafka.clusters[0].schemaRegistry="http://schemaregistry:8081" \
 		--set yamlApplicationConfig.kafka.clusters[0].kafkaConnect[0].name="connect" \
 		--set yamlApplicationConfig.kafka.clusters[0].kafkaConnect[0].address="http://connect:8083" \
@@ -413,7 +413,67 @@ kafka-ui-uninstall: ## Uninstall Kafka UI (safe to run even if not installed)
 		|| echo "→ kafka-ui not installed, skipping."
 
 # ------------------------------------------------------------------------------
-# Phase 9: Build Flink JARs
+# Phase 9: Kafka Topics
+# ------------------------------------------------------------------------------
+PTF_UDF_TOPICS ?= user-events enriched-events
+
+.PHONY: create-ptf-udf-topics
+create-ptf-udf-topics: ## Create the Kafka topics required by the ptf_udf Flink job
+	@echo "→ Creating Kafka topics for ptf_udf job..."
+	@for TOPIC in $(PTF_UDF_TOPICS); do \
+		kubectl exec -n $(NAMESPACE) kafka-0 -- \
+			kafka-topics --bootstrap-server localhost:9092 \
+			--create --if-not-exists \
+			--topic $$TOPIC \
+			--partitions 1 \
+			--replication-factor 1 \
+		&& echo "  ✔ $$TOPIC" \
+		|| echo "  ✘ Failed to create $$TOPIC"; \
+	done
+	@echo "✔ Topic creation complete."
+
+.PHONY: delete-ptf-udf-topics
+delete-ptf-udf-topics: ## Delete the Kafka topics used by the ptf_udf Flink job
+	@echo "→ Deleting Kafka topics for ptf_udf job..."
+	@for TOPIC in $(PTF_UDF_TOPICS); do \
+		kubectl exec -n $(NAMESPACE) kafka-0 -- \
+			kafka-topics --bootstrap-server localhost:9092 \
+			--delete --if-exists \
+			--topic $$TOPIC \
+		&& echo "  ✔ $$TOPIC deleted" \
+		|| echo "  ✘ Failed to delete $$TOPIC"; \
+	done
+	@echo "✔ Topic deletion complete."
+
+.PHONY: list-topics
+list-topics: ## List all Kafka topics in the cluster
+	kubectl exec -n $(NAMESPACE) kafka-0 -- \
+		kafka-topics --bootstrap-server localhost:9092 --list
+
+.PHONY: produce-ptf-udf-sample
+produce-ptf-udf-sample: ## Produce sample JSON records to the user-events topic
+	@echo "→ Producing sample records to user-events..."
+	@printf '%s\n' \
+		'{"user_id":"alice","event_type":"login","payload":"web"}' \
+		'{"user_id":"bob","event_type":"click","payload":"button-checkout"}' \
+		'{"user_id":"alice","event_type":"purchase","payload":"order-1234"}' \
+		'{"user_id":"charlie","event_type":"login","payload":"mobile"}' \
+		'{"user_id":"bob","event_type":"logout","payload":"session-end"}' \
+		'{"user_id":"alice","event_type":"click","payload":"button-settings"}' \
+	| kubectl exec -i -n $(NAMESPACE) kafka-0 -- \
+		kafka-console-producer --bootstrap-server localhost:9092 \
+		--topic user-events
+	@echo "✔ 6 sample records produced to user-events."
+
+.PHONY: consume-ptf-udf-output
+consume-ptf-udf-output: ## Consume records from the enriched-events topic (Ctrl+C to stop)
+	@echo "→ Reading from enriched-events (Ctrl+C to stop)..."
+	kubectl exec -n $(NAMESPACE) kafka-0 -- \
+		kafka-console-consumer --bootstrap-server localhost:9092 \
+		--topic enriched-events --from-beginning
+
+# ------------------------------------------------------------------------------
+# Phase 10: Build & Deploy Flink JARs
 # ------------------------------------------------------------------------------
 .PHONY: build-cp-java-ptf-udf
 build-cp-java-ptf-udf: ## Build the ptf_udf fat JAR (requires Maven)
@@ -421,6 +481,54 @@ build-cp-java-ptf-udf: ## Build the ptf_udf fat JAR (requires Maven)
 	@echo "→ Building ptf_udf JAR..."
 	mvn -f cp_java_examples/ptf_udf/pom.xml clean package -q
 	@echo "✔ JAR built: cp_java_examples/ptf_udf/target/$$(ls cp_java_examples/ptf_udf/target/*.jar | grep -v original | head -1 | xargs basename)"
+
+.PHONY: deploy-cp-java-ptf-udf
+deploy-cp-java-ptf-udf: build-cp-java-ptf-udf create-ptf-udf-topics ## Build, create topics, upload, and submit the ptf_udf job to the Flink cluster
+	@FLINK_POD=$$(kubectl get pods -n $(NAMESPACE) -l component=jobmanager --no-headers -o custom-columns=":metadata.name" | head -1); \
+	if [ -z "$$FLINK_POD" ]; then \
+		echo "✘ No Flink JobManager pod found. Is the cluster deployed?"; exit 1; \
+	fi; \
+	NEED_PF=true; \
+	PF_PID=""; \
+	if curl -sf http://localhost:$(FLINK_UI_PORT)/config >/dev/null 2>&1; then \
+		echo "→ Reusing existing port-forward on localhost:$(FLINK_UI_PORT)"; \
+		NEED_PF=false; \
+	else \
+		echo "→ Starting port-forward to Flink REST API..."; \
+		kubectl port-forward -n $(NAMESPACE) $$FLINK_POD $(FLINK_UI_PORT):$(FLINK_UI_PORT) >/dev/null 2>&1 & \
+		PF_PID=$$!; \
+		for i in 1 2 3 4 5; do \
+			sleep 1; \
+			if curl -sf http://localhost:$(FLINK_UI_PORT)/config >/dev/null 2>&1; then break; fi; \
+			if [ $$i -eq 5 ]; then \
+				kill $$PF_PID 2>/dev/null; \
+				echo "✘ Port-forward failed to start."; exit 1; \
+			fi; \
+		done; \
+	fi; \
+	JAR_PATH=$$(ls cp_java_examples/ptf_udf/target/*.jar | grep -v original | head -1); \
+	echo "→ Uploading $$JAR_PATH to Flink..."; \
+	UPLOAD_RESP=$$(curl -sf -X POST http://localhost:$(FLINK_UI_PORT)/jars/upload \
+		-H "Expect:" \
+		-F "jarfile=@$$JAR_PATH"); \
+	if [ $$? -ne 0 ]; then \
+		[ -n "$$PF_PID" ] && kill $$PF_PID 2>/dev/null; \
+		echo "✘ JAR upload failed."; exit 1; \
+	fi; \
+	JAR_ID=$$(echo "$$UPLOAD_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['filename'].split('/')[-1])"); \
+	echo "✔ Uploaded (jar-id: $$JAR_ID)"; \
+	echo "→ Submitting job (entry class: ptf.FlinkJob)..."; \
+	RUN_RESP=$$(curl -sf -X POST "http://localhost:$(FLINK_UI_PORT)/jars/$$JAR_ID/run" \
+		-H "Content-Type: application/json" \
+		-d '{"entryClass":"ptf.FlinkJob"}'); \
+	if [ $$? -ne 0 ]; then \
+		[ -n "$$PF_PID" ] && kill $$PF_PID 2>/dev/null; \
+		echo "✘ Job submission failed."; exit 1; \
+	fi; \
+	JOB_ID=$$(echo "$$RUN_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobid'])"); \
+	[ -n "$$PF_PID" ] && kill $$PF_PID 2>/dev/null; \
+	echo "✔ Job submitted (job-id: $$JOB_ID)"; \
+	echo "  Run 'make flink-ui' to monitor the job."
 
 # ------------------------------------------------------------------------------
 # Composite workflows
