@@ -66,7 +66,6 @@ make confluent-teardown   # removes everything and stops Minikube
 ## **5.0 Documentation**
 
 - [Minikube Deployment Guide](docs/minikube-deployment.md) — full reference for all Make targets, configuration variables, and architecture diagrams
-- [Manual Deployment](docs/manual_deployment.md) — step-by-step instructions without the Makefile
 
 ## **6.0 Resources**
 
