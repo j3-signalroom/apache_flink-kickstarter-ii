@@ -53,7 +53,7 @@ Once the platform is up, head to the examples:
 
 | Example Type | Example Description | Confluent Platform + Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
-| PTF UDF | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka events with per-user session tracking. | [examples/ptf_udf/cp_java/README.md](examples/ptf_udf/cp_java/README.md) | [examples/ptf_udf/cc_java/README.md](examples/ptf_udf/cc_java/README.md) |
+| PTF UDF | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka events with per-user session tracking. | [CP Java Example](examples/ptf_udf/cp_java/README.md) | [CC Java Example](examples/ptf_udf/cc_java/README.md) |
 
 ## **4.0 Teardown**
 
