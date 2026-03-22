@@ -17,7 +17,7 @@ resource "confluent_role_binding" "flink_sql_runner_as_flink_developer" {
 resource "confluent_role_binding" "flink_sql_runner_as_resource_owner_topic_access" {
     principal   = "User:${confluent_service_account.flink_sql_runner.id}"
     role_name   = "ResourceOwner"
-    crn_pattern = "${confluent_kafka_cluster.kafka_cluster.rbac_crn}/kafka=${confluent_kafka_cluster.kafka_cluster.id}/topic=*"
+    crn_pattern = "${confluent_kafka_cluster.ptf_udf_cc_java.rbac_crn}/kafka=${confluent_kafka_cluster.ptf_udf_cc_java.id}/topic=*"
 
     depends_on = [
         confluent_role_binding.flink_sql_runner_as_flink_developer
@@ -47,7 +47,7 @@ resource "confluent_role_binding" "flink_sql_runner_schema_registry_access" {
 resource "confluent_role_binding" "flink_sql_runner_as_resource_owner_transactional_access" {
     principal   = "User:${confluent_service_account.flink_sql_runner.id}"
     role_name   = "ResourceOwner"
-    crn_pattern = "${confluent_kafka_cluster.kafka_cluster.rbac_crn}/kafka=${confluent_kafka_cluster.kafka_cluster.id}/transactional-id=*"
+    crn_pattern = "${confluent_kafka_cluster.ptf_udf_cc_java.rbac_crn}/kafka=${confluent_kafka_cluster.ptf_udf_cc_java.id}/transactional-id=*"
 
     depends_on = [
         confluent_role_binding.flink_sql_runner_schema_registry_access
@@ -96,11 +96,6 @@ module "flink_api_key_rotation" {
     day_count = var.day_count
 }
 
-data "confluent_flink_region" "ptf_udf_cc_java" {
-  cloud        = local.cloud
-  region       = local.aws_region
-}
-
 # Create the Flink-specific API key that will be used to submit statements.
 resource "confluent_api_key" "flink_sql_runner_api_key" {
   display_name = "apache_flink_flink_statements_runner_api_key"
@@ -132,7 +127,7 @@ resource "confluent_flink_artifact" "ptf_udf_cc_java" {
   content_format   = "JAR"
   cloud            = local.cloud
   region           = local.aws_region
-  artifact_file    = "${path.module}/examples/ptf_udf/cc_java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
+  artifact_file    = "${path.module}/../cc_java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
 
   environment {
     id = confluent_environment.ptf_udf_cc_java.id
@@ -153,12 +148,20 @@ resource "confluent_flink_statement" "create_udf" {
 
   rest_endpoint = data.confluent_flink_region.ptf_udf_cc_java.rest_endpoint
   credentials {
-    key    = module.flink_api_key_rotation.current_api_key.key
-    secret = module.flink_api_key_rotation.current_api_key.secret
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
   }
 
   environment {
     id = confluent_environment.ptf_udf_cc_java.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
   }
 
   compute_pool {

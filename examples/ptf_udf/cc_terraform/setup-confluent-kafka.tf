@@ -140,8 +140,8 @@ resource "confluent_kafka_acl" "app_producer_write_on_topic" {
   permission    = "ALLOW"
   rest_endpoint = confluent_kafka_cluster.ptf_udf_cc_java.rest_endpoint
   credentials {
-    key    = module.kafka_app_producer_api_key.active_api_key.id
-    secret = module.kafka_app_producer_api_key.active_api_key.secret
+    key    = module.kafka_app_manager_api_key.active_api_key.id
+    secret = module.kafka_app_manager_api_key.active_api_key.secret
   }
 }
 
