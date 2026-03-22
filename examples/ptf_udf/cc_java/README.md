@@ -1,4 +1,4 @@
-# Confluent Cloud Java Process Table Function (PTF) User-Defined Function (UDF) (early access release) -- User Event Enricher
+# Confluent Cloud Java Process Table Function (PTF) User-Defined Function (UDF) (early access release) ─ User Event Enricher
 
 **Table of Contents**
 <!-- toc -->
@@ -20,11 +20,11 @@
 
 ## **1.0 State and operators in a Process Table Function**
 
-A **Process Table Function (PTF)** is a new category of user-defined function introduced in Flink 2.x. Unlike scalar or aggregate UDFs, a PTF is a **stateful operator** -- it sits inside the Flink dataflow graph just like a built-in operator (e.g., a windowed aggregation or a keyed process function), but you define its logic in a plain Java class.
+A **Process Table Function (PTF)** is a new category of user-defined function introduced in Flink 2.1. Unlike scalar or aggregate UDFs, a PTF is a **stateful operator** ─ it sits inside the Flink dataflow graph just like a built-in operator (e.g., a windowed aggregation or a keyed process function), but you define its logic in a plain Java class.
 
 ### **1.1 What is state?**
 
-In stream processing, **state** is data that persists across events. Without state every event is processed in isolation -- you can filter or transform it, but you cannot count things, detect sequences, or remember what happened before. State is what turns a stateless pipe into an intelligent processor.
+In stream processing, **state** is data that persists across events. Without state every event is processed in isolation ─ you can filter or transform it, but you cannot count things, detect sequences, or remember what happened before. State is what turns a stateless pipe into an intelligent processor.
 
 Flink manages state for you: it stores it in a **state backend** (heap, RocksDB, etc.), checkpoints it for fault tolerance, and restores it on failure. You never serialize or recover state manually.
 
@@ -37,9 +37,9 @@ Every Flink operator that needs memory between events holds state. A few example
 | Keyed window aggregation | Partial aggregates per key per window |
 | Interval join | Buffered rows from both sides within the join window |
 | Deduplication | Set of seen keys |
-| **ProcessTableFunction (PTF)** | Whatever you declare via `@StateHint` -- one instance per partition key |
+| **ProcessTableFunction (PTF)** | Whatever you declare via `@StateHint` ─ one instance per partition key |
 
-The PTF is special because **you** decide what the state looks like. You declare a POJO, annotate it with `@StateHint`, and Flink handles the rest -- creating one instance per partition key, persisting it in the state backend, and checkpointing it automatically.
+The PTF is special because **you** decide what the state looks like. You declare a POJO, annotate it with `@StateHint`, and Flink handles the rest ─ creating one instance per partition key, persisting it in the state backend, and checkpointing it automatically.
 
 ### **1.3 How `PARTITION BY` connects SQL to state**
 
@@ -56,18 +56,18 @@ FROM TABLE(
 
 Flink does the following behind the scenes:
 
-1. **Key the stream** -- `PARTITION BY user_id` tells the Flink planner to hash-partition the input by `user_id`, exactly like a `keyBy()` in the DataStream API.
-2. **Allocate isolated state** -- for each distinct `user_id`, Flink creates a separate `UserState` POJO instance. Alice's state never interferes with Bob's.
-3. **Route events** -- every incoming row is routed to the partition (and therefore the state instance) that matches its `user_id`.
-4. **Call `eval()`** -- your `eval()` method receives the row *and* the correct state instance already loaded. You read and mutate the POJO fields directly -- no `ValueState.get()` / `.update()` boilerplate.
-5. **Checkpoint** -- Flink snapshots all state instances periodically. On failure it restores them and replays from the last checkpoint, so your PTF is exactly-once by default.
+1. **Key the stream** ─ `PARTITION BY user_id` tells the Flink planner to hash-partition the input by `user_id`, exactly like a `keyBy()` in the DataStream API.
+2. **Allocate isolated state** ─ for each distinct `user_id`, Flink creates a separate `UserState` POJO instance. For example, as shown in the sample data, Alice’s state never overlaps with Bob’s.
+3. **Route events** ─ every incoming row is routed to the partition (and therefore the state instance) that matches its `user_id`.
+4. **Call `eval()`** ─ your `eval()` method receives the row *and* the correct state instance already loaded. You read and mutate the POJO fields directly ─ no `ValueState.get()` / `.update()` boilerplate.
+5. **Checkpoint** ─ Flink snapshots all state instances periodically. On failure it restores them and replays from the last checkpoint, so your PTF is exactly-once by default.
 
 ### **1.4 The role of `@StateHint` and `@ArgumentHint`**
 
 These two annotations are the bridge between your Java code and the Flink operator graph:
 
-- **`@StateHint`** -- marks a parameter as operator state. Flink sees the annotated POJO and wires it into the keyed state backend. Each `PARTITION BY` key gets its own instance, automatically serialized, checkpointed, and restored.
-- **`@ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)`** -- declares that the input argument is a *set-semantic table*, meaning the PTF acts as a keyed, stateful virtual processor over the entire partitioned stream. This is what distinguishes a PTF from a simple row-at-a-time scalar UDF.
+- **`@StateHint`** ─ marks a parameter as operator state. Flink sees the annotated POJO and wires it into the keyed state backend. Each `PARTITION BY` key gets its own instance, automatically serialized, checkpointed, and restored.
+- **`@ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)`** ─ declares that the input argument is a *set-semantic table*, meaning the PTF acts as a keyed, stateful virtual processor over the entire partitioned stream. This is what distinguishes a PTF from a simple row-at-a-time scalar UDF.
 
 Together, these annotations let you write what *looks* like a plain method but *executes* as a fully fault-tolerant, distributed, keyed-state operator inside the Flink pipeline.
 
@@ -82,7 +82,7 @@ This example puts the above concepts into practice. The `UserEventEnricher` PTF 
 For every incoming event the function maintains three pieces of **per-user state** (one state instance per `PARTITION BY user_id` key):
 
 | State field | Purpose |
-|---|---|
+|-|-|
 | `sessionId` | Monotonically increasing session counter. Incremented each time a `"login"` event arrives. |
 | `eventCount` | Running count of events **within the current session**. Reset to zero on each new session, then incremented for every event (including the login itself). |
 | `lastEvent` | The `event_type` of the most recent event for that user. |
@@ -90,12 +90,12 @@ For every incoming event the function maintains three pieces of **per-user state
 Each incoming row is emitted immediately with these three extra fields appended, so the output schema is:
 
 ```
-user_id     STRING    -- passed through automatically via PARTITION BY
+user_id     STRING    ─ passed through automatically via PARTITION BY
 event_type  STRING
 payload     STRING
-session_id  BIGINT    -- which session this event belongs to
-event_count BIGINT    -- position of this event within the session
-last_event  STRING    -- the event type just processed
+session_id  BIGINT    ─ which session this event belongs to
+event_count BIGINT    ─ position of this event within the session
+last_event  STRING    ─ the event type just processed
 ```
 
 ### **2.2 How it works end-to-end**
@@ -123,11 +123,11 @@ Kafka (user_events)
 
 ### **2.3 Key concepts illustrated**
 
-- **`ProcessTableFunction`** -- the Flink 2.x API for stateful, set-semantic UDFs callable from SQL.
-- **`@StateHint`** -- declares a POJO whose fields Flink automatically persists per partition key, eliminating manual `ValueState` / `MapState` boilerplate.
-- **`@ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)`** -- tells Flink the input is a keyed, stateful virtual processor (set semantics), not a simple row-at-a-time scalar function.
-- **`PARTITION BY`** -- the SQL-side mechanism that keys the input table so each `user_id` gets its own isolated state instance.
-- **Configurable Kafka bootstrap servers** -- resolved in order: `KAFKA_BOOTSTRAP_SERVERS` env var, Flink config key `kafka.bootstrap.servers`, then `localhost:9092` default.
+- **`ProcessTableFunction`** ─ the Flink 2.x API for stateful, set-semantic UDFs callable from SQL.
+- **`@StateHint`** ─ declares a POJO whose fields Flink automatically persists per partition key, eliminating manual `ValueState` / `MapState` boilerplate.
+- **`@ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)`** ─ tells Flink the input is a keyed, stateful virtual processor (set semantics), not a simple row-at-a-time scalar function.
+- **`PARTITION BY`** ─ the SQL-side mechanism that keys the input table so each `user_id` gets its own isolated state instance.
+- **Configurable Kafka bootstrap servers** ─ resolved in order: `KAFKA_BOOTSTRAP_SERVERS` env var, Flink config key `kafka.bootstrap.servers`, then `localhost:9092` default.
 
 ## **3.0 Project structure**
 
@@ -164,7 +164,7 @@ make install-prereqs        # installs docker, kubectl, minikube, helm, gradle, 
 To build and deploy the PTF UDF to Confluent Cloud, run the `deploy-cc-java-ptf-udf` Make target. You must supply a **Cloud API Key** (not a Cluster API Key). Create one with:
 
 ```bash
-confluent api-key create --resource cloud
+confluent api-key create ─resource cloud
 ```
 
 Then deploy with:
