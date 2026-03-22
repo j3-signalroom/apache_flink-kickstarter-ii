@@ -1,4 +1,4 @@
-# Confluent Platform Java Process Table Function (PTF) User-Defined Function (UDF) -- User Event Enricher
+# Confluent Platform Java Process Table Function (PTF) User-Defined Function (UDF) ─ User Event Enricher
 
 **Table of Contents**
 <!-- toc -->
@@ -24,11 +24,11 @@
 
 ## **1.0 State and operators in a Process Table Function**
 
-A **Process Table Function (PTF)** is a new category of user-defined function introduced in Flink 2.x. Unlike scalar or aggregate UDFs, a PTF is a **stateful operator** -- it sits inside the Flink dataflow graph just like a built-in operator (e.g., a windowed aggregation or a keyed process function), but you define its logic in a plain Java class.
+A **Process Table Function (PTF)** is a new category of user-defined function introduced in Flink 2.1. Unlike scalar or aggregate UDFs, a PTF is a **stateful operator** ─ it sits inside the Flink dataflow graph just like a built-in operator (e.g., a windowed aggregation or a keyed process function), but you define its logic in a plain Java class.
 
 ### **1.1 What is state?**
 
-In stream processing, **state** is data that persists across events. Without state every event is processed in isolation -- you can filter or transform it, but you cannot count things, detect sequences, or remember what happened before. State is what turns a stateless pipe into an intelligent processor.
+In stream processing, **state** is data that persists across events. Without state every event is processed in isolation ─ you can filter or transform it, but you cannot count things, detect sequences, or remember what happened before. State is what turns a stateless pipe into an intelligent processor.
 
 Flink manages state for you: it stores it in a **state backend** (heap, RocksDB, etc.), checkpoints it for fault tolerance, and restores it on failure. You never serialize or recover state manually.
 
@@ -41,9 +41,9 @@ Every Flink operator that needs memory between events holds state. A few example
 | Keyed window aggregation | Partial aggregates per key per window |
 | Interval join | Buffered rows from both sides within the join window |
 | Deduplication | Set of seen keys |
-| **ProcessTableFunction (PTF)** | Whatever you declare via `@StateHint` -- one instance per partition key |
+| **ProcessTableFunction (PTF)** | Whatever you declare via `@StateHint` ─ one instance per partition key |
 
-The PTF is special because **you** decide what the state looks like. You declare a POJO, annotate it with `@StateHint`, and Flink handles the rest -- creating one instance per partition key, persisting it in the state backend, and checkpointing it automatically.
+The PTF is special because **you** decide what the state looks like. You declare a POJO, annotate it with `@StateHint`, and Flink handles the rest ─ creating one instance per partition key, persisting it in the state backend, and checkpointing it automatically.
 
 ### **1.3 How `PARTITION BY` connects SQL to state**
 
@@ -94,12 +94,12 @@ For every incoming event the function maintains three pieces of **per-user state
 Each incoming row is emitted immediately with these three extra fields appended, so the output schema is:
 
 ```
-user_id     STRING    -- passed through automatically via PARTITION BY
+user_id     STRING    ─ passed through automatically via PARTITION BY
 event_type  STRING
 payload     STRING
-session_id  BIGINT    -- which session this event belongs to
-event_count BIGINT    -- position of this event within the session
-last_event  STRING    -- the event type just processed
+session_id  BIGINT    ─ which session this event belongs to
+event_count BIGINT    ─ position of this event within the session
+last_event  STRING    ─ the event type just processed
 ```
 
 ### **2.2 How it works end-to-end**
@@ -195,13 +195,13 @@ Behind the scenes this runs:
 
 ### **4.4 Produce sample data**
 
-Since the Kafka broker has `auto.create.topics.enable=false`, the required topics must be created explicitly. The `produce-cp-java-ptf-udf` target handles this -- it creates both Kafka topics (`user_events` and `enriched_events`) if they don't already exist, then publishes six sample JSON events to the `user_events` topic:
+Since the Kafka broker has `auto.create.topics.enable=false`, the required topics must be created explicitly. The `produce-cp-java-ptf-udf` target handles this ─ it creates both Kafka topics (`user_events` and `enriched_events`) if they don't already exist, then publishes six sample JSON events to the `user_events` topic:
 
 ```bash
 make produce-cp-java-ptf-udf
 ```
 
-The sample events cover three users (`alice`, `bob`, `charlie`) with a mix of `login`, `click`, `purchase`, and `logout` event types. This target is safe to run multiple times -- the topics use `--if-not-exists` and each run appends a fresh batch of events.
+The sample events cover three users (`alice`, `bob`, `charlie`) with a mix of `login`, `click`, `purchase`, and `logout` event types. This target is safe to run multiple times ─ the topics use `--if-not-exists` and each run appends a fresh batch of events.
 
 ### **4.5 Monitor the job**
 
