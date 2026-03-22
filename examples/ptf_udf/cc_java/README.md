@@ -75,7 +75,7 @@ Together, these annotations let you write what *looks* like a plain method but *
 
 ## **2.0 What does this example do?**
 
-This example puts the above concepts into practice. The `UserEventEnricher` PTF reads raw user-interaction events from a Kafka topic (`user_events`), enriches each event with session and counting information, and writes the result to a second Kafka topic (`enriched-events`).
+This example puts the above concepts into practice. The `UserEventEnricher` PTF reads raw user-interaction events from a Kafka topic (`user_events`), enriches each event with session and counting information, and writes the result to a second Kafka topic (`enriched_events`).
 
 ### **2.1 Enrichment logic**
 
@@ -104,9 +104,9 @@ last_event  STRING    -- the event type just processed
 Kafka (user_events)
         │
         ▼
-  ┌────────────┐
-  │  events    │   Flink SQL source table (JSON / latest-offset)
-  └─────┬──────┘
+  ┌─────────────┐
+  │ user_events │   Flink SQL source table (JSON / latest-offset)
+  └─────┬───────┘
         │
         ▼
   UserEventEnricher(input => TABLE user_events PARTITION BY user_id)
@@ -117,7 +117,7 @@ Kafka (user_events)
         │
         ▼
   ┌────────────────┐
-  │ enriched_events│   Flink SQL sink table → Kafka (enriched-events)
+  │ enriched_events│   Flink SQL sink table → Kafka (enriched_events)
   └────────────────┘
 ```
 

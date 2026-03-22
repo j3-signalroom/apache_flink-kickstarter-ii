@@ -46,7 +46,7 @@ public class FlinkJob {
 
         // --- Source table
         tEnv.executeSql(String.format("""
-            CREATE TABLE events (
+            CREATE TABLE user_events (
                 user_id    STRING,
                 event_type STRING,
                 payload    STRING
@@ -70,7 +70,7 @@ public class FlinkJob {
                 last_event  STRING
             ) WITH (
                 'connector'                    = 'kafka',
-                'topic'                        = 'enriched-events',
+                'topic'                        = 'enriched_events',
                 'properties.bootstrap.servers' = '%s',
                 'format'                       = 'json'
             )
@@ -82,7 +82,7 @@ public class FlinkJob {
             SELECT *
             FROM TABLE(
                 UserEventEnricher(
-                    input => TABLE events PARTITION BY user_id
+                    input => TABLE user_events PARTITION BY user_id
                 )
             )
         """);
