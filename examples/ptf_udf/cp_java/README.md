@@ -2,25 +2,24 @@
 
 **Table of Contents**
 <!-- toc -->
-+ [1.0 State and operators in a Process Table Function](#10-state-and-operators-in-a-process-table-function)
-    + [1.1 What is state?](#11-what-is-state)
-    + [1.2 How operators use state](#12-how-operators-use-state)
-    + [1.3 How `PARTITION BY` connects SQL to state](#13-how-partition-by-connects-sql-to-state)
-    + [1.4 The role of `@StateHint` and `@ArgumentHint`](#14-the-role-of-statehint-and-argumenthint)
-+ [2.0 What does this example do?](#20-what-does-this-example-do)
-    + [2.1 Enrichment logic](#21-enrichment-logic)
-    + [2.2 How it works end-to-end](#22-how-it-works-end-to-end)
-    + [2.3 Key concepts illustrated](#23-key-concepts-illustrated)
-+ [3.0 Project structure](#30-project-structure)
-+ [4.0 How to run](#40-how-to-run)
-    + [4.1 Prerequisites](#41-prerequisites)
-    + [4.2 Build](#42-build)
-    + [4.3 Submit to Flink](#43-submit-to-flink)
-    + [4.4 Produce test events](#44-produce-test-events)
-    + [4.5 Expected output on `enriched-events`](#45-expected-output-on-enriched-events)
-    + [4.6 Monitor the job](#46-monitor-the-job)
-    + [4.7 Clean up topics](#47-clean-up-topics)
-    + [4.8 Tear down the platform](#48-tear-down-the-platform)
++ [**1.0 State and operators in a Process Table Function**](#10-state-and-operators-in-a-process-table-function)
+    + [**1.1 What is state?**](#11-what-is-state)
+    + [**1.2 How operators use state**](#12-how-operators-use-state)
+    + [**1.3 How `PARTITION BY` connects SQL to state**](#13-how-partition-by-connects-sql-to-state)
+    + [**1.4 The role of `@StateHint` and `@ArgumentHint`**](#14-the-role-of-statehint-and-argumenthint)
++ [**2.0 What does this example do?**](#20-what-does-this-example-do)
+    + [**2.1 Enrichment logic**](#21-enrichment-logic)
+    + [**2.2 How it works end-to-end**](#22-how-it-works-end-to-end)
+    + [**2.3 Key concepts illustrated**](#23-key-concepts-illustrated)
++ [**3.0 Project structure**](#30-project-structure)
++ [**4.0 How to run**](#40-how-to-run)
+    + [**4.1 Prerequisites**](#41-prerequisites)
+    + [**4.2 Start the platform**](#42-start-the-platform)
+    + [**4.3 Build, deploy, and submit the job**](#43-build-deploy-and-submit-the-job)
+    + [**4.4 Produce sample data**](#44-produce-sample-data)
+    + [**4.5 Monitor the job**](#45-monitor-the-job)
+    + [**4.6 Clean up**](#46-clean-up)
++ [**5.0 Resources**](#50-resources)
 <!-- tocstop -->
 
 ## **1.0 State and operators in a Process Table Function**
@@ -54,7 +53,7 @@ When you write:
 SELECT *
 FROM TABLE(
     UserEventEnricher(
-        input => TABLE events PARTITION BY user_id
+        input => TABLE user_events PARTITION BY user_id
     )
 )
 ```
@@ -80,7 +79,7 @@ Together, these annotations let you write what *looks* like a plain method but *
 
 ## **2.0 What does this example do?**
 
-This example puts the above concepts into practice. The `UserEventEnricher` PTF reads raw user-interaction events from a Kafka topic (`user_events`), enriches each event with session and counting information, and writes the result to a second Kafka topic (`enriched-events`).
+This example puts the above concepts into practice. The `UserEventEnricher` PTF reads raw user-interaction events from a Kafka topic (`user_events`), enriches each event with session and counting information, and writes the result to a second Kafka topic (`enriched_events`).
 
 ### **2.1 Enrichment logic**
 
@@ -109,12 +108,12 @@ last_event  STRING    -- the event type just processed
 Kafka (user_events)
         │
         ▼
-  ┌────────────┐
-  │  events    │   Flink SQL source table (JSON / latest-offset)
-  └─────┬──────┘
+  ┌─────────────┐
+  │ user_events │   Flink SQL source table (JSON / latest-offset)
+  └─────┬───────┘
         │
         ▼
-  UserEventEnricher(input => TABLE events PARTITION BY user_id)
+  UserEventEnricher(input => TABLE user_events PARTITION BY user_id)
         │
         │  Per-user stateful enrichment:
         │    • login → new session, reset count
@@ -122,7 +121,7 @@ Kafka (user_events)
         │
         ▼
   ┌────────────────┐
-  │ enriched_events│   Flink SQL sink table → Kafka (enriched-events)
+  │ enriched_events│   Flink SQL sink table → Kafka (enriched_events)
   └────────────────┘
 ```
 
@@ -181,7 +180,7 @@ See the [Minikube Deployment Guide](../../docs/minikube-deployment.md) for full 
 
 ### **4.3 Build, deploy, and submit the job**
 
-A single target handles everything -- building the fat JAR, creating the Kafka topics (`user_events` and `enriched-events`), uploading the JAR to the Flink cluster, and submitting the job:
+A single target builds the fat JAR, uploads it to the Flink cluster, and submits the job:
 
 ```bash
 make deploy-cp-java-ptf-udf
@@ -192,30 +191,19 @@ Behind the scenes this runs:
 | Step | Target | What it does |
 |---|---|---|
 | 1 | `build-cp-java-ptf-udf` | `./gradlew clean shadowJar` -- produces the uber JAR |
-| 2 | `create-ptf-udf-topics` | Creates `user_events` and `enriched-events` topics via `kafka-topics` on the broker pod |
-| 3 | *(inline)* | Port-forwards to the Flink JobManager, uploads the JAR via the REST API, and submits the job with entry class `ptf.FlinkJob` |
+| 2 | *(inline)* | Port-forwards to the Flink JobManager, uploads the JAR via the REST API, and submits the job with entry class `ptf.FlinkJob` |
 
-### **4.4 Produce test events**
+### **4.4 Produce sample data**
 
-Send sample JSON records to the `user_events` topic:
-
-```bash
-make produce-ptf-udf-sample
-```
-
-This produces six events for three users (`alice`, `bob`, `charlie`) covering logins, clicks, a purchase, and a logout.
-
-### **4.5 Consume enriched output**
-
-Read the enriched results from the `enriched-events` topic:
+Since the Kafka broker has `auto.create.topics.enable=false`, the required topics must be created explicitly. The `produce-cp-java-ptf-udf` target handles this -- it creates both Kafka topics (`user_events` and `enriched_events`) if they don't already exist, then publishes six sample JSON events to the `user_events` topic:
 
 ```bash
-make consume-ptf-udf-output    # Ctrl+C to stop
+make produce-cp-java-ptf-udf
 ```
 
-You should see JSON records with the original fields plus `session_id`, `event_count`, and `last_event` appended by the PTF.
+The sample events cover three users (`alice`, `bob`, `charlie`) with a mix of `login`, `click`, `purchase`, and `logout` event types. This target is safe to run multiple times -- the topics use `--if-not-exists` and each run appends a fresh batch of events.
 
-### **4.6 Monitor the job**
+### **4.5 Monitor the job**
 
 Open the Flink Dashboard to see the running job, its task managers, and checkpoint history:
 
@@ -223,34 +211,13 @@ Open the Flink Dashboard to see the running job, its task managers, and checkpoi
 make flink-ui                   # opens http://localhost:8081
 ```
 
-### **4.7 Expected output**
-
-Given the sample data from `make produce-ptf-udf-sample`, the enriched output looks like:
-
-```
-alice    login     web               1  1  login
-bob      click     button-checkout   0  1  click      ← bob has no login yet, session 0
-alice    purchase  order-1234        1  2  purchase
-charlie  login     mobile            1  1  login
-bob      logout    session-end       0  2  logout
-alice    click     button-settings   1  3  click
-```
-
-Key observations:
-- **alice** logs in first (session 1), then her subsequent events increment `event_count` within that session.
-- **bob** never sends a `"login"` event, so his `session_id` stays at 0 (the initial state).
-- **charlie** logs in once, starting his own independent session 1.
-
-### **4.8 Clean up topics**
-
-When you are done experimenting, delete the example's Kafka topics:
-
-```bash
-make delete-ptf-udf-topics
-```
+### **4.6 Clean up**
 
 To tear down the entire platform (Flink, Confluent Platform, Minikube):
 
 ```bash
 make confluent-teardown
 ```
+
+## **5.0 Resources**
+- [Create a User-Defined Function with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html)

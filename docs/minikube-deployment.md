@@ -27,6 +27,7 @@ A Makefile-driven quickstart that deploys a full local streaming stack on Miniku
     - [**6.6 Phase 6 — Apache Flink**](#66-phase-6--apache-flink)
     - [**6.7 Phase 7 — Confluent Manager for Apache Flink (CMF)**](#67-phase-7--confluent-manager-for-apache-flink-cmf)
     - [**6.8 Phase 8 — Kafka UI (Provectus)**](#68-phase-8--kafka-ui-provectus)
+    - [**6.9 Phase 9 — Build & Deploy Flink JARs**](#69-phase-9--build--deploy-flink-jars)
 + [**7.0 Configuration**](#70-configuration)
 + [**8.0 Repository Layout**](#80-repository-layout)
 + [**9.0 Teardown**](#90-teardown)
@@ -140,17 +141,8 @@ graph TD
         KUI_UN["kafka-ui-uninstall"]
     end
 
-    %% ── Phase 9: Kafka Topics ───────────────────────────────────────────
-    subgraph P9["Phase 9 — Kafka Topics"]
-        CREATE_TOPICS["create-ptf-udf-topics\nuser_events · enriched-events"]
-        DELETE_TOPICS["delete-ptf-udf-topics"]
-        LIST_TOPICS["list-topics"]
-        PRODUCE_SAMPLE["produce-ptf-udf-sample\n6 JSON records → user_events"]
-        CONSUME_OUTPUT["consume-ptf-udf-output\nenriched-events → console"]
-    end
-
-    %% ── Phase 10: Build & Deploy Flink JARs ──────────────────────────────
-    subgraph P10["Phase 10 — Build & Deploy Flink JARs"]
+    %% ── Phase 9: Build & Deploy Flink JARs ──────────────────────────────
+    subgraph P9["Phase 9 — Build & Deploy Flink JARs"]
         BUILD_PTF["build-cp-java-ptf-udf\n./gradlew clean shadowJar"]
         DEPLOY_PTF["deploy-cp-java-ptf-udf\nupload JAR → REST API → submit job"]
     end
@@ -364,22 +356,12 @@ make cmf-proxy-inject
 | `kafka-ui-open` | Port-forward Kafka UI and open `http://localhost:8080` |
 | `kafka-ui-uninstall` | Remove Kafka UI |
 
-### **6.9 Phase 9 — Kafka Topics**
-
-| Target | Description |
-|--------|-------------|
-| `create-ptf-udf-topics` | Create the Kafka topics required by the ptf_udf Flink job |
-| `delete-ptf-udf-topics` | Delete the Kafka topics used by the ptf_udf Flink job |
-| `list-topics` | List all Kafka topics in the cluster |
-| `produce-ptf-udf-sample` | Produce sample JSON records to the `user_events` topic |
-| `consume-ptf-udf-output` | Consume records from the `enriched-events` topic (Ctrl+C to stop) |
-
-### **6.10 Phase 10 — Build & Deploy Flink JARs**
+### **6.9 Phase 9 — Build & Deploy Flink JARs**
 
 | Target | Description |
 |--------|-------------|
 | `build-cp-java-ptf-udf` | Build the `ptf_udf` fat JAR (requires Gradle) |
-| `deploy-cp-java-ptf-udf` | Build, create topics, upload to the Flink cluster, and submit the `ptf_udf` job |
+| `deploy-cp-java-ptf-udf` | Build, upload to the Flink cluster, and submit the `ptf_udf` job |
 
 ---
 
@@ -406,7 +388,7 @@ All variables are overridable at the command line. Defaults:
 | `C3_PORT` | `9021` | Control Center local port |
 | `FLINK_UI_PORT` | `8081` | Flink UI local port |
 | `KAFKA_UI_PORT` | `8080` | Kafka UI local port |
-| `PTF_UDF_TOPICS` | `user_events enriched-events` | Kafka topics for the ptf_udf Flink job |
+| `PTF_UDF_TOPICS` | `user_events enriched_events` | Kafka topics for the ptf_udf Flink job |
 
 > **Note:** CMF uses the Confluent-packaged Flink operator (`confluentinc/flink-kubernetes-operator`) and `confluentinc/cp-flink` images — not the Apache OSS Flink operator or `flink` Docker Hub image.
 
