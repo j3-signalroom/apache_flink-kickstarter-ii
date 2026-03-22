@@ -197,6 +197,50 @@ resource "confluent_flink_statement" "user_events_source" {
   ]
 }
 
+resource "confluent_flink_statement" "insert_user_events" {
+  statement = <<-EOT
+    INSERT INTO user_events (user_id, event_type, payload)
+    VALUES
+      ('alice',   'login',    'web'),
+      ('bob',     'click',    'button-checkout'),
+      ('alice',   'purchase', 'order-1234'),
+      ('charlie', 'login',    'mobile'),
+      ('bob',     'logout',   'session-end'),
+      ('alice',   'click',    'button-settings');
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_cc_java.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_cc_java.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_cc_java.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_cc_java.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_cc_java.id
+  }
+
+  depends_on = [
+    confluent_flink_statement.user_events_source
+  ]
+}
+
 resource "confluent_flink_statement" "drop_enriched_events" {
   statement = "DROP TABLE IF EXISTS enriched_events;"
 
@@ -272,6 +316,7 @@ resource "confluent_flink_statement" "enriched_events_sink" {
   }
 
   depends_on = [
+    confluent_flink_statement.insert_user_events,
     confluent_flink_statement.drop_enriched_events
   ]
 }
@@ -289,7 +334,7 @@ resource "confluent_flink_artifact" "ptf_udf_cc_java" {
   }
 
   depends_on = [
-    confluent_flink_statement.user_events_source,
+    confluent_flink_statement.insert_user_events,
     confluent_flink_statement.enriched_events_sink,
   ]
 }
