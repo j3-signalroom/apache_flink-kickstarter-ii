@@ -1,4 +1,4 @@
-# Confluent Cloud Java Process Table Function (PTF) User-Defined Function (UDF) -- User Event Enricher
+# Confluent Cloud Java Process Table Function (PTF) User-Defined Function (UDF) (early access release) -- User Event Enricher
 
 **Table of Contents**
 <!-- toc -->
