@@ -26,14 +26,14 @@ dependencies {
     compileOnly("org.apache.flink:flink-streaming-java:$flinkVersion")
     compileOnly("org.apache.flink:flink-clients:$flinkVersion")
 
-    // Bundled into the fat JAR
-    implementation("org.apache.flink:flink-connector-kafka:$kafkaConnectorVersion")
-    implementation("org.apache.flink:flink-json:$flinkVersion")
+    // Provided by Confluent Cloud Flink runtime
+    compileOnly("org.apache.flink:flink-connector-kafka:$kafkaConnectorVersion")
+    compileOnly("org.apache.flink:flink-json:$flinkVersion")
 
-    // Logging (runtime only)
-    runtimeOnly("org.apache.logging.log4j:log4j-slf4j2-impl:$log4jVersion")
-    runtimeOnly("org.apache.logging.log4j:log4j-api:$log4jVersion")
-    runtimeOnly("org.apache.logging.log4j:log4j-core:$log4jVersion")
+    // Logging (provided by Confluent Cloud Flink runtime)
+    compileOnly("org.apache.logging.log4j:log4j-slf4j2-impl:$log4jVersion")
+    compileOnly("org.apache.logging.log4j:log4j-api:$log4jVersion")
+    compileOnly("org.apache.logging.log4j:log4j-core:$log4jVersion")
 
     // Test
     testImplementation("org.apache.flink:flink-table-planner-loader:$flinkVersion")
