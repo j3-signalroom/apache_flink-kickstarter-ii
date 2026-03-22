@@ -35,10 +35,11 @@ print_step() {
 }
 
 # Configuration folders
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TERRAFORM_DIR="$SCRIPT_DIR/terraform"
+TERRAFORM_DIR="$(cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../examples/ptf_udf/cc_terraform" && pwd)"
+MAKEFILE_DIR="$(cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../" && pwd)"
 
 print_info "Terraform Directory: $TERRAFORM_DIR"
+print_info "Makefile Directory: $MAKEFILE_DIR"
 
 argument_list="--confluent-api-key=<CONFLUENT_API_KEY> --confluent-api-secret=<CONFLUENT_API_SECRET>"
 
@@ -108,29 +109,31 @@ then
 fi
 
 
-# Create terraform.tfvars file
-if [ "$create_action" = true ]
-then
-    printf "confluent_api_key=\"${confluent_api_key}\"\
-    \nconfluent_api_secret=\"${confluent_api_secret}\"\
-    \nday_count=${day_count}" > terraform.tfvars
-else
-    printf "confluent_api_key=\"${confluent_api_key}\"\
-    \nconfluent_api_secret=\"${confluent_api_secret}\"" > terraform.tfvars
-fi
+# Export variables for Terraform
+export TF_VAR_confluent_api_key="${confluent_api_key}"
+export TF_VAR_confluent_api_secret="${confluent_api_secret}"
+
+cd "$TERRAFORM_DIR"
 
 # Initialize the Terraform configuration
 terraform init
 
 if [ "$create_action" = true ]
 then
-    # Create/Update the Terraform configuration
-    terraform init
-    terraform plan -var-file=terraform.tfvars
+    print_info "Applying Terraform..."
+    terraform apply -auto-approve
+    print_info "Infrastructure deployed successfully!"
 
-    # Apply the Terraform configuration
-    terraform apply -var-file=terraform.tfvars
+    print_info "Creating the Terraform visualization..."
+    terraform graph | dot -Tpng > "$MAKEFILE_DIR/docs/images/terraform-visualization.png"
+    print_info "Terraform visualization created at: $MAKEFILE_DIR/docs/images/terraform-visualization.png"
 else
-    # Destroy the Terraform configuration
-    terraform destroy -var-file=terraform.tfvars
+    # Destroy
+    print_info "Running Terraform destroy..."
+    
+    # Auto approves the destroy plan without prompting, and destroys based on state only, without
+    # trying to refresh data sources
+    terraform destroy -auto-approve
 fi
+
+cd "$MAKEFILE_DIR"

@@ -4,17 +4,6 @@ resource "confluent_service_account" "schema_registry_cluster_api" {
     description  = "FlinkSchema Registry Cluster API Service Account"
 }
 
-# Config the environment's schema registry
-data "confluent_schema_registry_cluster" "ptf_udf_cc_java" {
-  environment {
-    id = confluent_environment.apache_flink_kickstarter.id
-  }
-
-  depends_on = [
-    confluent_kafka_cluster.kafka_cluster
-  ]
-}
-
 # Create the Environment API Key Pairs, rotate them in accordance to a time schedule, and provide the current
 # acitve API Key Pair to use
 module "schema_registry_cluster_api_key_rotation" {
@@ -34,7 +23,7 @@ module "schema_registry_cluster_api_key_rotation" {
         kind        = data.confluent_schema_registry_cluster.ptf_udf_cc_java.kind
 
         environment = {
-            id = confluent_environment.apache_flink_kickstarter.id
+            id = confluent_environment.ptf_udf_cc_java.id
         }
     }
 

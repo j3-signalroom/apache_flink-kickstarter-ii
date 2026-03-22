@@ -39,6 +39,8 @@ hs_err_pid*
 *.tfstate.backup
 *.tfvars
 .terraform.lock.hcl
+tfplan.out
+tfplan
 
 # Environment/secrets
 .ptf_udf_cc_java
