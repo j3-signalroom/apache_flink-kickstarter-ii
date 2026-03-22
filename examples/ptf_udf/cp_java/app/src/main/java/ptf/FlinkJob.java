@@ -52,7 +52,7 @@ public class FlinkJob {
                 payload    STRING
             ) WITH (
                 'connector'                    = 'kafka',
-                'topic'                        = 'user-events',
+                'topic'                        = 'user_events',
                 'properties.bootstrap.servers' = '%s',
                 'format'                       = 'json',
                 'scan.startup.mode'            = 'latest-offset'
