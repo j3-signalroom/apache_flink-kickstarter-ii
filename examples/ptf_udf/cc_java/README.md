@@ -14,7 +14,7 @@
 + [**3.0 Project structure**](#30-project-structure)
 + [**4.0 How to run**](#40-how-to-run)
     + [**4.1 Prerequisites**](#41-prerequisites)
-    + [**4.2 Deploy to Confluent Cloud**](#42-deploy-to-confluent-cloud)
+    + [**4.2 Deploy to Confluent Cloud (early access)**](#42-deploy-to-confluent-cloud-early-access)
 + [**5.0 Resources**](#50-resources)
 <!-- tocstop -->
 
@@ -159,7 +159,7 @@ Install all required tooling (including Gradle) if you haven't already:
 make install-prereqs        # installs docker, kubectl, minikube, helm, gradle, envsubst
 ```
 
-### **4.2 Deploy to Confluent Cloud**
+### **4.2 Deploy to Confluent Cloud (early access)**
 
 To build and deploy the PTF UDF to Confluent Cloud, run the `deploy-cc-java-ptf-udf` Make target. You must supply a **Cloud API Key** (not a Cluster API Key). Create one with:
 
