@@ -18,8 +18,7 @@
 #      1.130, session cluster deployment, Flink UI)
 #   7. Confluent Manager for Apache Flink (CMF) 2.1
 #   8. Kafka UI (Provectus Helm chart)
-#   9. Kafka topic management and sample data production/consumption
-#  10. Flink JAR build (Gradle shadow JAR) and REST API job submission
+#   9. Flink JAR build (Gradle shadow JAR) and REST API job submission
 # ==============================================================================
 
 CONFLUENT_MANIFEST  ?= k8s/base/confluent-platform-c3++.yaml
@@ -448,67 +447,7 @@ kafka-ui-uninstall: ## Uninstall Kafka UI (safe to run even if not installed)
 		|| echo "→ kafka-ui not installed, skipping."
 
 # ------------------------------------------------------------------------------
-# Phase 9: Kafka Topics
-# ------------------------------------------------------------------------------
-PTF_UDF_TOPICS ?= user_events enriched-events
-
-.PHONY: create-ptf-udf-topics
-create-ptf-udf-topics: ## Create the Kafka topics required by the ptf_udf Flink job
-	@echo "→ Creating Kafka topics for ptf_udf job..."
-	@for TOPIC in $(PTF_UDF_TOPICS); do \
-		kubectl exec -n $(NAMESPACE) kafka-0 -- \
-			kafka-topics --bootstrap-server localhost:9092 \
-			--create --if-not-exists \
-			--topic $$TOPIC \
-			--partitions 1 \
-			--replication-factor 1 \
-		&& echo "  ✔ $$TOPIC" \
-		|| echo "  ✘ Failed to create $$TOPIC"; \
-	done
-	@echo "✔ Topic creation complete."
-
-.PHONY: delete-ptf-udf-topics
-delete-ptf-udf-topics: ## Delete the Kafka topics used by the ptf_udf Flink job
-	@echo "→ Deleting Kafka topics for ptf_udf job..."
-	@for TOPIC in $(PTF_UDF_TOPICS); do \
-		kubectl exec -n $(NAMESPACE) kafka-0 -- \
-			kafka-topics --bootstrap-server localhost:9092 \
-			--delete --if-exists \
-			--topic $$TOPIC \
-		&& echo "  ✔ $$TOPIC deleted" \
-		|| echo "  ✘ Failed to delete $$TOPIC"; \
-	done
-	@echo "✔ Topic deletion complete."
-
-.PHONY: list-topics
-list-topics: ## List all Kafka topics in the cluster
-	kubectl exec -n $(NAMESPACE) kafka-0 -- \
-		kafka-topics --bootstrap-server localhost:9092 --list
-
-.PHONY: produce-ptf-udf-sample
-produce-ptf-udf-sample: ## Produce sample JSON records to the user_events topic
-	@echo "→ Producing sample records to user_events..."
-	@printf '%s\n' \
-		'{"user_id":"alice","event_type":"login","payload":"web"}' \
-		'{"user_id":"bob","event_type":"click","payload":"button-checkout"}' \
-		'{"user_id":"alice","event_type":"purchase","payload":"order-1234"}' \
-		'{"user_id":"charlie","event_type":"login","payload":"mobile"}' \
-		'{"user_id":"bob","event_type":"logout","payload":"session-end"}' \
-		'{"user_id":"alice","event_type":"click","payload":"button-settings"}' \
-	| kubectl exec -i -n $(NAMESPACE) kafka-0 -- \
-		kafka-console-producer --bootstrap-server localhost:9092 \
-		--topic user_events
-	@echo "✔ 6 sample records produced to user_events."
-
-.PHONY: consume-ptf-udf-output
-consume-ptf-udf-output: ## Consume records from the enriched-events topic (Ctrl+C to stop)
-	@echo "→ Reading from enriched-events (Ctrl+C to stop)..."
-	kubectl exec -n $(NAMESPACE) kafka-0 -- \
-		kafka-console-consumer --bootstrap-server localhost:9092 \
-		--topic enriched-events --from-beginning
-
-# ------------------------------------------------------------------------------
-# Phase 10: Build & Deploy Flink JARs
+# Phase 9: Build & Deploy Flink JARs
 # ------------------------------------------------------------------------------
 .PHONY: build-cp-java-ptf-udf
 build-cp-java-ptf-udf: ## Build the ptf_udf fat JAR (requires Gradle)
@@ -517,7 +456,7 @@ build-cp-java-ptf-udf: ## Build the ptf_udf fat JAR (requires Gradle)
 	@echo "✔ JAR built: $$(ls examples/ptf_udf/cp_java/app/build/libs/*.jar | head -1)"
 
 .PHONY: deploy-cp-java-ptf-udf
-deploy-cp-java-ptf-udf: build-cp-java-ptf-udf delete-ptf-udf-topics create-ptf-udf-topics ## Build, recreate topics, upload, and submit the ptf_udf job to the Flink cluster
+deploy-cp-java-ptf-udf: build-cp-java-ptf-udf ## Build, upload, and submit the ptf_udf job to the Flink cluster
 	@FLINK_POD=$$(kubectl get pods -n $(NAMESPACE) -l component=jobmanager --no-headers -o custom-columns=":metadata.name" | head -1); \
 	if [ -z "$$FLINK_POD" ]; then \
 		echo "✘ No Flink JobManager pod found. Is the cluster deployed?"; exit 1; \
@@ -564,6 +503,29 @@ deploy-cp-java-ptf-udf: build-cp-java-ptf-udf delete-ptf-udf-topics create-ptf-u
 	echo "✔ Job submitted (job-id: $$JOB_ID)"; \
 	echo "  Run 'make flink-ui' to monitor the job."
 	
+.PHONY: produce-cp-java-ptf-udf
+produce-cp-java-ptf-udf: ## Produce sample user_events data to Kafka for the ptf_udf Flink job
+	@KAFKA_POD=$$(kubectl get pods -n $(NAMESPACE) -l app=kafka --no-headers -o custom-columns=":metadata.name" | head -1); \
+	if [ -z "$$KAFKA_POD" ]; then \
+		echo "✘ No Kafka pod found. Is the cluster deployed?"; exit 1; \
+	fi; \
+	echo "→ Ensuring topics 'user_events' and 'enriched_events' exist..."; \
+	kubectl exec -n $(NAMESPACE) $$KAFKA_POD -- bash -c ' \
+		kafka-topics --bootstrap-server localhost:9071 --create --topic user_events --partitions 1 --replication-factor 1 --if-not-exists && \
+		kafka-topics --bootstrap-server localhost:9071 --create --topic enriched_events --partitions 1 --replication-factor 1 --if-not-exists'; \
+	echo "→ Producing sample events to topic 'user_events' via $$KAFKA_POD..."; \
+	kubectl exec -n $(NAMESPACE) $$KAFKA_POD -- bash -c ' \
+		printf "%s\n" \
+			"{\"user_id\":\"alice\",\"event_type\":\"login\",\"payload\":\"web\"}" \
+			"{\"user_id\":\"bob\",\"event_type\":\"click\",\"payload\":\"button-checkout\"}" \
+			"{\"user_id\":\"alice\",\"event_type\":\"purchase\",\"payload\":\"order-1234\"}" \
+			"{\"user_id\":\"charlie\",\"event_type\":\"login\",\"payload\":\"mobile\"}" \
+			"{\"user_id\":\"bob\",\"event_type\":\"logout\",\"payload\":\"session-end\"}" \
+			"{\"user_id\":\"alice\",\"event_type\":\"click\",\"payload\":\"button-settings\"}" \
+		| kafka-console-producer --bootstrap-server localhost:9071 --topic user_events' \
+	&& echo "✔ 6 sample events produced." \
+	|| { echo "✘ Failed to produce events."; exit 1; }
+
 .PHONY: build-cc-java-ptf-udf
 build-cc-java-ptf-udf: ## Build the ptf_udf fat JAR (requires Gradle)
 	@echo "→ Building ptf_udf JAR..."
