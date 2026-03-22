@@ -173,3 +173,54 @@ resource "confluent_flink_statement" "create_udf" {
     ignore_changes = [statement]
   }
 }
+
+
+resource "confluent_flink_statement" "insert_enriched_events" {
+  statement = <<-EOT
+    INSERT INTO enriched_events
+      SELECT
+        user_id,
+        event_count,
+        event_type,
+        last_event,
+        payload,
+        session_id,
+        user_id
+      FROM TABLE(
+        user_event_enricher(
+          input => TABLE user_events PARTITION BY user_id
+        )
+      );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_cc_java.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_cc_java.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_cc_java.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_cc_java.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_cc_java.id
+  }
+
+  depends_on = [
+    confluent_flink_statement.create_udf
+  ]
+}
