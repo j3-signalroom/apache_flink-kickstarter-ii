@@ -112,6 +112,7 @@ fi
 # Export variables for Terraform
 export TF_VAR_confluent_api_key="${confluent_api_key}"
 export TF_VAR_confluent_api_secret="${confluent_api_secret}"
+export TF_VAR_day_count="${day_count}"
 
 cd "$TERRAFORM_DIR"
 
