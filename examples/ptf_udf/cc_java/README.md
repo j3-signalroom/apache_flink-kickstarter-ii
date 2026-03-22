@@ -20,7 +20,7 @@
 
 ## **1.0 State and operators in a Process Table Function**
 
-A **Process Table Function (PTF)** is a new category of user-defined function introduced in Flink 2.1. Unlike scalar or aggregate UDFs, a PTF is a **stateful operator** ─ it sits inside the Flink dataflow graph just like a built-in operator (e.g., a windowed aggregation or a keyed process function), but you define its logic in a plain Java class.
+A **Process Table Function (PTF)** is a new category of user-defined function [introduced in Flink 2.1](https://flink.apache.org/2025/07/31/apache-flink-2.1.0-ushers-in-a-new-era-of-unified-real-time-data--ai-with-comprehensive-upgrades/#process-table-functions-ptfs). Unlike scalar or aggregate UDFs, a PTF is a **stateful operator** ─ it sits inside the Flink dataflow graph just like a built-in operator (e.g., a windowed aggregation or a keyed process function), but you define its logic in a plain Java class.
 
 ### **1.1 What is state?**
 
