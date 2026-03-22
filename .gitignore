@@ -33,8 +33,19 @@ hs_err_pid*
 # Logs
 *.log
 
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+.terraform.lock.hcl
+tfplan.out
+tfplan
+
 # Environment/secrets
-.env
+.ptf_udf_cc_java
 *.pem
 
 .claude/
+
+scratch.pad

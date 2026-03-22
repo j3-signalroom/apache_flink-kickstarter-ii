@@ -49,6 +49,9 @@ SHELL               := /bin/bash
 
 .DEFAULT_GOAL       := help
 
+# Directory of the current Makefile
+mkfile_dir         := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
+
 # ------------------------------------------------------------------------------
 # Help
 # ------------------------------------------------------------------------------
@@ -560,6 +563,25 @@ deploy-cp-java-ptf-udf: build-cp-java-ptf-udf delete-ptf-udf-topics create-ptf-u
 	[ -n "$$PF_PID" ] && kill $$PF_PID 2>/dev/null; \
 	echo "✔ Job submitted (job-id: $$JOB_ID)"; \
 	echo "  Run 'make flink-ui' to monitor the job."
+	
+.PHONY: build-cc-java-ptf-udf
+build-cc-java-ptf-udf: ## Build the ptf_udf fat JAR (requires Gradle)
+	@echo "→ Building ptf_udf JAR..."
+	cd examples/ptf_udf/cc_java && ./gradlew clean shadowJar -q
+	@echo "✔ JAR built: $$(ls examples/ptf_udf/cc_java/app/build/libs/*.jar | head -1)"
+
+.PHONY: deploy-cc-java-ptf-udf
+deploy-cc-java-ptf-udf: build-cc-java-ptf-udf ## Build and deploy the ptf_udf JAR to Confluent Cloud (ACTION, CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
+	@echo "→ Deploying ptf_udf to Confluent Cloud..."
+	$(mkfile_dir)scripts/deploy-cc-java-ptf-udf.sh create --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
+	@echo "✔ Deployment complete."
+
+.PHONY: teardown-cc-java-ptf-udf
+teardown-cc-java-ptf-udf: ## Tear down the ptf_udf deployment from Confluent Cloud (CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
+	@echo "→ Tearing down ptf_udf deployment from Confluent Cloud..."
+	$(mkfile_dir)scripts/deploy-cc-java-ptf-udf.sh destroy --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
+	@echo "✔ Teardown complete."
+
 
 # ------------------------------------------------------------------------------
 # Composite workflows
