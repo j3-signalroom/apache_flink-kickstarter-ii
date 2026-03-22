@@ -49,8 +49,19 @@ resource "confluent_role_binding" "schema_registry_developer_write_all_subjects"
   role_name   = "DeveloperWrite"
   crn_pattern = "${data.confluent_schema_registry_cluster.ptf_udf_cc_java.resource_name}/subject=*"
 
-  depends_on = [ 
+  depends_on = [
     confluent_service_account.schema_registry_cluster_api,
-    data.confluent_schema_registry_cluster.ptf_udf_cc_java 
+    data.confluent_schema_registry_cluster.ptf_udf_cc_java
+  ]
+}
+
+resource "confluent_role_binding" "schema_registry_developer_manage_all_subjects" {
+  principal   = "User:${confluent_service_account.schema_registry_cluster_api.id}"
+  role_name   = "DeveloperManage"
+  crn_pattern = "${data.confluent_schema_registry_cluster.ptf_udf_cc_java.resource_name}/subject=*"
+
+  depends_on = [
+    confluent_service_account.schema_registry_cluster_api,
+    data.confluent_schema_registry_cluster.ptf_udf_cc_java
   ]
 }
