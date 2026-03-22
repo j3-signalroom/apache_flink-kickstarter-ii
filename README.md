@@ -1,10 +1,10 @@
 # ![apache-flink-logo](docs/images/apache-flink_squirrel-logo.png) Apache Flink Kickstarter II **[UNDER CONSTRUCTION]**
 
-**Apache Flink Kickstarter II** is the 2026 evolution of my original Kickstarter project; rebuilt to showcase the cutting edge of **Apache Flink 2.1.x**.
+**Apache Flink Kickstarter II** is the 2026 evolution of my original Kickstarter project ─ rebuilt to showcase the cutting edge of **Apache Flink 2.1.x**.
 
-Designed as a hands-on, production-minded accelerator, it brings Flink to life _locally_ on **Confluent Platform + Minikube**, while drawing direct comparisons to **Confluent Cloud for Apache Flink**--so you can clearly see what’s possible across environments.
+Designed as a hands-on, production-minded accelerator, it brings Flink to life _locally_ on **Confluent Platform + Minikube**, while drawing direct comparisons to **Confluent Cloud for Apache Flink** ─ so you can clearly see what’s possible across environments.
 
-Every **example** is delivered end-to-end--from schema design to fully operational streaming pipelines--with implementations in **both Java and Python** where it matters, bridging real-world developer workflows with modern streaming architecture.
+Every **example** is delivered end-to-end ─ from schema design to fully operational streaming pipelines ─ with implementations in **both Java and Python** where it matters, bridging real-world developer workflows with modern streaming architecture.
 
 **Table of Contents**
 <!-- toc -->
