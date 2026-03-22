@@ -81,7 +81,7 @@ Together, these annotations let you write what *looks* like a plain method but *
 
 ## **2.0 What does this example do?**
 
-This example puts the above concepts into practice. The `UserEventEnricher` PTF reads raw user-interaction events from a Kafka topic (`user-events`), enriches each event with session and counting information, and writes the result to a second Kafka topic (`enriched-events`).
+This example puts the above concepts into practice. The `UserEventEnricher` PTF reads raw user-interaction events from a Kafka topic (`user_events`), enriches each event with session and counting information, and writes the result to a second Kafka topic (`enriched-events`).
 
 ### **2.1 Enrichment logic**
 
@@ -107,7 +107,7 @@ last_event  STRING    -- the event type just processed
 ### **2.2 How it works end-to-end**
 
 ```
-Kafka (user-events)
+Kafka (user_events)
         │
         ▼
   ┌────────────┐
@@ -181,7 +181,7 @@ See the [Minikube Deployment Guide](../../docs/minikube-deployment.md) for full 
 
 ### **4.3 Build, deploy, and submit the job**
 
-A single target handles everything -- building the fat JAR, creating the Kafka topics (`user-events` and `enriched-events`), uploading the JAR to the Flink cluster, and submitting the job:
+A single target handles everything -- building the fat JAR, creating the Kafka topics (`user_events` and `enriched-events`), uploading the JAR to the Flink cluster, and submitting the job:
 
 ```bash
 make deploy-cp-java-ptf-udf
@@ -192,12 +192,12 @@ Behind the scenes this runs:
 | Step | Target | What it does |
 |---|---|---|
 | 1 | `build-cp-java-ptf-udf` | `./gradlew clean shadowJar` -- produces the uber JAR |
-| 2 | `create-ptf-udf-topics` | Creates `user-events` and `enriched-events` topics via `kafka-topics` on the broker pod |
+| 2 | `create-ptf-udf-topics` | Creates `user_events` and `enriched-events` topics via `kafka-topics` on the broker pod |
 | 3 | *(inline)* | Port-forwards to the Flink JobManager, uploads the JAR via the REST API, and submits the job with entry class `ptf.FlinkJob` |
 
 ### **4.4 Produce test events**
 
-Send sample JSON records to the `user-events` topic:
+Send sample JSON records to the `user_events` topic:
 
 ```bash
 make produce-ptf-udf-sample
@@ -257,3 +257,29 @@ make confluent-teardown
 
 ## **5.0 Resources**
 - [Create a User-Defined Function with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html)
+
+### Deploy to Confluent Cloud
+
+To build and deploy the PTF UDF to Confluent Cloud, run the `deploy-cc-java-ptf-udf` Make target. You must supply a **Cloud API Key** (not a Cluster API Key). Create one with:
+
+```bash
+confluent api-key create --resource cloud
+```
+
+Then deploy with:
+
+```bash
+make deploy-cc-java-ptf-udf \
+  CONFLUENT_API_KEY='<your-cloud-api-key>' \
+  CONFLUENT_API_SECRET='<your-cloud-api-secret>'
+```
+
+> **Important:** Wrap the `CONFLUENT_API_KEY` and `CONFLUENT_API_SECRET` values in **single quotes** to prevent the shell from interpreting special characters (e.g., `+`, `/`) in the secret.
+
+To tear down the deployment:
+
+```bash
+make teardown-cc-java-ptf-udf \
+  CONFLUENT_API_KEY='<your-cloud-api-key>' \
+  CONFLUENT_API_SECRET='<your-cloud-api-secret>'
+```

@@ -450,7 +450,7 @@ kafka-ui-uninstall: ## Uninstall Kafka UI (safe to run even if not installed)
 # ------------------------------------------------------------------------------
 # Phase 9: Kafka Topics
 # ------------------------------------------------------------------------------
-PTF_UDF_TOPICS ?= user-events enriched-events
+PTF_UDF_TOPICS ?= user_events enriched-events
 
 .PHONY: create-ptf-udf-topics
 create-ptf-udf-topics: ## Create the Kafka topics required by the ptf_udf Flink job
@@ -486,8 +486,8 @@ list-topics: ## List all Kafka topics in the cluster
 		kafka-topics --bootstrap-server localhost:9092 --list
 
 .PHONY: produce-ptf-udf-sample
-produce-ptf-udf-sample: ## Produce sample JSON records to the user-events topic
-	@echo "→ Producing sample records to user-events..."
+produce-ptf-udf-sample: ## Produce sample JSON records to the user_events topic
+	@echo "→ Producing sample records to user_events..."
 	@printf '%s\n' \
 		'{"user_id":"alice","event_type":"login","payload":"web"}' \
 		'{"user_id":"bob","event_type":"click","payload":"button-checkout"}' \
@@ -497,8 +497,8 @@ produce-ptf-udf-sample: ## Produce sample JSON records to the user-events topic
 		'{"user_id":"alice","event_type":"click","payload":"button-settings"}' \
 	| kubectl exec -i -n $(NAMESPACE) kafka-0 -- \
 		kafka-console-producer --bootstrap-server localhost:9092 \
-		--topic user-events
-	@echo "✔ 6 sample records produced to user-events."
+		--topic user_events
+	@echo "✔ 6 sample records produced to user_events."
 
 .PHONY: consume-ptf-udf-output
 consume-ptf-udf-output: ## Consume records from the enriched-events topic (Ctrl+C to stop)

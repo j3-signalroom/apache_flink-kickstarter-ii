@@ -142,10 +142,10 @@ graph TD
 
     %% ── Phase 9: Kafka Topics ───────────────────────────────────────────
     subgraph P9["Phase 9 — Kafka Topics"]
-        CREATE_TOPICS["create-ptf-udf-topics\nuser-events · enriched-events"]
+        CREATE_TOPICS["create-ptf-udf-topics\nuser_events · enriched-events"]
         DELETE_TOPICS["delete-ptf-udf-topics"]
         LIST_TOPICS["list-topics"]
-        PRODUCE_SAMPLE["produce-ptf-udf-sample\n6 JSON records → user-events"]
+        PRODUCE_SAMPLE["produce-ptf-udf-sample\n6 JSON records → user_events"]
         CONSUME_OUTPUT["consume-ptf-udf-output\nenriched-events → console"]
     end
 
@@ -371,7 +371,7 @@ make cmf-proxy-inject
 | `create-ptf-udf-topics` | Create the Kafka topics required by the ptf_udf Flink job |
 | `delete-ptf-udf-topics` | Delete the Kafka topics used by the ptf_udf Flink job |
 | `list-topics` | List all Kafka topics in the cluster |
-| `produce-ptf-udf-sample` | Produce sample JSON records to the `user-events` topic |
+| `produce-ptf-udf-sample` | Produce sample JSON records to the `user_events` topic |
 | `consume-ptf-udf-output` | Consume records from the `enriched-events` topic (Ctrl+C to stop) |
 
 ### **6.10 Phase 10 — Build & Deploy Flink JARs**
@@ -406,7 +406,7 @@ All variables are overridable at the command line. Defaults:
 | `C3_PORT` | `9021` | Control Center local port |
 | `FLINK_UI_PORT` | `8081` | Flink UI local port |
 | `KAFKA_UI_PORT` | `8080` | Kafka UI local port |
-| `PTF_UDF_TOPICS` | `user-events enriched-events` | Kafka topics for the ptf_udf Flink job |
+| `PTF_UDF_TOPICS` | `user_events enriched-events` | Kafka topics for the ptf_udf Flink job |
 
 > **Note:** CMF uses the Confluent-packaged Flink operator (`confluentinc/flink-kubernetes-operator`) and `confluentinc/cp-flink` images — not the Apache OSS Flink operator or `flink` Docker Hub image.
 

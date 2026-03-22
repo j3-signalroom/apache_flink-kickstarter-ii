@@ -51,36 +51,9 @@ make flink-status      # verify Flink pods are Running
 
 Once the platform is up, head to the examples:
 
-| Enviroment | Example Description | Java | Python |
+| Example Type | Example Description | Confluent Platform + Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
-| Confluent Platform + Minikube | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka events with per-user session tracking. | [examples/ptf_udf/cp_java/README.md](examples/ptf_udf/cp_java/README.md) |  |
-| Confluent Cloud | Deploys the same **ProcessTableFunction** UDF to Confluent Cloud for Apache Flink using Terraform. | [examples/ptf_udf/cc_java/README.md](examples/ptf_udf/cc_java/README.md) |  |
-
-### Deploy to Confluent Cloud
-
-To build and deploy the PTF UDF to Confluent Cloud, run the `deploy-cc-java-ptf-udf` Make target. You must supply a **Cloud API Key** (not a Cluster API Key). Create one with:
-
-```bash
-confluent api-key create --resource cloud
-```
-
-Then deploy with:
-
-```bash
-make deploy-cc-java-ptf-udf \
-  CONFLUENT_API_KEY='<your-cloud-api-key>' \
-  CONFLUENT_API_SECRET='<your-cloud-api-secret>'
-```
-
-> **Important:** Wrap the `CONFLUENT_API_KEY` and `CONFLUENT_API_SECRET` values in **single quotes** to prevent the shell from interpreting special characters (e.g., `+`, `/`) in the secret.
-
-To tear down the deployment:
-
-```bash
-make teardown-cc-java-ptf-udf \
-  CONFLUENT_API_KEY='<your-cloud-api-key>' \
-  CONFLUENT_API_SECRET='<your-cloud-api-secret>'
-```
+| PTF UDF | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka events with per-user session tracking. | [examples/ptf_udf/cp_java/README.md](examples/ptf_udf/cp_java/README.md) | [examples/ptf_udf/cc_java/README.md](examples/ptf_udf/cc_java/README.md) |
 
 ## **4.0 Teardown**
 
