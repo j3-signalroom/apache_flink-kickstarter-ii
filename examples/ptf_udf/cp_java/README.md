@@ -60,18 +60,18 @@ FROM TABLE(
 
 Flink does the following behind the scenes:
 
-1. **Key the stream** -- `PARTITION BY user_id` tells the Flink planner to hash-partition the input by `user_id`, exactly like a `keyBy()` in the DataStream API.
-2. **Allocate isolated state** -- for each distinct `user_id`, Flink creates a separate `UserState` POJO instance. Alice's state never interferes with Bob's.
-3. **Route events** -- every incoming row is routed to the partition (and therefore the state instance) that matches its `user_id`.
-4. **Call `eval()`** -- your `eval()` method receives the row *and* the correct state instance already loaded. You read and mutate the POJO fields directly -- no `ValueState.get()` / `.update()` boilerplate.
-5. **Checkpoint** -- Flink snapshots all state instances periodically. On failure it restores them and replays from the last checkpoint, so your PTF is exactly-once by default.
+1. **Key the stream** ─ `PARTITION BY user_id` tells the Flink planner to hash-partition the input by `user_id`, exactly like a `keyBy()` in the DataStream API.
+2. **Allocate isolated state** ─ for each distinct `user_id`, Flink creates a separate `UserState` POJO instance. For example, as shown in the sample data, Alice’s state never overlaps with Bob’s.
+3. **Route events** ─ every incoming row is routed to the partition (and therefore the state instance) that matches its `user_id`.
+4. **Call `eval()`** ─ your `eval()` method receives the row *and* the correct state instance already loaded. You read and mutate the POJO fields directly ─ no `ValueState.get()` / `.update()` boilerplate.
+5. **Checkpoint** ─ Flink snapshots all state instances periodically. On failure it restores them and replays from the last checkpoint, so your PTF is exactly-once by default.
 
 ### **1.4 The role of `@StateHint` and `@ArgumentHint`**
 
 These two annotations are the bridge between your Java code and the Flink operator graph:
 
-- **`@StateHint`** -- marks a parameter as operator state. Flink sees the annotated POJO and wires it into the keyed state backend. Each `PARTITION BY` key gets its own instance, automatically serialized, checkpointed, and restored.
-- **`@ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)`** -- declares that the input argument is a *set-semantic table*, meaning the PTF acts as a keyed, stateful virtual processor over the entire partitioned stream. This is what distinguishes a PTF from a simple row-at-a-time scalar UDF.
+- **`@StateHint`** ─ marks a parameter as operator state. Flink sees the annotated POJO and wires it into the keyed state backend. Each `PARTITION BY` key gets its own instance, automatically serialized, checkpointed, and restored.
+- **`@ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)`** ─ declares that the input argument is a *set-semantic table*, meaning the PTF acts as a keyed, stateful virtual processor over the entire partitioned stream. This is what distinguishes a PTF from a simple row-at-a-time scalar UDF.
 
 Together, these annotations let you write what *looks* like a plain method but *executes* as a fully fault-tolerant, distributed, keyed-state operator inside the Flink pipeline.
 
@@ -127,11 +127,11 @@ Kafka (user_events)
 
 ### **2.3 Key concepts illustrated**
 
-- **`ProcessTableFunction`** -- the Flink 2.x API for stateful, set-semantic UDFs callable from SQL.
-- **`@StateHint`** -- declares a POJO whose fields Flink automatically persists per partition key, eliminating manual `ValueState` / `MapState` boilerplate.
-- **`@ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)`** -- tells Flink the input is a keyed, stateful virtual processor (set semantics), not a simple row-at-a-time scalar function.
-- **`PARTITION BY`** -- the SQL-side mechanism that keys the input table so each `user_id` gets its own isolated state instance.
-- **Configurable Kafka bootstrap servers** -- resolved in order: `KAFKA_BOOTSTRAP_SERVERS` env var, Flink config key `kafka.bootstrap.servers`, then `localhost:9092` default.
+- **`ProcessTableFunction`** ─ the Flink 2.x API for stateful, set-semantic UDFs callable from SQL.
+- **`@StateHint`** ─ declares a POJO whose fields Flink automatically persists per partition key, eliminating manual `ValueState` / `MapState` boilerplate.
+- **`@ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)`** ─ tells Flink the input is a keyed, stateful virtual processor (set semantics), not a simple row-at-a-time scalar function.
+- **`PARTITION BY`** ─ the SQL-side mechanism that keys the input table so each `user_id` gets its own isolated state instance.
+- **Configurable Kafka bootstrap servers** ─ resolved in order: `KAFKA_BOOTSTRAP_SERVERS` env var, Flink config key `kafka.bootstrap.servers`, then `localhost:9092` default.
 
 ## **3.0 Project structure**
 
