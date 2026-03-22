@@ -11,6 +11,7 @@ The format is base on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), 
 - Issue [`#42`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/42)
 - Issue [`#44`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/44)
 - Issue [`#47`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/47)
+- Issue [`#49`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/49)
 
 ### Changed
 - Issue [`#40`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/40)
