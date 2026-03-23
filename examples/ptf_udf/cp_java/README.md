@@ -1,4 +1,10 @@
-# Confluent Platform Java Process Table Function (PTF) User-Defined Function (UDF) ─ User Event Enricher
+# Confluent Platform Java Process Table Function (PTF) User-Defined Function (UDF) type ─ User Event Enricher, a state-driven PTF example
+
+> The User Event Enricher is driven entirely by state transitions triggered by incoming rows.
+> 
+> Rather than a row-at-a-time transformation, it behaves as a stateful operator that maintains and evolves per-user state across events.
+> 
+> This example demonstrates how the Process Table Function (PTF) API in Flink 2.1+ enables building fully stateful operators in Java that are directly callable from SQL.
 
 **Table of Contents**
 <!-- toc -->

@@ -16,19 +16,36 @@ import org.apache.flink.table.functions.ProcessTableFunction;
 import org.apache.flink.types.Row;
 
 /**
- * Enriches each event with a per-user running count and a session ID.
- * A new session starts whenever the event_type is "login".
+ * A {@link ProcessTableFunction} that enriches each event with a per-user
+ * running count and a session ID.
  *
- * No timers. State is managed entirely by row-driven transitions.
+ * <p>A new session starts whenever the {@code event_type} is {@code "login"},
+ * resetting the per-session event count. State is managed entirely by
+ * row-driven transitions; no timers are used.
  *
- * SQL invocation:
+ * <h3>Output columns</h3>
+ * <ul>
+ *   <li>{@code event_type}  – the original event type</li>
+ *   <li>{@code payload}     – the original payload</li>
+ *   <li>{@code session_id}  – monotonically increasing session identifier</li>
+ *   <li>{@code event_count} – position of this event within the session</li>
+ *   <li>{@code last_event}  – the most recently processed event type</li>
+ * </ul>
  *
- *   SELECT *
- *   FROM TABLE(
- *       UserEventEnricher(
- *           input => TABLE events PARTITION BY user_id
- *       )
- *   );
+ * <p>The {@code user_id} column is automatically passed through by Flink
+ * via {@code PARTITION BY}.
+ *
+ * <h3>SQL invocation</h3>
+ * <pre>{@code
+ * SELECT *
+ * FROM TABLE(
+ *     UserEventEnricher(
+ *         input => TABLE user_events PARTITION BY user_id
+ *     )
+ * );
+ * }</pre>
+ *
+ * @see ProcessTableFunction
  */
 @FunctionHint(output = @DataTypeHint(
     "ROW<event_type STRING, payload STRING, " +
@@ -36,24 +53,39 @@ import org.apache.flink.types.Row;
 ))
 public class UserEventEnricher extends ProcessTableFunction<Row> {
 
-    // ── State POJO ────────────────────────────────────────────────────────────
-    // One instance per PARTITION BY key (i.e. per user_id).
-    // Fields must be public for Flink's reflection-based serialization.
+    /**
+     * Per-user session state, scoped to each {@code PARTITION BY} key.
+     *
+     * <p>Flink manages one instance per partition key and persists it across
+     * invocations via checkpointing. Fields must be {@code public} for Flink's
+     * reflection-based POJO serializer.
+     */
     public static class UserState {
+        /** Running count of events within the current session. */
         public long eventCount  = 0L;
+
+        /** Monotonically increasing session identifier; incremented on each login. */
         public long sessionId   = 0L;
+
+        /** The {@code event_type} of the most recently processed row. */
         public String lastEvent = null;
     }
 
-    // ── eval ──────────────────────────────────────────────────────────────────
+    /**
+     * Processes a single input row, updating per-user session state and
+     * emitting an enriched row.
+     *
+     * <p>A new session begins on every {@code "login"} event, resetting the
+     * per-session event count.
+     *
+     * @param ctx   the runtime context provided by Flink
+     * @param state per-partition-key state managed by Flink; injected and
+     *              persisted automatically via {@link StateHint}
+     * @param input a row from the input table with set semantics
+     */
     public void eval(
             Context ctx,
-
-            // Flink injects and persists this POJO per partition key.
             @StateHint UserState state,
-
-            // TABLE_AS_SET → keyed, stateful virtual processor.
-            // No REQUIRE_ON_TIME since we don't use timers or event-time here.
             @ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)
             Row input
     ) {
