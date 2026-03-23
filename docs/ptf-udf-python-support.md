@@ -8,6 +8,14 @@ In practice, this means any workload requiring advanced table-level state and ti
 
 PTFs sit at the boundary of Flink’s most advanced Table API capabilities, which are deeply tied to the JVM execution model.
 
+**Architecture Overview (Python ↔ JVM Boundary)**
+```mermaid
+flowchart LR
+    A[PyFlink Python API] -->|Py4J / Beam Fn API| B[Flink JVM Runtime]
+    B --> C[State + Timers + Changelog]
+    C --> D[PTF (Java Only)]
+```
+
 **Table of Contents**
 <!-- toc -->
 - [**1.0 What to know about PyFlink UDF Support**](#10-what-to-know-about-pyflink-udf-support)
