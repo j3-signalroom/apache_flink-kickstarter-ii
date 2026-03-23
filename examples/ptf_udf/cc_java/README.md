@@ -133,14 +133,13 @@ Kafka (user_events)
 - **`@StateHint`** ─ declares a POJO whose fields Flink automatically persists per partition key, eliminating manual `ValueState` / `MapState` boilerplate.
 - **`@ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)`** ─ tells Flink the input is a keyed, stateful virtual processor (set semantics), not a simple row-at-a-time scalar function.
 - **`PARTITION BY`** ─ the SQL-side mechanism that keys the input table so each `user_id` gets its own isolated state instance.
-- **Configurable Kafka bootstrap servers** ─ resolved in order: `KAFKA_BOOTSTRAP_SERVERS` env var, Flink config key `kafka.bootstrap.servers`, then `localhost:9092` default.
 
 ## **3.0 Project structure**
 
 ```
 examples/ptf_udf/cc_java/
 ├── app/
-│   ├── build.gradle.kts                 # Gradle build (Flink 2.1.0, Java 17)
+│   ├── build.gradle.kts                 # Gradle build (Flink 2.1.x, Java 17)
 │   └── src/main/java/ptf/
 │       └── UserEventEnricher.java       # The ProcessTableFunction implementation
 ├── gradle/wrapper/
