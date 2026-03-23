@@ -13,7 +13,7 @@ PTFs sit at the boundary of Flink’s most advanced Table API capabilities, whic
 flowchart LR
     A[PyFlink Python API] -->|Py4J / Beam Fn API| B[Flink JVM Runtime]
     B --> C[State + Timers + Changelog]
-    C --> D[PTF (Java Only)]
+    C --> D["PTF (Java Only)"]
 ```
 
 **Table of Contents**
