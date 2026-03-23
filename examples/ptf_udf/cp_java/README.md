@@ -144,7 +144,7 @@ Kafka (user_events)
 ```
 examples/ptf_udf/cp_java/
 ├── app/
-│   ├── build.gradle.kts                 # Gradle build (Flink 2.1.0, Java 17)
+│   ├── build.gradle.kts                 # Gradle build (Flink 2.1.x, Java 17)
 │   └── src/main/java/ptf/
 │       ├── FlinkJob.java                # Entry point: wires tables + invokes PTF
 │       └── UserEventEnricher.java       # The ProcessTableFunction implementation
