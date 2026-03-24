@@ -1,6 +1,6 @@
 # Confluent Platform SQL Deployment via Flink SQL Client ─ User Event Enricher PTF UDF
 
-> This example deploys the same **User Event Enricher** PTF UDF as the [Java job JAR example](../cp_java/README.md), but instead of compiling a Flink job, it submits SQL statements through the **Flink SQL Client** running directly on the JobManager pod.
+> This example deploys the **User Event Enricher** PTF UDF (source in [examples/ptf_udf/java/](../java/)) by submitting SQL statements through the **Flink SQL Client** running directly on the JobManager pod.
 
 **Table of Contents**
 <!-- toc -->
@@ -15,22 +15,23 @@
     + [**4.1 Deploy**](#41-deploy)
     + [**4.2 Monitor**](#42-monitor)
     + [**4.3 Tear down**](#43-tear-down)
-+ [**5.0 Project structure**](#50-project-structure)
-+ [**6.0 Resources**](#60-resources)
++ [**5.0 Resources**](#50-resources)
 <!-- tocstop -->
 
 ## **1.0 Overview**
 
 ### **1.1 How this differs from the other deployment paths**
 
-| Aspect | CP Java Job JAR | CC Terraform | **CP SQL via Flink SQL Client** (this example) |
-|---|---|---|---|
-| Where it runs | Confluent Platform (Minikube) | Confluent Cloud | Confluent Platform (Minikube) |
-| How SQL is submitted | Compiled into a Java `main()` method | `confluent_flink_statement` Terraform resources | `sql-client.sh -f` on the JobManager pod |
-| UDF JAR delivery | Bundled in the fat JAR | `confluent_flink_artifact` (uploaded to CC) | `kubectl exec` to Flink pods |
-| Entry point | `ptf.FlinkJob` class | Terraform `apply` | `make deploy-cp-ptf-udf` |
-| Requires code compilation | Yes (Java + Gradle) | Yes (Java + Gradle for UDF JAR) | Yes (Java + Gradle for UDF JAR) |
-| Statement lifecycle | Managed by Flink runtime | Managed by Terraform state | Managed by Flink session cluster |
+For a comparison with the Confluent Cloud Terraform deployment, see the [cc_deploy README](../cc_deploy/README.md).
+
+| Aspect | Detail |
+|---|---|
+| Where it runs | Confluent Platform (Minikube) |
+| How SQL is submitted | `sql-client.sh -f` on the JobManager pod |
+| UDF JAR delivery | `kubectl exec` to Flink pods |
+| Entry point | `make deploy-cp-ptf-udf` |
+| Requires code compilation | Yes (Java + Gradle for UDF JAR) |
+| Statement lifecycle | Managed by Flink session cluster |
 
 ---
 
@@ -38,7 +39,7 @@
 
 ### **2.1 JAR delivery**
 
-On Confluent Cloud, UDF JARs are uploaded as **Flink artifacts** (`confluent-artifact://`). On Confluent Platform, there is no artifact store ─ the JAR must be physically present on the Flink pods.
+On Confluent Platform there is no artifact store ─ the JAR must be physically present on the Flink pods.
 
 The deploy script copies the fat JAR (built from [examples/ptf_udf/java/](../java/)) to `/opt/flink/usrlib/user-event-enricher.jar` on every JobManager and TaskManager pod using `kubectl exec`. The `CREATE FUNCTION ... USING JAR` statement then references this pod-local path.
 
@@ -132,34 +133,8 @@ This cancels any running Flink jobs via the Flink REST API, then submits `DROP F
 
 ---
 
-## **5.0 Project structure**
-
-This example relies on the shared Java UDF source in `examples/ptf_udf/java/` and a deploy script:
-
-```
-examples/ptf_udf/
-├── java/                                # Shared Java UDF source (also used by cc_deploy)
-│   ├── app/
-│   │   ├── build.gradle.kts             # Gradle build (Flink 2.1.x, Java 17)
-│   │   └── src/main/java/ptf/
-│   │       └── UserEventEnricher.java   # The ProcessTableFunction implementation
-│   ├── gradle/wrapper/
-│   │   └── gradle-wrapper.properties
-│   ├── gradlew
-│   ├── gradlew.bat
-│   └── settings.gradle.kts
-│
-├── cp_deploy/                 # This example
-│   └── README.md                        # You are here
-│
-scripts/
-└── deploy-cp-ptf-udf.sh      # Shell script that drives the deployment
-```
-
----
-
-## **6.0 Resources**
+## **5.0 Resources**
 
 - [Flink SQL Client](https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/sqlclient/)
 - [Flink Kafka Connector](https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/table/kafka/)
-- [Create a User-Defined Function with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html)
+- [Create a User-Defined Function (Confluent Cloud)](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html)
