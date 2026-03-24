@@ -11,7 +11,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 **Table of Contents**
 <!-- toc -->
 + [**1.0 Prerequisites**](#10-prerequisites)
-    - [**1.1 Local Setup**](#11-local-setup)
+    - [**1.1 Confluent Platform Local Setup**](#11-confluent-platform-local-setup)
         - [**1.1.1 Required Tools**](#111-required-tools)
         - [**1.1.2 Resource Requirements**](#112-resource-requirements)
         - [**1.1.3 Architecture**](#113-architecture)
@@ -20,6 +20,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
         - [**1.1.6 Individual Target Reference**](#116-individual-target-reference)
         - [**1.1.7 Configuration**](#117-configuration)
         - [**1.1.8 Teardown**](#118-teardown)
+    - [**1.2 Confluent Cloud Setup**](#12-confluent-cloud-setup) --- COMING SOON ---
 + [**2.0 The Examples**](#20-the-examples)
 + [**3.0 Resources**](#30-resources)
 <!-- tocstop -->
@@ -28,7 +29,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 
 ## **1.0 Prerequisites**
 
-### **1.1 Local Setup**
+### **1.1 Confluent Platform Local Setup**
 A Makefile-driven quickstart that deploys a full local streaming stack on Minikube:
 
 - **Confluent Platform** (KRaft mode) via Confluent for Kubernetes (CFK)
@@ -430,6 +431,10 @@ To keep Minikube running but remove all deployed components:
 make flink-down   # Flink cluster + CMF + operator + cert-manager
 make cp-down      # CP + Kafka UI + CFK Operator
 ```
+
+---
+
+### **1.2 Confluent Cloud Setup**
 
 ---
 
