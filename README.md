@@ -20,7 +20,8 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
         - [**1.1.6 Individual Target Reference**](#116-individual-target-reference)
         - [**1.1.7 Configuration**](#117-configuration)
         - [**1.1.8 Teardown**](#118-teardown)
-    - [**1.2 Confluent Cloud Setup**](#12-confluent-cloud-setup) --- COMING SOON ---
+    - [**1.2 Confluent Cloud Setup**](#12-confluent-cloud-setup)
+        - [**1.2.1 Required Tools**](#121-required-tools)
 + [**2.0 The Examples**](#20-the-examples)
 + [**3.0 Resources**](#30-resources)
 <!-- tocstop -->
@@ -439,6 +440,19 @@ make cp-down      # CP + Kafka UI + CFK Operator
 ---
 
 ### **1.2 Confluent Cloud Setup**
+
+#### **1.2.1 Required Tools**
+
+Before you begin, ensure you have access to the following cloud accounts:
+
+* **[Confluent Cloud Account](https://confluent.cloud/)** — for Kafka and Schema Registry resources
+* **[Terraform Cloud Account](https://app.terraform.io/)** — for automated infrastructure provisioning
+
+Make sure the following tools are installed on your local machine:
+
+* **[Confluent CLI version 4 or higher](https://docs.confluent.io/confluent-cli/4.0/overview.html)**
+* **[Java JDK 17](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html)**
+* **[Terraform CLI version 1.13.0 or higher](https://developer.hashicorp.com/terraform/install)**
 
 ---
 
