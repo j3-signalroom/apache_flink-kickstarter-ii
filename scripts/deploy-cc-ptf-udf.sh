@@ -2,7 +2,7 @@
 
 #
 # *** Script Syntax ***
-# ./deploy-cc-java-ptf-udf.sh=<create | destroy> --confluent-api-key=<CONFLUENT_API_KEY>
+# ./deploy-cc-ptf-udf.sh=<create | destroy> --confluent-api-key=<CONFLUENT_API_KEY>
 #                                                --confluent-api-secret=<CONFLUENT_API_SECRET>
 #                                                [--day-count=<DAY_COUNT>]
 #
@@ -35,7 +35,7 @@ print_step() {
 }
 
 # Configuration folders
-TERRAFORM_DIR="$(cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../examples/ptf_udf/cc_terraform" && pwd)"
+TERRAFORM_DIR="$(cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../examples/ptf_udf/cc_deploy" && pwd)"
 MAKEFILE_DIR="$(cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../" && pwd)"
 
 print_info "Terraform Directory: $TERRAFORM_DIR"

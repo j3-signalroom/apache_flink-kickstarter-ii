@@ -85,7 +85,7 @@ Below is a table of the PyFlink UDF types and their support status:
 | Flexibility | One shape of output | Output adapts to input |
 
 ##### **1.1.5.2 Example from this repo**
-The [`UserEventEnricher.java`](../examples/ptf_udf/cc_java/app/src/main/java/ptf/UserEventEnricher.java) is a PTF that takes a `user_events` table and enriches it, producing a dynamically defined output row:
+The [`UserEventEnricher.java`](../examples/ptf_udf/java/app/src/main/java/ptf/UserEventEnricher.java) is a PTF that takes a `user_events` table and enriches it, producing a dynamically defined output row:
 
 ```sql
 ROW<event_type STRING, payload STRING, session_id BIGINT, event_count BIGINT, last_event STRING>

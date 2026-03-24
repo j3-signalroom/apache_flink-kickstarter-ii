@@ -67,10 +67,10 @@ help: ## Show this help message
 # Phase 1: Prerequisites (macOS)
 # ------------------------------------------------------------------------------
 .PHONY: install-prereqs
-install-prereqs: ## Install docker, kubectl, minikube, helm, and gradle via Homebrew (macOS)
+install-prereqs: ## Install docker, kubectl, minikube, helm, gradle, and confluent CLI via Homebrew (macOS)
 	@echo "→ Installing prerequisites..."
 	@(test -d /Applications/Docker.app || test -f /usr/local/bin/kubectl.docker) || brew install --cask docker
-	brew install kubernetes-cli minikube helm gettext gradle
+	brew install kubernetes-cli minikube helm gettext gradle confluentinc/tap/cli
 	@echo "✔ Prerequisites installed. Launch Docker Desktop before running 'make minikube-start'."
 	
 .PHONY: check-prereqs
@@ -449,99 +449,40 @@ kafka-ui-uninstall: ## Uninstall Kafka UI (safe to run even if not installed)
 # ------------------------------------------------------------------------------
 # Phase 9: Build & Deploy Flink JARs
 # ------------------------------------------------------------------------------
-.PHONY: build-cp-java-ptf-udf
-build-cp-java-ptf-udf: ## Build the ptf_udf fat JAR (requires Gradle)
+.PHONY: build-ptf-udf
+build-ptf-udf: ## Build the ptf_udf fat JAR (requires Gradle)
 	@echo "→ Building ptf_udf JAR..."
-	cd examples/ptf_udf/cp_java && ./gradlew clean shadowJar -q
-	@echo "✔ JAR built: $$(ls examples/ptf_udf/cp_java/app/build/libs/*.jar | head -1)"
+	cd examples/ptf_udf/java && ./gradlew clean shadowJar -q
+	@echo "✔ JAR built: $$(ls examples/ptf_udf/java/app/build/libs/*.jar | head -1)"
 
-.PHONY: deploy-cp-java-ptf-udf
-deploy-cp-java-ptf-udf: build-cp-java-ptf-udf ## Build, upload, and submit the ptf_udf job to the Flink cluster
-	@FLINK_POD=$$(kubectl get pods -n $(NAMESPACE) -l component=jobmanager --no-headers -o custom-columns=":metadata.name" | head -1); \
-	if [ -z "$$FLINK_POD" ]; then \
-		echo "✘ No Flink JobManager pod found. Is the cluster deployed?"; exit 1; \
-	fi; \
-	NEED_PF=true; \
-	PF_PID=""; \
-	if curl -sf http://localhost:$(FLINK_UI_PORT)/config >/dev/null 2>&1; then \
-		echo "→ Reusing existing port-forward on localhost:$(FLINK_UI_PORT)"; \
-		NEED_PF=false; \
-	else \
-		echo "→ Starting port-forward to Flink REST API..."; \
-		kubectl port-forward -n $(NAMESPACE) $$FLINK_POD $(FLINK_UI_PORT):$(FLINK_UI_PORT) >/dev/null 2>&1 & \
-		PF_PID=$$!; \
-		for i in 1 2 3 4 5; do \
-			sleep 1; \
-			if curl -sf http://localhost:$(FLINK_UI_PORT)/config >/dev/null 2>&1; then break; fi; \
-			if [ $$i -eq 5 ]; then \
-				kill $$PF_PID 2>/dev/null; \
-				echo "✘ Port-forward failed to start."; exit 1; \
-			fi; \
-		done; \
-	fi; \
-	JAR_PATH=$$(ls examples/ptf_udf/cp_java/app/build/libs/*.jar | head -1); \
-	echo "→ Uploading $$JAR_PATH to Flink..."; \
-	UPLOAD_RESP=$$(curl -sf -X POST http://localhost:$(FLINK_UI_PORT)/jars/upload \
-		-H "Expect:" \
-		-F "jarfile=@$$JAR_PATH"); \
-	if [ $$? -ne 0 ]; then \
-		[ -n "$$PF_PID" ] && kill $$PF_PID 2>/dev/null; \
-		echo "✘ JAR upload failed."; exit 1; \
-	fi; \
-	JAR_ID=$$(echo "$$UPLOAD_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['filename'].split('/')[-1])"); \
-	echo "✔ Uploaded (jar-id: $$JAR_ID)"; \
-	echo "→ Submitting job (entry class: ptf.FlinkJob)..."; \
-	RUN_RESP=$$(curl -sf -X POST "http://localhost:$(FLINK_UI_PORT)/jars/$$JAR_ID/run" \
-		-H "Content-Type: application/json" \
-		-d '{"entryClass":"ptf.FlinkJob"}'); \
-	if [ $$? -ne 0 ]; then \
-		[ -n "$$PF_PID" ] && kill $$PF_PID 2>/dev/null; \
-		echo "✘ Job submission failed."; exit 1; \
-	fi; \
-	JOB_ID=$$(echo "$$RUN_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin)['jobid'])"); \
-	[ -n "$$PF_PID" ] && kill $$PF_PID 2>/dev/null; \
-	echo "✔ Job submitted (job-id: $$JOB_ID)"; \
-	echo "  Run 'make flink-ui' to monitor the job."
-	
-.PHONY: produce-cp-java-ptf-udf
-produce-cp-java-ptf-udf: ## Produce sample user_events data to Kafka for the ptf_udf Flink job
-	@KAFKA_POD=$$(kubectl get pods -n $(NAMESPACE) -l app=kafka --no-headers -o custom-columns=":metadata.name" | head -1); \
-	if [ -z "$$KAFKA_POD" ]; then \
-		echo "✘ No Kafka pod found. Is the cluster deployed?"; exit 1; \
-	fi; \
-	echo "→ Ensuring topics 'user_events' and 'enriched_events' exist..."; \
-	kubectl exec -n $(NAMESPACE) $$KAFKA_POD -- bash -c ' \
-		kafka-topics --bootstrap-server localhost:9071 --create --topic user_events --partitions 1 --replication-factor 1 --if-not-exists && \
-		kafka-topics --bootstrap-server localhost:9071 --create --topic enriched_events --partitions 1 --replication-factor 1 --if-not-exists'; \
-	echo "→ Producing sample events to topic 'user_events' via $$KAFKA_POD..."; \
-	kubectl exec -n $(NAMESPACE) $$KAFKA_POD -- bash -c ' \
-		printf "%s\n" \
-			"{\"user_id\":\"alice\",\"event_type\":\"login\",\"payload\":\"web\"}" \
-			"{\"user_id\":\"bob\",\"event_type\":\"click\",\"payload\":\"button-checkout\"}" \
-			"{\"user_id\":\"alice\",\"event_type\":\"purchase\",\"payload\":\"order-1234\"}" \
-			"{\"user_id\":\"charlie\",\"event_type\":\"login\",\"payload\":\"mobile\"}" \
-			"{\"user_id\":\"bob\",\"event_type\":\"logout\",\"payload\":\"session-end\"}" \
-			"{\"user_id\":\"alice\",\"event_type\":\"click\",\"payload\":\"button-settings\"}" \
-		| kafka-console-producer --bootstrap-server localhost:9071 --topic user_events' \
-	&& echo "✔ 6 sample events produced." \
-	|| { echo "✘ Failed to produce events."; exit 1; }
-
-.PHONY: build-cc-java-ptf-udf
-build-cc-java-ptf-udf: ## Build the ptf_udf fat JAR (requires Gradle)
-	@echo "→ Building ptf_udf JAR..."
-	cd examples/ptf_udf/cc_java && ./gradlew clean shadowJar -q
-	@echo "✔ JAR built: $$(ls examples/ptf_udf/cc_java/app/build/libs/*.jar | head -1)"
-
-.PHONY: deploy-cc-java-ptf-udf
-deploy-cc-java-ptf-udf: build-cc-java-ptf-udf ## Build and deploy the ptf_udf JAR to Confluent Cloud (ACTION, CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
+.PHONY: deploy-cc-ptf-udf
+deploy-cc-ptf-udf: build-ptf-udf ## Build and deploy the ptf_udf JAR to Confluent Cloud (ACTION, CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
 	@echo "→ Deploying ptf_udf to Confluent Cloud..."
-	$(mkfile_dir)scripts/deploy-cc-java-ptf-udf.sh create --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
+	$(mkfile_dir)scripts/deploy-cc-ptf-udf.sh create --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
 	@echo "✔ Deployment complete."
 
-.PHONY: teardown-cc-java-ptf-udf
-teardown-cc-java-ptf-udf: ## Tear down the ptf_udf deployment from Confluent Cloud (CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
+.PHONY: teardown-cc-ptf-udf
+teardown-cc-ptf-udf: ## Tear down the ptf_udf deployment from Confluent Cloud (CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
 	@echo "→ Tearing down ptf_udf deployment from Confluent Cloud..."
-	$(mkfile_dir)scripts/deploy-cc-java-ptf-udf.sh destroy --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
+	$(mkfile_dir)scripts/deploy-cc-ptf-udf.sh destroy --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
+	@echo "✔ Teardown complete."
+
+.PHONY: deploy-cp-ptf-udf
+deploy-cp-ptf-udf: build-ptf-udf ## Build UDF JAR, copy to Flink pods, and submit SQL via CMF REST API
+	@echo "→ Deploying ptf_udf via CMF SQL statements..."
+	$(mkfile_dir)scripts/deploy-cp-ptf-udf.sh create \
+		--namespace="$(NAMESPACE)" \
+		--cmf-env="$(CMF_ENV_NAME)" \
+		--flink-cluster="$(FLINK_CLUSTER_NAME)"
+	@echo "✔ SQL statements submitted via CMF."
+
+.PHONY: teardown-cp-ptf-udf
+teardown-cp-ptf-udf: ## Tear down the SQL-based ptf_udf deployment via CMF
+	@echo "→ Tearing down ptf_udf SQL statements from CMF..."
+	$(mkfile_dir)scripts/deploy-cp-ptf-udf.sh destroy \
+		--namespace="$(NAMESPACE)" \
+		--cmf-env="$(CMF_ENV_NAME)" \
+		--flink-cluster="$(FLINK_CLUSTER_NAME)"
 	@echo "✔ Teardown complete."
 
 

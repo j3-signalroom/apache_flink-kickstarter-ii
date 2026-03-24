@@ -7,9 +7,11 @@ The format is base on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), 
 ## [0.04.00.000] - TBD
 ### Added
 - Issue [`#64`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/64)
+- Added CP SQL via CMF deployment path (`cp_deploy`) ─ submits Flink SQL statements through the CMF REST API on Confluent Platform
 
 ### Changed
 - Issue [`#67`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/67)
+- Issue [`#72`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/72)
 
 ## [0.03.00.000] - 2026-03-22
 ### Added
