@@ -1,17 +1,17 @@
 data "confluent_organization" "signalroom" {}
 
 # Config the environment's schema registry
-data "confluent_schema_registry_cluster" "ptf_udf_cc_java" {
+data "confluent_schema_registry_cluster" "ptf_udf" {
   environment {
-    id = confluent_environment.ptf_udf_cc_java.id
+    id = confluent_environment.ptf_udf.id
   }
 
   depends_on = [
-    confluent_kafka_cluster.ptf_udf_cc_java
+    confluent_kafka_cluster.ptf_udf
   ]
 }
 
-data "confluent_flink_region" "ptf_udf_cc_java" {
+data "confluent_flink_region" "ptf_udf" {
   cloud        = local.cloud
   region       = local.aws_region
 }

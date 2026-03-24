@@ -1,6 +1,6 @@
 # Service account to perform the task within Confluent Cloud to execute the Flink SQL statements
 resource "confluent_service_account" "flink_sql_runner" {
-  display_name = "ptf_udf_cc_java"
+  display_name = "ptf-udf"
   description  = "Service account for running Flink SQL Statements in the Kafka cluster"
 }
 
@@ -17,7 +17,7 @@ resource "confluent_role_binding" "flink_sql_runner_as_flink_developer" {
 resource "confluent_role_binding" "flink_sql_runner_as_resource_owner_topic_access" {
     principal   = "User:${confluent_service_account.flink_sql_runner.id}"
     role_name   = "ResourceOwner"
-    crn_pattern = "${confluent_kafka_cluster.ptf_udf_cc_java.rbac_crn}/kafka=${confluent_kafka_cluster.ptf_udf_cc_java.id}/topic=*"
+    crn_pattern = "${confluent_kafka_cluster.ptf_udf.rbac_crn}/kafka=${confluent_kafka_cluster.ptf_udf.id}/topic=*"
 
     depends_on = [
         confluent_role_binding.flink_sql_runner_as_flink_developer
@@ -37,7 +37,7 @@ resource "confluent_role_binding" "flink_sql_runner_as_assigner" {
 resource "confluent_role_binding" "flink_sql_runner_schema_registry_access" {
     principal   = "User:${confluent_service_account.flink_sql_runner.id}"
     role_name   = "ResourceOwner"
-    crn_pattern = "${data.confluent_schema_registry_cluster.ptf_udf_cc_java.resource_name}/subject=*"
+    crn_pattern = "${data.confluent_schema_registry_cluster.ptf_udf.resource_name}/subject=*"
     
     depends_on = [
         confluent_role_binding.flink_sql_runner_as_assigner
@@ -47,20 +47,20 @@ resource "confluent_role_binding" "flink_sql_runner_schema_registry_access" {
 resource "confluent_role_binding" "flink_sql_runner_as_resource_owner_transactional_access" {
     principal   = "User:${confluent_service_account.flink_sql_runner.id}"
     role_name   = "ResourceOwner"
-    crn_pattern = "${confluent_kafka_cluster.ptf_udf_cc_java.rbac_crn}/kafka=${confluent_kafka_cluster.ptf_udf_cc_java.id}/transactional-id=*"
+    crn_pattern = "${confluent_kafka_cluster.ptf_udf.rbac_crn}/kafka=${confluent_kafka_cluster.ptf_udf.id}/transactional-id=*"
 
     depends_on = [
         confluent_role_binding.flink_sql_runner_schema_registry_access
     ]
 }
 
-resource "confluent_flink_compute_pool" "ptf_udf_cc_java" {
+resource "confluent_flink_compute_pool" "ptf_udf" {
   display_name = "apache_flink_flink_statement_runner"
   cloud        = local.cloud
   region       = local.aws_region
   max_cfu      = 10
   environment {
-    id = confluent_environment.ptf_udf_cc_java.id
+    id = confluent_environment.ptf_udf.id
   }
   depends_on = [
     confluent_role_binding.flink_sql_runner_as_resource_owner_transactional_access,
@@ -81,12 +81,12 @@ module "flink_api_key_rotation" {
     }
 
     resource = {
-        id          = data.confluent_flink_region.ptf_udf_cc_java.id
-        api_version = data.confluent_flink_region.ptf_udf_cc_java.api_version
-        kind        = data.confluent_flink_region.ptf_udf_cc_java.kind
+        id          = data.confluent_flink_region.ptf_udf.id
+        api_version = data.confluent_flink_region.ptf_udf.api_version
+        kind        = data.confluent_flink_region.ptf_udf.kind
 
         environment = {
-            id = confluent_environment.ptf_udf_cc_java.id
+            id = confluent_environment.ptf_udf.id
         }
     }
 
@@ -106,17 +106,17 @@ resource "confluent_api_key" "flink_sql_runner_api_key" {
     kind        = confluent_service_account.flink_sql_runner.kind
   }
   managed_resource {
-    id          = data.confluent_flink_region.ptf_udf_cc_java.id
-    api_version = data.confluent_flink_region.ptf_udf_cc_java.api_version
-    kind        = data.confluent_flink_region.ptf_udf_cc_java.kind
+    id          = data.confluent_flink_region.ptf_udf.id
+    api_version = data.confluent_flink_region.ptf_udf.api_version
+    kind        = data.confluent_flink_region.ptf_udf.kind
     
     environment {
-      id = confluent_environment.ptf_udf_cc_java.id
+      id = confluent_environment.ptf_udf.id
     }
   }
 
   depends_on = [
-    confluent_environment.ptf_udf_cc_java,
+    confluent_environment.ptf_udf,
     confluent_service_account.flink_sql_runner
   ]
 }
@@ -125,11 +125,11 @@ resource "confluent_flink_statement" "drop_user_events" {
   statement = "DROP TABLE IF EXISTS user_events;"
 
   properties = {
-    "sql.current-catalog"  = confluent_environment.ptf_udf_cc_java.display_name
-    "sql.current-database" = confluent_kafka_cluster.ptf_udf_cc_java.display_name
+    "sql.current-catalog"  = confluent_environment.ptf_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf.display_name
   }
 
-  rest_endpoint = data.confluent_flink_region.ptf_udf_cc_java.rest_endpoint
+  rest_endpoint = data.confluent_flink_region.ptf_udf.rest_endpoint
   credentials {
     key    = module.flink_api_key_rotation.active_api_key.id
     secret = module.flink_api_key_rotation.active_api_key.secret
@@ -140,7 +140,7 @@ resource "confluent_flink_statement" "drop_user_events" {
   }
 
   environment {
-    id = confluent_environment.ptf_udf_cc_java.id
+    id = confluent_environment.ptf_udf.id
   }
 
   principal {
@@ -148,7 +148,7 @@ resource "confluent_flink_statement" "drop_user_events" {
   }
 
   compute_pool {
-    id = confluent_flink_compute_pool.ptf_udf_cc_java.id
+    id = confluent_flink_compute_pool.ptf_udf.id
   }
 
   lifecycle {
@@ -166,11 +166,11 @@ resource "confluent_flink_statement" "user_events_source" {
   EOT
 
   properties = {
-    "sql.current-catalog"  = confluent_environment.ptf_udf_cc_java.display_name
-    "sql.current-database" = confluent_kafka_cluster.ptf_udf_cc_java.display_name
+    "sql.current-catalog"  = confluent_environment.ptf_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf.display_name
   }
 
-  rest_endpoint = data.confluent_flink_region.ptf_udf_cc_java.rest_endpoint
+  rest_endpoint = data.confluent_flink_region.ptf_udf.rest_endpoint
   credentials {
     key    = module.flink_api_key_rotation.active_api_key.id
     secret = module.flink_api_key_rotation.active_api_key.secret
@@ -181,7 +181,7 @@ resource "confluent_flink_statement" "user_events_source" {
   }
 
   environment {
-    id = confluent_environment.ptf_udf_cc_java.id
+    id = confluent_environment.ptf_udf.id
   }
 
   principal {
@@ -189,7 +189,7 @@ resource "confluent_flink_statement" "user_events_source" {
   }
 
   compute_pool {
-    id = confluent_flink_compute_pool.ptf_udf_cc_java.id
+    id = confluent_flink_compute_pool.ptf_udf.id
   }
 
   depends_on = [
@@ -210,11 +210,11 @@ resource "confluent_flink_statement" "insert_user_events" {
   EOT
 
   properties = {
-    "sql.current-catalog"  = confluent_environment.ptf_udf_cc_java.display_name
-    "sql.current-database" = confluent_kafka_cluster.ptf_udf_cc_java.display_name
+    "sql.current-catalog"  = confluent_environment.ptf_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf.display_name
   }
 
-  rest_endpoint = data.confluent_flink_region.ptf_udf_cc_java.rest_endpoint
+  rest_endpoint = data.confluent_flink_region.ptf_udf.rest_endpoint
   credentials {
     key    = module.flink_api_key_rotation.active_api_key.id
     secret = module.flink_api_key_rotation.active_api_key.secret
@@ -225,7 +225,7 @@ resource "confluent_flink_statement" "insert_user_events" {
   }
 
   environment {
-    id = confluent_environment.ptf_udf_cc_java.id
+    id = confluent_environment.ptf_udf.id
   }
 
   principal {
@@ -233,7 +233,7 @@ resource "confluent_flink_statement" "insert_user_events" {
   }
 
   compute_pool {
-    id = confluent_flink_compute_pool.ptf_udf_cc_java.id
+    id = confluent_flink_compute_pool.ptf_udf.id
   }
 
   depends_on = [
@@ -245,11 +245,11 @@ resource "confluent_flink_statement" "drop_enriched_events" {
   statement = "DROP TABLE IF EXISTS enriched_events;"
 
   properties = {
-    "sql.current-catalog"  = confluent_environment.ptf_udf_cc_java.display_name
-    "sql.current-database" = confluent_kafka_cluster.ptf_udf_cc_java.display_name
+    "sql.current-catalog"  = confluent_environment.ptf_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf.display_name
   }
 
-  rest_endpoint = data.confluent_flink_region.ptf_udf_cc_java.rest_endpoint
+  rest_endpoint = data.confluent_flink_region.ptf_udf.rest_endpoint
   credentials {
     key    = module.flink_api_key_rotation.active_api_key.id
     secret = module.flink_api_key_rotation.active_api_key.secret
@@ -260,7 +260,7 @@ resource "confluent_flink_statement" "drop_enriched_events" {
   }
 
   environment {
-    id = confluent_environment.ptf_udf_cc_java.id
+    id = confluent_environment.ptf_udf.id
   }
 
   principal {
@@ -268,7 +268,7 @@ resource "confluent_flink_statement" "drop_enriched_events" {
   }
 
   compute_pool {
-    id = confluent_flink_compute_pool.ptf_udf_cc_java.id
+    id = confluent_flink_compute_pool.ptf_udf.id
   }
 
   lifecycle {
@@ -289,11 +289,11 @@ resource "confluent_flink_statement" "enriched_events_sink" {
   EOT
 
   properties = {
-    "sql.current-catalog"  = confluent_environment.ptf_udf_cc_java.display_name
-    "sql.current-database" = confluent_kafka_cluster.ptf_udf_cc_java.display_name
+    "sql.current-catalog"  = confluent_environment.ptf_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf.display_name
   }
 
-  rest_endpoint = data.confluent_flink_region.ptf_udf_cc_java.rest_endpoint
+  rest_endpoint = data.confluent_flink_region.ptf_udf.rest_endpoint
   credentials {
     key    = module.flink_api_key_rotation.active_api_key.id
     secret = module.flink_api_key_rotation.active_api_key.secret
@@ -304,7 +304,7 @@ resource "confluent_flink_statement" "enriched_events_sink" {
   }
 
   environment {
-    id = confluent_environment.ptf_udf_cc_java.id
+    id = confluent_environment.ptf_udf.id
   }
 
   principal {
@@ -312,7 +312,7 @@ resource "confluent_flink_statement" "enriched_events_sink" {
   }
 
   compute_pool {
-    id = confluent_flink_compute_pool.ptf_udf_cc_java.id
+    id = confluent_flink_compute_pool.ptf_udf.id
   }
 
   depends_on = [
@@ -322,15 +322,15 @@ resource "confluent_flink_statement" "enriched_events_sink" {
 }
 
 # Upload the JAR as a Flink artifact
-resource "confluent_flink_artifact" "ptf_udf_cc_java" {
-  display_name     = "ptf_udf_cc_java"
+resource "confluent_flink_artifact" "ptf_udf" {
+  display_name     = "ptf-udf"
   content_format   = "JAR"
   cloud            = local.cloud
   region           = local.aws_region
-  artifact_file    = "${path.module}/../cc_java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
+  artifact_file    = "${path.module}/../java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
 
   environment {
-    id = confluent_environment.ptf_udf_cc_java.id
+    id = confluent_environment.ptf_udf.id
   }
 
   depends_on = [
@@ -343,15 +343,15 @@ resource "confluent_flink_statement" "create_udf" {
   statement = <<-EOT
     CREATE FUNCTION IF NOT EXISTS user_event_enricher
       AS 'ptf.UserEventEnricher'
-      USING JAR 'confluent-artifact://${confluent_flink_artifact.ptf_udf_cc_java.id}';
+      USING JAR 'confluent-artifact://${confluent_flink_artifact.ptf_udf.id}';
   EOT
 
   properties = {
-    "sql.current-catalog"  = confluent_environment.ptf_udf_cc_java.display_name
-    "sql.current-database" = confluent_kafka_cluster.ptf_udf_cc_java.display_name
+    "sql.current-catalog"  = confluent_environment.ptf_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf.display_name
   }
 
-  rest_endpoint = data.confluent_flink_region.ptf_udf_cc_java.rest_endpoint
+  rest_endpoint = data.confluent_flink_region.ptf_udf.rest_endpoint
   credentials {
     key    = module.flink_api_key_rotation.active_api_key.id
     secret = module.flink_api_key_rotation.active_api_key.secret
@@ -362,7 +362,7 @@ resource "confluent_flink_statement" "create_udf" {
   }
 
   environment {
-    id = confluent_environment.ptf_udf_cc_java.id
+    id = confluent_environment.ptf_udf.id
   }
 
   principal {
@@ -370,7 +370,7 @@ resource "confluent_flink_statement" "create_udf" {
   }
 
   compute_pool {
-    id = confluent_flink_compute_pool.ptf_udf_cc_java.id
+    id = confluent_flink_compute_pool.ptf_udf.id
   }
 
   # Prevent recreation on every apply — CREATE FUNCTION IF NOT EXISTS handles idempotency
@@ -379,7 +379,7 @@ resource "confluent_flink_statement" "create_udf" {
   }
 
   depends_on = [ 
-    confluent_flink_artifact.ptf_udf_cc_java
+    confluent_flink_artifact.ptf_udf
   ]
 }
 
@@ -401,11 +401,11 @@ resource "confluent_flink_statement" "insert_enriched_events" {
   EOT
 
   properties = {
-    "sql.current-catalog"  = confluent_environment.ptf_udf_cc_java.display_name
-    "sql.current-database" = confluent_kafka_cluster.ptf_udf_cc_java.display_name
+    "sql.current-catalog"  = confluent_environment.ptf_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf.display_name
   }
 
-  rest_endpoint = data.confluent_flink_region.ptf_udf_cc_java.rest_endpoint
+  rest_endpoint = data.confluent_flink_region.ptf_udf.rest_endpoint
   credentials {
     key    = module.flink_api_key_rotation.active_api_key.id
     secret = module.flink_api_key_rotation.active_api_key.secret
@@ -416,7 +416,7 @@ resource "confluent_flink_statement" "insert_enriched_events" {
   }
 
   environment {
-    id = confluent_environment.ptf_udf_cc_java.id
+    id = confluent_environment.ptf_udf.id
   }
 
   principal {
@@ -424,7 +424,7 @@ resource "confluent_flink_statement" "insert_enriched_events" {
   }
 
   compute_pool {
-    id = confluent_flink_compute_pool.ptf_udf_cc_java.id
+    id = confluent_flink_compute_pool.ptf_udf.id
   }
 
   depends_on = [

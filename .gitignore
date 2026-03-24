@@ -42,8 +42,11 @@ hs_err_pid*
 tfplan.out
 tfplan
 
+# Downloaded dependencies
+.cache/
+
 # Environment/secrets
-.ptf_udf_cc_java
+.ptf_udf
 *.pem
 
 .claude/
