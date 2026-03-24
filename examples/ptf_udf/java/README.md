@@ -1,4 +1,4 @@
-# Confluent Platform Java Process Table Function (PTF) User-Defined Function (UDF) type ─ User Event Enricher, a state-driven PTF example
+# Java Process Table Function (PTF) User-Defined Function (UDF) type ─ User Event Enricher, a state-driven PTF example
 
 > The User Event Enricher is driven entirely by state transitions triggered by incoming rows.
 > 
@@ -17,15 +17,7 @@
     + [**2.1 Enrichment logic**](#21-enrichment-logic)
     + [**2.2 How it works end-to-end**](#22-how-it-works-end-to-end)
     + [**2.3 Key concepts illustrated**](#23-key-concepts-illustrated)
-+ [**3.0 Project structure**](#30-project-structure)
-+ [**4.0 How to run**](#40-how-to-run)
-    + [**4.1 Prerequisites**](#41-prerequisites)
-    + [**4.2 Start the platform**](#42-start-the-platform)
-    + [**4.3 Build, deploy, and submit the job**](#43-build-deploy-and-submit-the-job)
-    + [**4.4 Produce sample data**](#44-produce-sample-data)
-    + [**4.5 Monitor the job**](#45-monitor-the-job)
-    + [**4.6 Clean up**](#46-clean-up)
-+ [**5.0 Resources**](#50-resources)
++ [**3.0 Resources**](#30-resources)
 <!-- tocstop -->
 
 ## **1.0 State and operators in a Process Table Function**
@@ -92,7 +84,7 @@ This example puts the above concepts into practice. The `UserEventEnricher` PTF 
 For every incoming event the function maintains three pieces of **per-user state** (one state instance per `PARTITION BY user_id` key):
 
 | State field | Purpose |
-|---|---|
+|-|-|
 | `sessionId` | Monotonically increasing session counter. Incremented each time a `"login"` event arrives. |
 | `eventCount` | Running count of events **within the current session**. Reset to zero on each new session, then incremented for every event (including the login itself). |
 | `lastEvent` | The `event_type` of the most recent event for that user. |
@@ -137,93 +129,6 @@ Kafka (user_events)
 - **`@StateHint`** ─ declares a POJO whose fields Flink automatically persists per partition key, eliminating manual `ValueState` / `MapState` boilerplate.
 - **`@ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)`** ─ tells Flink the input is a keyed, stateful virtual processor (set semantics), not a simple row-at-a-time scalar function.
 - **`PARTITION BY`** ─ the SQL-side mechanism that keys the input table so each `user_id` gets its own isolated state instance.
-- **Configurable Kafka bootstrap servers** ─ resolved in order: `KAFKA_BOOTSTRAP_SERVERS` env var, Flink config key `kafka.bootstrap.servers`, then `localhost:9092` default.
 
-## **3.0 Project structure**
-
-```
-examples/ptf_udf/cp_java/
-├── app/
-│   ├── build.gradle.kts                 # Gradle build (Flink 2.1.x, Java 17)
-│   └── src/main/java/ptf/
-│       ├── FlinkJob.java                # Entry point: wires tables + invokes PTF
-│       └── UserEventEnricher.java       # The ProcessTableFunction implementation
-├── gradle/wrapper/
-│   └── gradle-wrapper.properties        # Gradle wrapper version config
-├── gradlew                              # Gradle wrapper script (Unix)
-├── gradlew.bat                          # Gradle wrapper script (Windows)
-└── settings.gradle.kts                  # Gradle settings (project name)
-```
-
-## **4.0 How to run**
-
-All commands below are run from the **project root** (where the `Makefile` lives). Run `make help` at any time to see every available target.
-
-### **4.1 Prerequisites**
-
-- macOS with Homebrew and Docker Desktop running
-- Java 17+
-
-Install all required tooling (including Gradle) if you haven't already:
-
-```bash
-make install-prereqs        # installs docker, kubectl, minikube, helm, gradle, envsubst
-```
-
-### **4.2 Start the platform**
-
-If Confluent Platform and Flink are not already running, bring them up:
-
-```bash
-make cp-up                  # Minikube → CFK Operator → Kafka (KRaft) + SR + Connect + ksqlDB + C3 + Kafka UI
-make cp-watch               # watch pods come up (Ctrl+C when all Running)
-
-make flink-up               # cert-manager → Flink Operator → CMF → Flink session cluster
-make flink-status           # verify Flink pods are Running
-```
-
-See the [Minikube Deployment Guide](../../docs/minikube-deployment.md) for full details on each target.
-
-### **4.3 Build, deploy, and submit the job**
-
-A single target builds the fat JAR, uploads it to the Flink cluster, and submits the job:
-
-```bash
-make deploy-cp-java-ptf-udf
-```
-
-Behind the scenes this runs:
-
-| Step | Target | What it does |
-|---|---|---|
-| 1 | `build-cp-java-ptf-udf` | `./gradlew clean shadowJar` -- produces the uber JAR |
-| 2 | *(inline)* | Port-forwards to the Flink JobManager, uploads the JAR via the REST API, and submits the job with entry class `ptf.FlinkJob` |
-
-### **4.4 Produce sample data**
-
-Since the Kafka broker has `auto.create.topics.enable=false`, the required topics must be created explicitly. The `produce-cp-java-ptf-udf` target handles this ─ it creates both Kafka topics (`user_events` and `enriched_events`) if they don't already exist, then publishes six sample JSON events to the `user_events` topic:
-
-```bash
-make produce-cp-java-ptf-udf
-```
-
-The sample events cover three users (`alice`, `bob`, `charlie`) with a mix of `login`, `click`, `purchase`, and `logout` event types. This target is safe to run multiple times ─ the topics use `--if-not-exists` and each run appends a fresh batch of events.
-
-### **4.5 Monitor the job**
-
-Open the Flink Dashboard to see the running job, its task managers, and checkpoint history:
-
-```bash
-make flink-ui                   # opens http://localhost:8081
-```
-
-### **4.6 Clean up**
-
-To tear down the entire platform (Flink, Confluent Platform, Minikube):
-
-```bash
-make confluent-teardown
-```
-
-## **5.0 Resources**
+## **3.0 Resources**
 - [Create a User-Defined Function with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html)
