@@ -3,8 +3,8 @@
 #
 # *** Script Syntax ***
 # ./deploy-cc-ptf-udf.sh=<create | destroy> --confluent-api-key=<CONFLUENT_API_KEY>
-#                                                --confluent-api-secret=<CONFLUENT_API_SECRET>
-#                                                [--day-count=<DAY_COUNT>]
+#                                           --confluent-api-secret=<CONFLUENT_API_SECRET>
+#                                           [--day-count=<DAY_COUNT>]
 #
 #
 

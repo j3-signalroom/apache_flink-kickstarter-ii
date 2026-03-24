@@ -2,11 +2,11 @@
 
 #
 # *** Script Syntax ***
-# ./deploy-cp-ptf-udf.sh <create | destroy>
-#     [--namespace=confluent]
-#     [--cmf-env=dev-local]
-#     [--flink-cluster=flink-basic]
-#     [--cmf-url=http://localhost:18080]
+# ./deploy-cp-ptf-udf.sh <create | destroy> [--namespace=confluent]
+#                                           [--cmf-env=dev-local]
+#                                           [--flink-cluster=flink-basic]
+#                                           [--cmf-url=http://localhost:18080]
+#
 #
 
 set -euo pipefail  # Stop on error, undefined variables, and pipeline errors
