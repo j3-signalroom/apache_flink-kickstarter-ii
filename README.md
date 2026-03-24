@@ -11,30 +11,24 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 **Table of Contents**
 <!-- toc -->
 + [**1.0 Prerequisites**](#10-prerequisites)
-+ [**2.0 Resource Requirements**](#20-resource-requirements)
-+ [**3.0 Architecture**](#30-architecture)
-+ [**4.0 Quickstart**](#40-quickstart)
-    - [**4.1 Full stack (CP + Kafka UI)**](#41-full-stack-cp--kafka-ui)
-    - [**4.2 Add Apache Flink + CMF (run separately after `make cp-up`)**](#42-add-apache-flink--cmf-run-separately-after-make-cp-up)
-+ [**5.0 Composite Workflow Reference**](#50-composite-workflow-reference)
-+ [**6.0 Individual Target Reference**](#60-individual-target-reference)
-    - [**6.1 Phase 1 — Prerequisites**](#61-phase-1--prerequisites)
-    - [**6.2 Phase 2 — Minikube**](#62-phase-2--minikube)
-    - [**6.3 Phase 3 — Confluent Operator**](#63-phase-3--confluent-operator)
-    - [**6.4 Phase 4 — Confluent Platform**](#64-phase-4--confluent-platform)
-    - [**6.5 Phase 5 — Control Center**](#65-phase-5--control-center)
-    - [**6.6 Phase 6 — Apache Flink**](#66-phase-6--apache-flink)
-    - [**6.7 Phase 7 — Confluent Manager for Apache Flink (CMF)**](#67-phase-7--confluent-manager-for-apache-flink-cmf)
-    - [**6.8 Phase 8 — Kafka UI (Provectus)**](#68-phase-8--kafka-ui-provectus)
-    - [**6.9 Phase 9 — Build & Deploy Flink JARs**](#69-phase-9--build--deploy-flink-jars)
-+ [**7.0 Configuration**](#70-configuration)
-+ [**8.0 Repository Layout**](#80-repository-layout)
-+ [**9.0 Teardown**](#90-teardown)
-+ [**10.0 Resources**](#100-resources)
+    - [**1.1 Local Setup**](#11-local-setup)
+        - [**1.1.1 Required Tools**](#111-required-tools)
+        - [**1.1.2 Resource Requirements**](#112-resource-requirements)
+        - [**1.1.3 Architecture**](#113-architecture)
+        - [**1.1.4 Quickstart**](#114-quickstart)
+        - [**1.1.5 Composite Workflow Reference**](#115-composite-workflow-reference)
+        - [**1.1.6 Individual Target Reference**](#116-individual-target-reference)
+        - [**1.1.7 Configuration**](#117-configuration)
+        - [**1.1.8 Teardown**](#118-teardown)
++ [**2.0 The Examples**](#20-the-examples)
++ [**3.0 Resources**](#30-resources)
 <!-- tocstop -->
 
 ---
 
+## **1.0 Prerequisites**
+
+### **1.1 Local Setup**
 A Makefile-driven quickstart that deploys a full local streaming stack on Minikube:
 
 - **Confluent Platform** (KRaft mode) via Confluent for Kubernetes (CFK)
@@ -42,8 +36,7 @@ A Makefile-driven quickstart that deploys a full local streaming stack on Miniku
 - **Confluent Manager for Apache Flink (CMF) 2.1** for Flink environment management
 - **Kafka UI** ([Provectus](https://provectus.com/)) for cluster inspection
 
-## **1.0 Prerequisites**
-
+#### **1.1.1 Required Tools**
 macOS with Homebrew. To install all required tools in one step:
 
 ```bash
@@ -62,7 +55,7 @@ make check-prereqs
 
 ---
 
-## **2.0 Resource Requirements**
+#### **1.1.2 Resource Requirements**
 
 Minikube is configured with the following defaults, which are required to run the full stack:
 
@@ -80,7 +73,7 @@ make cp-up MINIKUBE_CPUS=8 MINIKUBE_MEM=24576
 
 ---
 
-## **3.0 Architecture**
+#### **1.1.3 Architecture**
 
 ```mermaid
 graph TD
@@ -228,9 +221,9 @@ graph TD
 
 ---
 
-## **4.0 Quickstart**
+#### **1.1.4 Quickstart**
 
-### **4.1 Full stack (CP + Kafka UI)**
+##### **1.1.4.1 Full stack (CP + Kafka UI)**
 
 ```bash
 make cp-up
@@ -244,7 +237,7 @@ Once pods are up, open Control Center:
 make c3-open        # http://localhost:9021
 ```
 
-### **4.2 Add Apache Flink + CMF (run separately after `make cp-up`)**
+##### **1.1.4.2 Add Apache Flink + CMF (run separately after `make cp-up`)**
 
 ```bash
 make flink-up
@@ -268,7 +261,7 @@ make cmf-proxy-inject
 
 ---
 
-## **5.0 Composite Workflow Reference**
+#### **1.1.5 Composite Workflow Reference**
 
 | Target | What it does |
 |--------|-------------|
@@ -280,16 +273,19 @@ make cmf-proxy-inject
 
 ---
 
-## **6.0 Individual Target Reference**
+#### **1.1.6 Individual Target Reference**
 
-### **6.1 Phase 1 — Prerequisites**
-
+<details>
+<summary>Phase 1 — Prerequisites</summary>
+    
 | Target | Description |
 |--------|-------------|
 | `install-prereqs` | Install Docker Desktop, kubectl, Minikube, Helm, envsubst, and Gradle via Homebrew |
 | `check-prereqs` | Verify all required tools are available |
+</details>
 
-### **6.2 Phase 2 — Minikube**
+<details>
+<summary>Phase 2 — Minikube</summary>
 
 | Target | Description |
 |--------|-------------|
@@ -297,8 +293,10 @@ make cmf-proxy-inject
 | `minikube-status` | Show Minikube and node status |
 | `minikube-stop` | Stop the Minikube cluster |
 | `minikube-delete` | Permanently delete the Minikube cluster |
+</details>
 
-### **6.3 Phase 3 — Confluent Operator**
+<details>
+<summary>Phase 3 — Confluent Operator</summary>
 
 | Target | Description |
 |--------|-------------|
@@ -306,8 +304,10 @@ make cmf-proxy-inject
 | `operator-install` | Add Confluent Helm repo and install CFK Operator |
 | `operator-status` | Show CFK Operator pod status |
 | `operator-uninstall` | Remove the CFK Operator Helm release |
+</details>
 
-### **6.4 Phase 4 — Confluent Platform**
+<details>
+<summary>Phase 4 — Confluent Platform</summary>
 
 | Target | Description |
 |--------|-------------|
@@ -315,15 +315,19 @@ make cmf-proxy-inject
 | `cp-watch` | Watch pod startup live (Ctrl+C to exit) |
 | `cp-status` | Show current pod status |
 | `cp-delete` | Remove all CP components and leftover PVCs |
+</details>
 
-### **6.5 Phase 5 — Control Center**
+<details>
+<summary>Phase 5 — Control Center</summary>
 
 | Target | Description |
 |--------|-------------|
 | `c3-open` | Port-forward Control Center in the background and open `http://localhost:9021` (`make c3-stop` to kill) |
 | `c3-stop` | Stop the background Control Center port-forward |
+</details>
 
-### **6.6 Phase 6 — Apache Flink**
+<details>
+<summary>Phase 6 — Apache Flink</summary>
 
 | Target | Description |
 |--------|-------------|
@@ -337,8 +341,10 @@ make cmf-proxy-inject
 | `flink-ui-stop` | Stop the background Flink UI port-forward |
 | `flink-delete` | Delete the Flink session cluster |
 | `cert-manager-uninstall` | Remove cert-manager |
+</details>
 
-### **6.7 Phase 7 — Confluent Manager for Apache Flink (CMF)**
+<details>
+<summary>Phase 7 — Confluent Manager for Apache Flink (CMF)</summary>
 
 | Target | Description |
 |--------|-------------|
@@ -350,8 +356,10 @@ make cmf-proxy-inject
 | `cmf-proxy-inject` | Patch the C3 StatefulSet with a `socat` sidecar to expose the Flink tab in Control Center |
 | `cmf-proxy-remove` | Remove the CMF proxy sidecar and resume CFK reconciliation |
 | `cmf-proxy-logs` | Stream logs from the `cmf-proxy` sidecar in the C3 pod |
+</details>
 
-### **6.8 Phase 8 — Kafka UI (Provectus)**
+<details>
+<summary>Phase 8 — Kafka UI (Provectus)</summary>
 
 | Target | Description |
 |--------|-------------|
@@ -359,18 +367,21 @@ make cmf-proxy-inject
 | `kafka-ui-status` | Show Kafka UI pod status |
 | `kafka-ui-open` | Port-forward Kafka UI and open `http://localhost:8080` |
 | `kafka-ui-uninstall` | Remove Kafka UI |
+</details>
 
-### **6.9 Phase 9 — Build & Deploy Flink JARs**
+<details>
+<summary>Phase 9 — Build & Deploy Flink JARs</summary>
 
 | Target | Description |
 |--------|-------------|
 | `build-ptf-udf` | Build the `ptf_udf` fat JAR (requires Gradle) |
 | `deploy-cp-ptf-udf` | Build UDF JAR, copy to Flink pods, and submit SQL via CMF |
 | `teardown-cp-ptf-udf` | Tear down the SQL-based ptf_udf deployment via CMF |
+</details>
 
 ---
 
-## **7.0 Configuration**
+#### **1.1.7.0 Configuration**
 
 All variables are overridable at the command line. Defaults:
 
@@ -405,49 +416,7 @@ make flink-deploy FLINK_IMAGE=confluentinc/cp-flink:2.1.1-cp1-java21-arm64 FLINK
 
 ---
 
-## **8.0 Repository Layout**
-
-```
-.
-├── Makefile
-├── README.md
-├── README.pdf
-├── CHANGELOG.md
-├── CHANGELOG.pdf
-├── KNOWN_ISSUES.md
-├── KNOWN_ISSUES.pdf
-├── LICENSE.md
-├── LICENSE.pdf
-├── .gitignore
-├── examples/
-│   └── ptf_udf/
-│       └── cp_java/                        # ProcessTimeFunction UDF Flink job (Gradle project)
-│       ├── settings.gradle.kts
-│       ├── gradlew / gradlew.bat
-│       ├── gradle/wrapper/
-│       ├── README.md
-│       ├── README.pdf
-│       └── app/
-│           ├── build.gradle.kts
-│           └── src/main/java/ptf/
-│               ├── FlinkJob.java           # Job entry point
-│               └── UserEventEnricher.java  # Stateful PTF enrichment logic
-├── docs/
-│   ├── images/
-│   │   └── apache-flink_squirrel-logo.png
-│   ├── minikube-deployment.md              # This file
-│   └── minikube-deployment.pdf
-└── k8s/
-    └── base/
-        ├── confluent-platform-c3++.yaml    # Confluent Platform manifest (KRaft + all components)
-        └── flink-basic-deployment.yaml     # FlinkDeployment CR template
-```
-
-> The `flink-basic-deployment.yaml` is a template, `FLINK_IMAGE` and `FLINK_VERSION` are substituted at deploy time via `envsubst`. Do not apply it directly with `kubectl apply`.
-
----
-
-## **9.0 Teardown**
+#### **1.1.8 Teardown**
 
 Remove everything and stop Minikube:
 
@@ -464,7 +433,17 @@ make cp-down      # CP + Kafka UI + CFK Operator
 
 ---
 
-## **10.0 Resources**
+## **2.0 The Examples**
+
+Once the platform is up, head to the examples:
+
+| Example Type | Example Description | Confluent Platform + Minikube | Confluent Cloud |
+| --- | --- | --- | --- |
+| PTF UDF-type (state-driven) | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf/cc_deploy/README.md)</p> |
+
+---
+
+## **3.0 Resources**
 - [Manage Confluent Platform with Confluent for Kubernetes](https://docs.confluent.io/operator/current/co-manage-overview.html)
 
 - [Get Started with Confluent Platform for Apache Flink](https://docs.confluent.io/platform/current/flink/get-started/overview.html)
