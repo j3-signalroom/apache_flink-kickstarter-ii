@@ -44,7 +44,7 @@ macOS with Homebrew. To install all required tools in one step:
 make install-prereqs
 ```
 
-This installs `docker`, `kubectl`, `minikube`, `helm`, `envsubst`, and `gradle` via Homebrew. Once complete, **launch Docker Desktop** before proceeding.
+This installs `kubernetes-cli`, `minikube`, `helm`, `gettext`, `gradle`, and `confluentinc/tap/cli` via Homebrew. Once complete, **launch Docker Desktop** before proceeding.
 
 To verify all tools are present without installing:
 
