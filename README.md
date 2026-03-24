@@ -384,7 +384,10 @@ make cmf-proxy-inject
 
 #### **1.1.7.0 Configuration**
 
-All variables are overridable at the command line. Defaults:
+All variables are overridable at the command line.
+
+<details>
+<summary>Defaults:</summary>
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -406,6 +409,7 @@ All variables are overridable at the command line. Defaults:
 | `FLINK_UI_PORT` | `8081` | Flink UI local port |
 | `KAFKA_UI_PORT` | `8080` | Kafka UI local port |
 | `PTF_UDF_TOPICS` | `user_events enriched_events` | Kafka topics for the ptf_udf Flink job |
+</details>
 
 > **Note:** CMF uses the Confluent-packaged Flink operator (`confluentinc/flink-kubernetes-operator`) and `confluentinc/cp-flink` images — not the Apache OSS Flink operator or `flink` Docker Hub image.
 
