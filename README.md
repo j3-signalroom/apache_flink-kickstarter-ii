@@ -387,7 +387,7 @@ make cmf-proxy-inject
 All variables are overridable at the command line.
 
 <details>
-<summary>Defaults:</summary>
+<summary>Defaults</summary>
 
 | Variable | Default | Description |
 |----------|---------|-------------|
