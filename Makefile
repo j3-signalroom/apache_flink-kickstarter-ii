@@ -468,20 +468,18 @@ teardown-cc-ptf-udf: ## Tear down the ptf_udf deployment from Confluent Cloud (C
 	@echo "✔ Teardown complete."
 
 .PHONY: deploy-cp-ptf-udf
-deploy-cp-ptf-udf: build-ptf-udf ## Build UDF JAR, copy to Flink pods, and submit SQL via CMF REST API
-	@echo "→ Deploying ptf_udf via CMF SQL statements..."
+deploy-cp-ptf-udf: build-ptf-udf ## Build UDF JAR, copy to Flink pods, and execute SQL via Flink SQL Client
+	@echo "→ Deploying ptf_udf via Flink SQL..."
 	$(mkfile_dir)scripts/deploy-cp-ptf-udf.sh create \
 		--namespace="$(NAMESPACE)" \
-		--cmf-env="$(CMF_ENV_NAME)" \
 		--flink-cluster="$(FLINK_CLUSTER_NAME)"
-	@echo "✔ SQL statements submitted via CMF."
+	@echo "✔ SQL statements executed."
 
 .PHONY: teardown-cp-ptf-udf
-teardown-cp-ptf-udf: ## Tear down the SQL-based ptf_udf deployment via CMF
-	@echo "→ Tearing down ptf_udf SQL statements from CMF..."
+teardown-cp-ptf-udf: ## Tear down the ptf_udf deployment
+	@echo "→ Tearing down ptf_udf..."
 	$(mkfile_dir)scripts/deploy-cp-ptf-udf.sh destroy \
 		--namespace="$(NAMESPACE)" \
-		--cmf-env="$(CMF_ENV_NAME)" \
 		--flink-cluster="$(FLINK_CLUSTER_NAME)"
 	@echo "✔ Teardown complete."
 
