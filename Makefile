@@ -67,10 +67,10 @@ help: ## Show this help message
 # Phase 1: Prerequisites (macOS)
 # ------------------------------------------------------------------------------
 .PHONY: install-prereqs
-install-prereqs: ## Install docker, kubectl, minikube, helm, gradle, and confluent CLI via Homebrew (macOS)
+install-prereqs: ## Install docker, kubectl, minikube, helm, and gradle via Homebrew (macOS)
 	@echo "→ Installing prerequisites..."
 	@(test -d /Applications/Docker.app || test -f /usr/local/bin/kubectl.docker) || brew install --cask docker
-	brew install kubernetes-cli minikube helm gettext gradle confluentinc/tap/cli
+	brew install kubernetes-cli minikube helm gettext gradle
 	@echo "✔ Prerequisites installed. Launch Docker Desktop before running 'make minikube-start'."
 	
 .PHONY: check-prereqs
