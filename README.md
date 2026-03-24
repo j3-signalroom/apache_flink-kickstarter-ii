@@ -20,7 +20,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
         - [**1.1.6 Individual Target Reference**](#116-individual-target-reference)
         - [**1.1.7 Configuration**](#117-configuration)
         - [**1.1.8 Teardown**](#118-teardown)
-    - [**1.2 Confluent Cloud Setup**](#12-confluent-cloud-setup)
+    - [**1.2 Confluent Cloud Setup (early access example)**](#12-confluent-cloud-setup-early-access-example)
         - [**1.2.1 Required Tools**](#121-required-tools)
 + [**2.0 The Examples**](#20-the-examples)
 + [**3.0 Resources**](#30-resources)
@@ -439,7 +439,7 @@ make cp-down      # CP + Kafka UI + CFK Operator
 
 ---
 
-### **1.2 Confluent Cloud Setup**
+### **1.2 Confluent Cloud Setup (early access example)**
 
 #### **1.2.1 Required Tools**
 
