@@ -28,8 +28,9 @@
 | How SQL is submitted | `confluent_flink_statement` Terraform resources | `sql-client.sh -f` on the JobManager pod |
 | UDF JAR delivery | `confluent_flink_artifact` (uploaded to CC) | `kubectl exec` to Flink pods |
 | Entry point | `make deploy-cc-ptf-udf` | `make deploy-cp-ptf-udf` |
-| Requires code compilation | Yes (Java + Gradle for UDF JAR) | Yes (Java + Gradle for UDF JAR) |
+| Requires code compilation | ✅  (Java + Gradle for UDF JAR) | ✅  (Java + Gradle for UDF JAR) |
 | Statement lifecycle | Managed by Terraform state | Managed by Flink session cluster |
+| Same codebase for both? | ✅ (same Java UDF code, different Terraform vs SQL Client for deployment) | ✅ (same Java UDF code, different Terraform vs SQL Client for deployment) |
 
 ---
 
