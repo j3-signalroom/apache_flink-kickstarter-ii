@@ -4,7 +4,7 @@
 
 Designed as a hands-on, production-minded accelerator, it brings Flink to life _locally_ on **Confluent Platform + Minikube**, while drawing direct comparisons to **Confluent Cloud for Apache Flink** ─ so you can clearly see what’s possible across environments.
 
-Every **example** is delivered end-to-end ─ from schema design to fully operational streaming pipelines ─ with implementations in **both Java and Python** where it matters, bridging real-world developer workflows with modern streaming architecture.
+Every **example** is delivered end-to-end ─ from schema design to fully operational streaming pipelines ─ with implementations in **both Java and Python (when possible)** where it matters, bridging real-world developer workflows with modern streaming architecture.
 
 ---
 
@@ -471,6 +471,8 @@ Once the platform is up, head to the examples:
 - [Confluent Cloud for Apache Flink — Reference Guide](docs/ccaf-reference-guide.md)
 
 - [Confluent Cloud for Apache Flink — Performance Specifications for High Throughput Workloads](docs/ccaf-performance_specs-high_throughput_workloads.md)
+
+- [Remote Debugging a Flink UDF](docs/remote-debugging-flink-udf.md)
 
 ---
 
