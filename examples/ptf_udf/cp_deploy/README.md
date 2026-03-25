@@ -22,16 +22,14 @@
 
 ### **1.1 How this differs from the other deployment paths**
 
-For a comparison with the Confluent Cloud Terraform deployment, see the [cc_deploy README](../cc_deploy/README.md).
-
-| Aspect | Detail |
-|---|---|
-| Where it runs | Confluent Platform (Minikube) |
-| How SQL is submitted | `sql-client.sh -f` on the JobManager pod |
-| UDF JAR delivery | `kubectl exec` to Flink pods |
-| Entry point | `make deploy-cp-ptf-udf` |
-| Requires code compilation | Yes (Java + Gradle for UDF JAR) |
-| Statement lifecycle | Managed by Flink session cluster |
+| Aspect | **Confluent Platform SQL Client** (this example) | Confluent Cloud Terraform |
+|---|---|---
+| Where it runs | Confluent Platform + Minikube | Confluent Cloud |
+| How SQL is submitted | `sql-client.sh -f` on the JobManager pod | `confluent_flink_statement` Terraform resources |
+| UDF JAR delivery | `kubectl exec` to Flink pods | `confluent_flink_artifact` (uploaded to CC) |
+| Entry point | `make deploy-cp-ptf-udf` | `make deploy-cc-ptf-udf` |
+| Requires code compilation | Yes (Java + Gradle for UDF JAR) | Yes (Java + Gradle for UDF JAR) |
+| Statement lifecycle | Managed by Flink session cluster | Managed by Terraform state |
 
 ---
 
