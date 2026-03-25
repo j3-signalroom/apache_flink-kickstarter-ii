@@ -18,6 +18,10 @@ spec:
     # Dev-friendly: low memory footprint for Minikube
     jobmanager.memory.process.size: "1024m"
     taskmanager.memory.process.size: "1024m"
+    # Remote debugging: JDWP agent on TaskManager (suspend=n so processing starts immediately)
+    env.java.opts.taskmanager: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    # Increase heartbeat timeout to avoid TaskManager death while paused at breakpoints
+    heartbeat.timeout: "300000"
     # Custom config key — read by FlinkJob to resolve Kafka bootstrap servers.
     # CFK Kafka exposes port 9071 (internal listener), not 9092.
     kafka.bootstrap.servers: "kafka:9071"
