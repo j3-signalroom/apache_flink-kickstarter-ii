@@ -7,6 +7,7 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
 - [Quick Start](#quick-start)
 - [How It Works](#how-it-works)
   - [JDWP on the Flink TaskManager](#jdwp-on-the-flink-taskmanager)
+  - [Supplemental RBAC](#supplemental-rbac)
   - [Port Forwarding (automated)](#port-forwarding-automated)
   - [VSCode Debug Configuration](#vscode-debug-configuration)
 - [Important Caveats](#important-caveats)
@@ -15,19 +16,39 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
 
 ---
 
-> JDWP is already enabled on the TaskManager, the VSCode launch config is in place, and port-forwarding is automated as a pre-launch task. Once your cluster is running, use the **"Attach to Flink TaskManager"** debug configuration to attach to the remote JVM and hit your breakpoints.
+> JDWP is already enabled on the TaskManager, the VSCode launch config is in place, and port-forwarding is automated as a pre-launch task. Once your cluster is running and your UDF is deployed, use the **"Attach to Flink TaskManager"** debug configuration to attach to the remote JVM and hit your breakpoints.
 >
 > **Note:** Pressing **F5** without selecting the correct configuration will attempt to *launch* a local Java process, which fails because UDFs have no `main()` method. Instead, open the **Run and Debug** panel (⇧⌘D), select **"Attach to Flink TaskManager"** from the dropdown, and then press **F5** (or click the green play button). This *attaches* the debugger to the already-running Flink TaskManager over JDWP on port `5005`.
 
 ## Quick Start
 
-1. **Deploy** the FlinkDeployment (with your UDF JAR) to your Minikube cluster
-2. **Set breakpoints** in your UDF (e.g., inside `eval()` in `UserEventEnricher.java`)
-3. In VSCode, open **Run and Debug** (⇧⌘D) and select **"Attach to Flink TaskManager"** from the configuration dropdown
-4. Press **F5** — VSCode will port-forward to the TaskManager pod automatically and attach the debugger
-5. Send events to your `user_events` topic — the debugger will pause at your breakpoints
+1. **Deploy** the full stack and your UDF:
 
-That's it. The port-forward to the TaskManager pod starts automatically as a VSCode pre-launch task, and your breakpoints in `eval()` will be hit when the function is invoked on the cluster.
+    ```bash
+    make cp-up          # Confluent Platform + Kafka UI
+    make flink-up       # Flink Operator + CMF + Flink session cluster
+    make deploy-cp-ptf-udf   # Build UDF JAR, copy to Flink pods, submit SQL
+    ```
+
+2. **Set a breakpoint** in your UDF — open `UserEventEnricher.java` and click in the gutter at the first line of the `eval()` method:
+
+    ```java
+    String eventType = input.getFieldAs("event_type");
+    ```
+
+3. In VSCode, open **Run and Debug** (⇧⌘D) and select **"Attach to Flink TaskManager"** from the configuration dropdown
+
+4. Press **F5** — VSCode will port-forward to the TaskManager pod automatically and attach the debugger
+
+5. **Send a test event** to trigger the breakpoint:
+
+    ```bash
+    kubectl exec -it kafka-0 -n confluent -- bash -c \
+      "echo '{\"user_id\":\"alice\",\"event_type\":\"login\",\"payload\":\"web\"}' \
+       | kafka-console-producer --bootstrap-server localhost:9071 --topic user_events"
+    ```
+
+6. **Debug** — VSCode pauses at your breakpoint. Inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
 
 ## How It Works
 
@@ -59,15 +80,40 @@ flinkConfiguration:
 - `address=*:5005` — listens on port `5005`
 - `heartbeat.timeout` — increased to `5 minutes` so pausing at breakpoints doesn't kill the TaskManager
 
-### Port Forwarding (automated)
+### Supplemental RBAC
 
-A VSCode background task (`.vscode/tasks.json`) automatically discovers the TaskManager pod and starts port-forwarding when you launch the debugger:
+Flink's Kubernetes session-cluster executor needs to GET the JobManager REST service (e.g. `flink-basic-rest`) to submit jobs. The Helm-managed Role for the `flink` ServiceAccount grants access to pods, configmaps, and deployments — but **not services**.
 
-```bash
-kubectl port-forward -n confluent $(kubectl get pods -n confluent -l component=taskmanager -o jsonpath='{.items[0].metadata.name}') 5005:5005
+The manifest `k8s/base/flink-rbac.yaml` fills this gap with a supplemental Role and RoleBinding:
+
+```yaml
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch"]
 ```
 
-If you need to do this manually (e.g., outside VSCode):
+This is additive — Kubernetes merges permissions across all Roles bound to the same subject, so the Helm-managed Role is unaffected. The `flink-rbac` Makefile target applies this manifest and runs automatically as a dependency of `flink-deploy`.
+
+### Port Forwarding (automated)
+
+A VSCode pre-launch task (`.vscode/tasks.json`) runs a helper script (`.vscode/port-forward-taskmanager.sh`) that:
+
+1. Kills any existing port-forward on port `5005`
+2. Discovers the TaskManager pod by label (`component=taskmanager`)
+3. Starts `kubectl port-forward` in the background (detached via `nohup`/`disown` so it survives after the task shell exits)
+4. Waits for port `5005` to be listening
+5. Exits with success — VSCode then proceeds to attach the debugger
+
+```json
+{
+    "label": "Port Forward Flink TaskManager",
+    "type": "shell",
+    "command": "${workspaceFolder}/.vscode/port-forward-taskmanager.sh"
+}
+```
+
+If you need to port-forward manually (e.g., outside VSCode):
 
 ```bash
 kubectl port-forward -n confluent <taskmanager-pod> 5005:5005
@@ -93,6 +139,7 @@ The `projectName` is `"app"` because that is the Gradle subproject name defined 
 
 ## Important Caveats
 
+- **TaskManager must be running** — the TaskManager pod only exists while a Flink job is active. Deploy your UDF first (`make deploy-cp-ptf-udf`) before attaching the debugger
 - **Source must match** — the local code you have open in VSCode must match the JAR deployed to the cluster, or breakpoints won't align
 - **Timeouts** — pausing too long at a breakpoint can trigger Flink's heartbeat timeout, causing the TaskManager to be considered dead. The `heartbeat.timeout` is already set to `5 minutes` in the Flink config
 - **Single TaskManager** — if you have multiple TaskManagers, you're only attached to one. Debug with `parallelism=1` to keep things simple
