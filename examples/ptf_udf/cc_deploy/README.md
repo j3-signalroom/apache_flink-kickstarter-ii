@@ -75,6 +75,10 @@ Terraform manages the SQL statements as `confluent_flink_statement` resources wi
 
 Step 8 is a **long-running streaming job**. It runs continuously, reading from `user_events` and writing enriched output to `enriched_events`.
 
+Once deployment completes, Terraform generates a visual **resource graph** at `examples/ptf_udf/cc_deploy/terraform.png`, providing an at-a-glance view of the infrastructure and resource dependencies: 
+![terraform-visualization](terraform.png)
+
+
 ---
 
 ## **3.0 Prerequisites**
