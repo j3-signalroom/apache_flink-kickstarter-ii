@@ -23,8 +23,9 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
     - [**1.2 Confluent Cloud Setup (early access example)**](#12-confluent-cloud-setup-early-access-example)
         - [**1.2.1 Required Tools**](#121-required-tools)
 + [**2.0 The Examples**](#20-the-examples)
-+ [**3.0 Documentation**](#30-documentation)
-+ [**4.0 Resources**](#40-resources)
++ [**3.0 Debugging a Flink UDF**](#30-debugging-a-flink-udf)
++ [**4.0 Documentation**](#40-documentation)
++ [**5.0 Resources**](#50-resources)
 <!-- tocstop -->
 
 ---
@@ -120,6 +121,7 @@ graph TD
     subgraph P6["Phase 6 — Apache Flink"]
         CERT["flink-cert-manager\ncert-manager v1.18.2"]
         FL_OP["flink-operator-install\nhelm: confluentinc/flink-kubernetes-operator 1.130.0"]
+        FL_RBAC["flink-rbac\nsupplemental Role + RoleBinding\n(services access for flink SA)"]
         FL_DEPLOY["flink-deploy\nenvsubst → FlinkDeployment CR\ncp-flink:2.1.1-cp1"]
         FL_UI["flink-ui\nlocalhost:8081"]
         FL_DELETE["flink-delete"]
@@ -155,6 +157,7 @@ graph TD
     %% ── Manifests / Templates ───────────────────────────────────────────
     subgraph FS["k8s/base/"]
         MANIFEST[("flink-basic-deployment.yaml\nFLINK_IMAGE · FLINK_VERSION")]
+        RBAC_MANIFEST[("flink-rbac.yaml\nRole + RoleBinding")]
     end
 
     %% ── make cp-up dependency chain ─────────────────────────────────────
@@ -174,7 +177,9 @@ graph TD
     FLINK_UP --> CMF_ENV
     FLINK_UP --> FL_DEPLOY
     FL_OP --> NS
+    FL_DEPLOY --> FL_RBAC
     FL_DEPLOY --> MANIFEST
+    FL_RBAC --> RBAC_MANIFEST
 
     %% ── make deploy-cp-ptf-udf dependency chain ─────────────────────────
     DEPLOY_CP_PTF --> BUILD_PTF
@@ -216,10 +221,10 @@ graph TD
 
     class CP_UP,FLINK_UP,CP_DOWN,FLINK_DOWN,TEARDOWN entry
     class CP_CORE_UP,DEPLOY_CP_PTF,DEPLOY_CC_PTF composite
-    class CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF install
+    class CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF install
     class MK_STOP,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN,TEARDOWN_CP_PTF,TEARDOWN_CC_PTF remove
     class C3,FL_UI,CMF_OPEN,KUI_OPEN ui
-    class MANIFEST file
+    class MANIFEST,RBAC_MANIFEST file
 ```
 
 ---
@@ -338,7 +343,8 @@ make cmf-proxy-inject
 | `flink-operator-install` | Install the Confluent Flink Kubernetes Operator (`confluentinc/flink-kubernetes-operator`) |
 | `flink-operator-status` | Show Flink Operator pod status |
 | `flink-operator-uninstall` | Remove the Confluent Flink Operator Helm release |
-| `flink-deploy` | Deploy the Flink session cluster using `FLINK_MANIFEST` |
+| `flink-rbac` | Apply supplemental RBAC so the `flink` SA can read services (needed for job submission) |
+| `flink-deploy` | Deploy the Flink session cluster using `FLINK_MANIFEST` (runs `flink-rbac` first) |
 | `flink-status` | Show Flink pods and FlinkDeployment CRs |
 | `flink-ui` | Port-forward Flink UI in the background and open `http://localhost:8081` (`make flink-ui-stop` to kill) |
 | `flink-ui-stop` | Stop the background Flink UI port-forward |
@@ -403,6 +409,7 @@ All variables are overridable at the command line.
 | `FLINK_VERSION` | `v2_1` | Flink API version string for the FlinkDeployment CR |
 | `FLINK_CLUSTER_NAME` | `flink-basic` | Name of the FlinkDeployment resource |
 | `FLINK_MANIFEST` | `k8s/base/flink-basic-deployment.yaml` | Path to FlinkDeployment template |
+| `FLINK_RBAC_MANIFEST` | `k8s/base/flink-rbac.yaml` | Path to supplemental RBAC manifest for the `flink` ServiceAccount |
 | `CERT_MANAGER_VER` | `v1.18.2` | cert-manager version |
 | `CMF_VER` | `2.1.0` | Confluent Manager for Apache Flink version |
 | `CMF_PORT` | `8080` | CMF REST API local port |
@@ -467,16 +474,42 @@ Once the platform is up, head to the examples:
 
 ---
 
-## **3.0 Documentation**
+## **3.0 Debugging a Flink UDF**
+
+You can attach VSCode's debugger to a running Flink TaskManager and hit breakpoints inside your UDF code — even though it's executing on a remote JVM inside Kubernetes. The FlinkDeployment CR already has JDWP enabled and the VSCode launch configuration is pre-wired.
+
+**Prerequisites:** The Confluent Platform and Flink stack must be running (`make cp-up && make flink-up`), and your UDF must be deployed (`make deploy-cp-ptf-udf`).
+
+1. **Set a breakpoint** — open [`UserEventEnricher.java`](examples/ptf_udf/java/app/src/main/java/ptf/UserEventEnricher.java) and click in the gutter at the first line of the `eval()` method (line 92):
+
+    ```java
+    String eventType = input.getFieldAs("event_type");
+    ```
+
+2. **Attach the debugger** — open the **Run and Debug** panel (`Shift+Cmd+D`), select **"Attach to Flink TaskManager"** from the dropdown, and press **F5**. VSCode will automatically port-forward to the TaskManager pod and attach to the JDWP agent on port `5005`.
+
+3. **Send a test event** — produce a single JSON message to the `user_events` topic to trigger the breakpoint:
+
+    ```bash
+    kubectl exec -it kafka-0 -n confluent -- bash -c \
+      "echo '{\"user_id\":\"alice\",\"event_type\":\"login\",\"payload\":\"web\"}' \
+       | kafka-console-producer --bootstrap-server localhost:9071 --topic user_events"
+    ```
+
+4. **Debug** — VSCode will pause at your breakpoint. You can inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
+
+> For the full deep-dive (how JDWP is configured, how port-forwarding works, important caveats), see [Remote Debugging a Flink UDF](docs/remote-debugging-flink-udf.md).
+
+---
+
+## **4.0 Documentation**
 - [Confluent Cloud for Apache Flink — Reference Guide](docs/ccaf-reference-guide.md)
 
 - [Confluent Cloud for Apache Flink — Performance Specifications for High Throughput Workloads](docs/ccaf-performance_specs-high_throughput_workloads.md)
 
-- [Remote Debugging a Flink UDF](docs/remote-debugging-flink-udf.md)
-
 ---
 
-## **4.0 Resources**
+## **5.0 Resources**
 - [Manage Confluent Platform with Confluent for Kubernetes](https://docs.confluent.io/operator/current/co-manage-overview.html)
 
 - [Get Started with Confluent Platform for Apache Flink](https://docs.confluent.io/platform/current/flink/get-started/overview.html)
