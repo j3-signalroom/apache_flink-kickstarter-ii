@@ -22,9 +22,9 @@
 
 ### **1.1 How this differs from the other deployment paths**
 
-| Aspect | **CC Terraform** (this example) | CP SQL via Flink SQL Client |
+| Aspect | **Confluent Cloud Terraform** (this example) | Confluent Platform SQL Client |
 |---|---|---|
-| Where it runs | Confluent Cloud | Confluent Platform (Minikube) |
+| Where it runs | Confluent Cloud | Confluent Platform + Minikube |
 | How SQL is submitted | `confluent_flink_statement` Terraform resources | `sql-client.sh -f` on the JobManager pod |
 | UDF JAR delivery | `confluent_flink_artifact` (uploaded to CC) | `kubectl exec` to Flink pods |
 | Entry point | `make deploy-cc-ptf-udf` | `make deploy-cp-ptf-udf` |
