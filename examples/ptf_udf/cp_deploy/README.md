@@ -57,17 +57,17 @@ The script pre-creates Kafka topics, then executes all SQL in a single `sql-clie
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  Pre-step: kafka-topics --create user_events, enriched_events       │
+│  Pre-step: kafka-topics --create user_events, enriched_events        │
 │                                                                      │
-│  Step 1:  DROP TABLE IF EXISTS user_events              → OK        │
-│  Step 2:  CREATE TABLE user_events (... WITH kafka ...) → OK        │
-│  Step 3:  INSERT INTO user_events VALUES (sample data)  → submitted │
-│  Step 4:  DROP TABLE IF EXISTS enriched_events          → OK        │
-│  Step 5:  CREATE TABLE enriched_events (... WITH kafka) → OK        │
-│  Step 6:  CREATE FUNCTION user_event_enricher           → OK        │
-│           USING JAR '/opt/flink/usrlib/...'                         │
-│  Step 7:  INSERT INTO enriched_events                   → submitted │
-│           SELECT ... FROM TABLE(user_event_enricher())              │
+│  Step 1:  DROP TABLE IF EXISTS user_events              → OK         │
+│  Step 2:  CREATE TABLE user_events (... WITH kafka ...) → OK         │
+│  Step 3:  INSERT INTO user_events VALUES (sample data)  → submitted  │
+│  Step 4:  DROP TABLE IF EXISTS enriched_events          → OK         │
+│  Step 5:  CREATE TABLE enriched_events (... WITH kafka) → OK         │
+│  Step 6:  CREATE FUNCTION user_event_enricher           → OK         │
+│           USING JAR '/opt/flink/usrlib/...'                          │
+│  Step 7:  INSERT INTO enriched_events                   → submitted  │
+│           SELECT ... FROM TABLE(user_event_enricher())               │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
