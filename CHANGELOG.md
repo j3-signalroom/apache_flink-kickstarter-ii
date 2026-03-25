@@ -3,12 +3,14 @@ All notable changes to this project will be documented in this file.
 
 The format is base on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.06.00.000] - TBD
+
+## [0.06.00.000] - 2026-03-25
 ### Added
 - Issue [`#93`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/93)
 - Issue [`#95`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/95)
 - Issue [`#97`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/97)
 - Issue [`#99`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/99)
+- Issue [`#101`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/101)
 
 ## [0.05.00.000] - 2026-03-25
 ### Changed
