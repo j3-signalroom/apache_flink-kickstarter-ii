@@ -15,7 +15,8 @@
             "request": "attach",
             "hostName": "localhost",
             "port": 5005,
-            "projectName": "app"
+            "projectName": "app",
+            "preLaunchTask": "Port Forward Flink TaskManager"
         }
     ]
 }
