@@ -472,6 +472,8 @@ Once the platform is up, head to the examples:
 
 - [Confluent Cloud for Apache Flink — Performance Specifications for High Throughput Workloads](docs/ccaf-performance_specs-high_throughput_workloads.md)
 
+- [Remote Debugging a Flink UDF](docs/remote-debugging-flink-udf.md)
+
 ---
 
 ## **4.0 Resources**
