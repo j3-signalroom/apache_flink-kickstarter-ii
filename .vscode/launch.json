@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Debug UDF Tests",
+            "request": "launch",
+            "mainClass": "",
+            "projectName": "app",
+            "cwd": "${workspaceFolder}/examples/ptf_udf/java"
+        },
+        {
+            "type": "java",
+            "name": "Attach to Flink TaskManager",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": 5005,
+            "projectName": "app"
+        }
+    ]
+}
