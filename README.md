@@ -15,15 +15,16 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
         - [**1.1.1 Required Tools**](#111-required-tools)
         - [**1.1.2 Resource Requirements**](#112-resource-requirements)
         - [**1.1.3 Architecture**](#113-architecture)
-        - [**1.1.4 Quickstart**](#114-quickstart)
-        - [**1.1.5 Composite Workflow Reference**](#115-composite-workflow-reference)
-        - [**1.1.6 Individual Target Reference**](#116-individual-target-reference)
-        - [**1.1.7 Configuration**](#117-configuration)
-        - [**1.1.8 Teardown**](#118-teardown)
+        - [**1.1.4 Using the `Makefile` Targets Quickstart**](#114-using-the-makefile-targets-quickstart)
+        - [**1.1.5 `Makefile` Composite Workflow Target Reference**](#115-makefile-composite-workflow-target-reference)
+        - [**1.1.6 `Makefile` Individual Target Reference**](#116-makefile-individual-target-reference)
+        - [**1.1.7 `Makefile` Target Configuration Reference**](#1170-makefile-target-configuration-reference)
+        - [**1.1.8 `Makefile` Target Teardown**](#118-makefile-target-teardown)
     - [**1.2 Confluent Cloud Setup (early access example)**](#12-confluent-cloud-setup-early-access-example)
         - [**1.2.1 Required Tools**](#121-required-tools)
 + [**2.0 The Examples**](#20-the-examples)
-+ [**3.0 Resources**](#30-resources)
++ [**3.0 Documentation**](#30-documentation)
++ [**4.0 Resources**](#40-resources)
 <!-- tocstop -->
 
 ---
@@ -223,7 +224,7 @@ graph TD
 
 ---
 
-#### **1.1.4 Quickstart**
+#### **1.1.4 Using the `Makefile` Targets Quickstart**
 
 ##### **1.1.4.1 Full stack (CP + Kafka UI)**
 
@@ -263,7 +264,7 @@ make cmf-proxy-inject
 
 ---
 
-#### **1.1.5 Composite Workflow Reference**
+#### **1.1.5 `Makefile` Composite Workflow Target Reference**
 
 | Target | What it does |
 |--------|-------------|
@@ -275,7 +276,7 @@ make cmf-proxy-inject
 
 ---
 
-#### **1.1.6 Individual Target Reference**
+#### **1.1.6 `Makefile` Individual Target Reference**
 
 <details>
 <summary>Phase 1 — Prerequisites</summary>
@@ -383,7 +384,7 @@ make cmf-proxy-inject
 
 ---
 
-#### **1.1.7.0 Configuration**
+#### **1.1.7.0 `Makefile` Target Configuration Reference**
 
 All variables are overridable at the command line.
 
@@ -422,7 +423,7 @@ make flink-deploy FLINK_IMAGE=confluentinc/cp-flink:2.1.1-cp1-java21-arm64 FLINK
 
 ---
 
-#### **1.1.8 Teardown**
+#### **1.1.8 `Makefile` Target Teardown**
 
 Remove everything and stop Minikube:
 
@@ -466,7 +467,14 @@ Once the platform is up, head to the examples:
 
 ---
 
-## **3.0 Resources**
+## **3.0 Documentation**
+- [Confluent Cloud for Apache Flink — Reference Guide](docs/ccaf-reference-guide.md)
+
+- [Confluent Cloud for Apache Flink — Performance Specifications for High Throughput Workloads](docs/ccaf-performance_specs-high_throughput_workloads.md)
+
+---
+
+## **4.0 Resources**
 - [Manage Confluent Platform with Confluent for Kubernetes](https://docs.confluent.io/operator/current/co-manage-overview.html)
 
 - [Get Started with Confluent Platform for Apache Flink](https://docs.confluent.io/platform/current/flink/get-started/overview.html)
