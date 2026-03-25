@@ -142,10 +142,13 @@ graph TD
         KUI_UN["kafka-ui-uninstall"]
     end
 
-    %% ── Phase 9: Build & Deploy PTF UDF via CMF ─────────────────────────
-    subgraph P9["Phase 9 — Build & Deploy PTF UDF via CMF"]
+    %% ── Phase 9: Build & Deploy PTF UDF ─────────────────────────────────
+    subgraph P9["Phase 9 — Build & Deploy PTF UDF"]
         BUILD_PTF["build-ptf-udf\n./gradlew clean shadowJar"]
-        DEPLOY_PTF["deploy-cp-ptf-udf\ncopy JAR → CMF SQL statements"]
+        DEPLOY_CP_PTF["deploy-cp-ptf-udf\ncopy JAR → Flink SQL Client"]
+        TEARDOWN_CP_PTF["teardown-cp-ptf-udf"]
+        DEPLOY_CC_PTF["deploy-cc-ptf-udf\nJAR → Confluent Cloud"]
+        TEARDOWN_CC_PTF["teardown-cc-ptf-udf"]
     end
 
     %% ── Manifests / Templates ───────────────────────────────────────────
@@ -172,8 +175,11 @@ graph TD
     FL_OP --> NS
     FL_DEPLOY --> MANIFEST
 
-    %% ── make deploy-cp-ptf-udf dependency chain ───────────
-    DEPLOY_PTF --> BUILD_PTF
+    %% ── make deploy-cp-ptf-udf dependency chain ─────────────────────────
+    DEPLOY_CP_PTF --> BUILD_PTF
+
+    %% ── make deploy-cc-ptf-udf dependency chain ─────────────────────────
+    DEPLOY_CC_PTF --> BUILD_PTF
 
     %% ── make cp-down dependency chain ────────────────────────────────────
     CP_DOWN --> KUI_UN
@@ -199,10 +205,6 @@ graph TD
     CMF_INSTALL -.->|"C3 Flink tab"| CMF_PROXY
     KUI_INSTALL -.->|"once Running"| KUI_OPEN
 
-    %% ── Data flow ────────────────────────────────────────────────────────
-    PRODUCE_SAMPLE -.->|"JSON → Kafka"| CREATE_TOPICS
-    CONSUME_OUTPUT -.->|"Kafka → console"| CREATE_TOPICS
-
     %% ── Styles ───────────────────────────────────────────────────────────
     classDef entry    fill:#1a1a2e,stroke:#e94560,color:#fff,font-weight:bold
     classDef install  fill:#16213e,stroke:#0f3460,color:#a8dadc
@@ -210,15 +212,13 @@ graph TD
     classDef ui       fill:#1b2d1b,stroke:#2d6a2d,color:#b3ffb3
     classDef file     fill:#2d2b1b,stroke:#8b7500,color:#ffe680
     classDef composite fill:#2a1a2e,stroke:#9b59b6,color:#dbb8ff
-    classDef data     fill:#1b2d2d,stroke:#2d6a6a,color:#b3ffff
 
     class CP_UP,FLINK_UP,CP_DOWN,FLINK_DOWN,TEARDOWN entry
-    class CP_CORE_UP,DEPLOY_PTF composite
+    class CP_CORE_UP,DEPLOY_CP_PTF,DEPLOY_CC_PTF composite
     class CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF install
-    class MK_STOP,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN,DELETE_TOPICS remove
+    class MK_STOP,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN,TEARDOWN_CP_PTF,TEARDOWN_CC_PTF remove
     class C3,FL_UI,CMF_OPEN,KUI_OPEN ui
     class MANIFEST file
-    class CREATE_TOPICS,LIST_TOPICS,PRODUCE_SAMPLE,CONSUME_OUTPUT data
 ```
 
 ---
