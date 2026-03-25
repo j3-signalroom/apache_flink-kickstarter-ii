@@ -1,0 +1,25 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Port Forward Flink TaskManager",
+            "type": "shell",
+            "command": "kubectl port-forward -n confluent $(kubectl get pods -n confluent -l component=taskmanager -o jsonpath='{.items[0].metadata.name}') 5005:5005",
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^Forwarding",
+                    "endsPattern": "^Forwarding"
+                }
+            },
+            "presentation": {
+                "reveal": "silent",
+                "panel": "dedicated"
+            }
+        }
+    ]
+}
