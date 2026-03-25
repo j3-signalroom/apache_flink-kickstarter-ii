@@ -30,7 +30,7 @@
 | Entry point | `make deploy-cp-ptf-udf` | `make deploy-cc-ptf-udf` |
 | Requires code compilation | ✅  (Java + Gradle for UDF JAR) | ✅  (Java + Gradle for UDF JAR) |
 | Statement lifecycle | Managed by Flink session cluster | Managed by Terraform state |
-| Same codebase for both? | ✅ (same Java UDF code, different Terraform vs SQL Client for deployment) | ✅ (same Java UDF code, different Terraform vs SQL Client for deployment) |
+| Same codebase for both? | ✅ (**same Java UDF code**, different Terraform vs SQL Client for deployment) | ✅ (**same Java UDF code**, different Terraform vs SQL Client for deployment) |
 
 ---
 
