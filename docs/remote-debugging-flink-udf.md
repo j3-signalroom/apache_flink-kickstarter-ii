@@ -15,16 +15,19 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
 
 ---
 
-> JDWP is already enabled on the TaskManager, the VSCode launch config is in place, and port-forwarding is automated as a pre-launch task. Once your cluster is running, just hit **F5**, if you want to debug your UDF.
+> JDWP is already enabled on the TaskManager, the VSCode launch config is in place, and port-forwarding is automated as a pre-launch task. Once your cluster is running, use the **"Attach to Flink TaskManager"** debug configuration to attach to the remote JVM and hit your breakpoints.
+>
+> **Note:** Pressing **F5** without selecting the correct configuration will attempt to *launch* a local Java process, which fails because UDFs have no `main()` method. Instead, open the **Run and Debug** panel (⇧⌘D), select **"Attach to Flink TaskManager"** from the dropdown, and then press **F5** (or click the green play button). This *attaches* the debugger to the already-running Flink TaskManager over JDWP on port `5005`.
 
 ## Quick Start
 
-1. **Deploy** the FlinkDeployment to your Minikube cluster
-2. **Set breakpoints** in your UDF (e.g., `UserEventEnricher.java`)
-3. **F5** in VSCode → select **"Attach to Flink TaskManager"**
-4. Send events to your `user_events` topic — the debugger will pause at your breakpoints
+1. **Deploy** the FlinkDeployment (with your UDF JAR) to your Minikube cluster
+2. **Set breakpoints** in your UDF (e.g., inside `eval()` in `UserEventEnricher.java`)
+3. In VSCode, open **Run and Debug** (⇧⌘D) and select **"Attach to Flink TaskManager"** from the configuration dropdown
+4. Press **F5** — VSCode will port-forward to the TaskManager pod automatically and attach the debugger
+5. Send events to your `user_events` topic — the debugger will pause at your breakpoints
 
-That's it. The port-forward to the TaskManager pod starts automatically as a VSCode pre-launch task.
+That's it. The port-forward to the TaskManager pod starts automatically as a VSCode pre-launch task, and your breakpoints in `eval()` will be hit when the function is invoked on the cluster.
 
 ## How It Works
 

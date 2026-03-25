@@ -33,6 +33,7 @@ FLINK_OPERATOR_VER  ?= 1.130.0
 FLINK_VERSION       ?= v2_1
 FLINK_CLUSTER_NAME  ?= flink-basic
 FLINK_MANIFEST      ?= k8s/base/flink-basic-deployment.yaml
+FLINK_RBAC_MANIFEST ?= k8s/base/flink-rbac.yaml
 CERT_MANAGER_VER    ?= v1.18.2
 CMF_VER             ?= 2.1.0
 CMF_ENV_NAME        ?= dev-local
@@ -247,8 +248,15 @@ flink-operator-status: ## Check Flink operator pod status
 flink-operator-uninstall: ## Uninstall the Confluent Flink Kubernetes Operator (safe to run even if not installed)
 	@helm uninstall cp-flink-kubernetes-operator -n $(NAMESPACE) --wait 2>/dev/null || echo "→ cp-flink-kubernetes-operator not installed, skipping."
 
+.PHONY: flink-rbac
+flink-rbac: ## Apply supplemental RBAC so the flink SA can read services (needed for job submission)
+	@echo "→ Applying Flink supplemental RBAC from $(FLINK_RBAC_MANIFEST)..."
+	@test -f $(FLINK_RBAC_MANIFEST) || (echo "✘ $(FLINK_RBAC_MANIFEST) not found." && exit 1)
+	kubectl apply -f $(FLINK_RBAC_MANIFEST)
+	@echo "✔ Flink supplemental RBAC applied."
+
 .PHONY: flink-deploy
-flink-deploy: ## Deploy a Flink session cluster using $(FLINK_MANIFEST) (image=$(FLINK_IMAGE), version=$(FLINK_VERSION))
+flink-deploy: flink-rbac ## Deploy a Flink session cluster using $(FLINK_MANIFEST) (image=$(FLINK_IMAGE), version=$(FLINK_VERSION))
 	@echo "→ Deploying Flink session cluster from $(FLINK_MANIFEST) (image=$(FLINK_IMAGE), flinkVersion=$(FLINK_VERSION))..."
 	@test -f $(FLINK_MANIFEST) || (echo "✘ $(FLINK_MANIFEST) not found. Is it alongside the Makefile?" && exit 1)
 	@command -v envsubst >/dev/null 2>&1 || (echo "✘ envsubst not found. Install gettext: brew install gettext" && exit 1)
