@@ -12,8 +12,8 @@
                 },
                 "background": {
                     "activeOnStart": true,
-                    "beginsPattern": "^Forwarding",
-                    "endsPattern": "^Forwarding"
+                    "beginsPattern": "^Forwarding from 127\\.0\\.0\\.1",
+                    "endsPattern": "^Forwarding from \\[::1\\]"
                 }
             },
             "presentation": {
