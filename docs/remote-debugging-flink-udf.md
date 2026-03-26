@@ -145,4 +145,4 @@ The `projectName` is `"app"` because that is the Gradle subproject name defined 
 
 ## **4.0 For Confluent Cloud**
 
-_Remote debugging is **NOT POSSIBLE** on Confluent Cloud — you don't have access to the underlying JVMs. For that environment, stick with local MiniCluster integration tests or logging._
+_Remote debugging is **NOT POSSIBLE** on Confluent Cloud — you don't have access to the underlying JVMs. For that environment, stick with [local MiniCluster integration tests](https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/datastream/testing/#testing-flink-jobs) or logging._
