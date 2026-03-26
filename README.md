@@ -14,7 +14,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
     - [**1.1 Confluent Platform Local Setup**](#11-confluent-platform-local-setup)
         - [**1.1.1 Required Tools**](#111-required-tools)
         - [**1.1.2 Resource Requirements**](#112-resource-requirements)
-        - [**1.1.3 Architecture**](#113-architecture)
+        - [**1.1.3 `Makefile` Architecture**](#113-makefile-architecture)
         - [**1.1.4 Using the `Makefile` Targets Quickstart**](#114-using-the-makefile-targets-quickstart)
         - [**1.1.5 `Makefile` Composite Workflow Target Reference**](#115-makefile-composite-workflow-target-reference)
         - [**1.1.6 `Makefile` Individual Target Reference**](#116-makefile-individual-target-reference)
@@ -77,7 +77,7 @@ make cp-up MINIKUBE_CPUS=8 MINIKUBE_MEM=24576
 
 ---
 
-#### **1.1.3 Architecture**
+#### **1.1.3 `Makefile` Architecture**
 
 ```mermaid
 graph TD
