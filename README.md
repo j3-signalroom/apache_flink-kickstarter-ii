@@ -491,9 +491,7 @@ You can attach VSCode's debugger to a running Flink TaskManager and hit breakpoi
 3. **Send a test event** — produce a single JSON message to the `user_events` topic to trigger the breakpoint:
 
     ```bash
-    kubectl exec -it kafka-0 -n confluent -- bash -c \
-      "echo '{\"user_id\":\"alice\",\"event_type\":\"login\",\"payload\":\"web\"}' \
-       | kafka-console-producer --bootstrap-server localhost:9071 --topic user_events"
+    make produce-user-events-record
     ```
 
 4. **Debug** — VSCode will pause at your breakpoint. You can inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
