@@ -491,6 +491,13 @@ teardown-cp-ptf-udf: ## Tear down the ptf_udf deployment
 		--flink-cluster="$(FLINK_CLUSTER_NAME)"
 	@echo "✔ Teardown complete."
 
+.PHONY: produce-user-events-record
+produce-user-events-record: ## Produce one sample user events to the 'user_events' topic using kafka-console-producer
+	@kubectl exec -it kafka-0 -n confluent -- bash -c \
+		"echo '{\"user_id\":\"alice\",\"event_type\":\"login\",\"payload\":\"web\"}' \
+		| kafka-console-producer --bootstrap-server localhost:9071 --topic user_events"
+	@echo "→ Produce one sample user events to the 'user_events' topic"
+
 
 # ------------------------------------------------------------------------------
 # Composite workflows
