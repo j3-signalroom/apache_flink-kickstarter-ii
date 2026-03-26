@@ -25,8 +25,8 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
 1. **Deploy** the full stack and your UDF:
 
     ```bash
-    make cp-up          # Confluent Platform + Kafka UI
-    make flink-up       # Flink Operator + CMF + Flink session cluster
+    make cp-up               # Confluent Platform + Kafka UI
+    make flink-up            # Flink Operator + CMF + Flink session cluster
     make deploy-cp-ptf-udf   # Build UDF JAR, copy to Flink pods, submit SQL
     ```
 
