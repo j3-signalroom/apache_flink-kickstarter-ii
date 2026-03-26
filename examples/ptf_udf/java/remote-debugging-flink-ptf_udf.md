@@ -1,4 +1,4 @@
-# Remote Debugging a Flink UDF
+# Remote Debugging a Flink PTF UDF
 
 Flink TaskManagers are JVM processes, so you can enable **Java remote debugging (JDWP)** and attach VSCode to them.
 
