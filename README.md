@@ -24,8 +24,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
         - [**1.2.1 Required Tools**](#121-required-tools)
 + [**2.0 The Examples**](#20-the-examples)
 + [**3.0 Debugging a Flink UDF**](#30-debugging-a-flink-udf)
-+ [**4.0 Documentation**](#40-documentation)
-+ [**5.0 Resources**](#50-resources)
++ [**4.0 Resources**](#40-resources)
 <!-- tocstop -->
 
 ---
@@ -496,18 +495,10 @@ You can attach VSCode's debugger to a running Flink TaskManager and hit breakpoi
 
 4. **Debug** — VSCode will pause at your breakpoint. You can inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
 
-> For the full deep-dive (how JDWP is configured, how port-forwarding works, important caveats), see [Remote Debugging a Flink UDF](docs/remote-debugging-flink-udf.md).
+> For the full deep-dive (how JDWP is configured, how port-forwarding works, important caveats), see [Remote Debugging a Flink PTF UDF](examples/ptf_udf/java/remote-debugging-flink-ptf_udf.md).
 
 ---
-
-## **4.0 Documentation**
-- [Confluent Cloud for Apache Flink — Reference Guide](docs/ccaf-reference-guide.md)
-
-- [Confluent Cloud for Apache Flink — Performance Specifications for High Throughput Workloads](docs/ccaf-performance_specs-high_throughput_workloads.md)
-
----
-
-## **5.0 Resources**
+## **4.0 Resources**
 - [Manage Confluent Platform with Confluent for Kubernetes](https://docs.confluent.io/operator/current/co-manage-overview.html)
 
 - [Get Started with Confluent Platform for Apache Flink](https://docs.confluent.io/platform/current/flink/get-started/overview.html)
