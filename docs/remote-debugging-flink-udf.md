@@ -4,14 +4,14 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
 
 **Table of Contents**
 <!-- toc -->
-- [Quick Start](#quick-start)
-- [How It Works](#how-it-works)
-  - [JDWP on the Flink TaskManager](#jdwp-on-the-flink-taskmanager)
-  - [Supplemental RBAC](#supplemental-rbac)
-  - [Port Forwarding (automated)](#port-forwarding-automated)
-  - [VSCode Debug Configuration](#vscode-debug-configuration)
-- [Important Caveats](#important-caveats)
-- [For Confluent Cloud](#for-confluent-cloud)
+- [**1.0 Quick Start**](#10-quick-start)
+- [**2.0 How It Works**](#20-how-it-works)
+  - [**2.1 JDWP on the Flink TaskManager**](#21-jdwp-on-the-flink-taskmanager)
+  - [**2.2 Supplemental RBAC**](#22-supplemental-rbac)
+  - [**2.3 Port Forwarding (automated)**](#23-port-forwarding-automated)
+  - [**2.4 VSCode Debug Configuration**](#24-vscode-debug-configuration)
+- [**3.0 Important Caveats**](#30-important-caveats)
+- [**4.0 For Confluent Cloud**](#40-for-confluent-cloud)
 <!-- tocstop -->
 
 ---
@@ -20,7 +20,7 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
 >
 > **Note:** Pressing **F5** without selecting the correct configuration will attempt to *launch* a local Java process, which fails because UDFs have no `main()` method. Instead, open the **Run and Debug** panel (⇧⌘D), select **"Attach to Flink TaskManager"** from the dropdown, and then press **F5** (or click the green play button). This *attaches* the debugger to the already-running Flink TaskManager over JDWP on port `5005`.
 
-## Quick Start
+## **1.0 Quick Start**
 
 1. **Deploy** the full stack and your UDF:
 
@@ -50,9 +50,9 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
 
 6. **Debug** — VSCode pauses at your breakpoint. Inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
 
-## How It Works
+## **2.0 How It Works**
 
-### JDWP on the Flink TaskManager
+### **2.1 JDWP on the Flink TaskManager**
 
 > JDWP (Java Debug Wire Protocol) is the protocol used for communication between a debugger (like VS Code or IntelliJ) and a Java Virtual Machine (JVM) being debugged. It's part of the Java Platform Debugger Architecture (JPDA).
 >
@@ -80,7 +80,7 @@ flinkConfiguration:
 - `address=*:5005` — listens on port `5005`
 - `heartbeat.timeout` — increased to `5 minutes` so pausing at breakpoints doesn't kill the TaskManager
 
-### Supplemental RBAC
+### **2.2 Supplemental RBAC**
 
 Flink's Kubernetes session-cluster executor needs to GET the JobManager REST service (e.g. `flink-basic-rest`) to submit jobs. The Helm-managed Role for the `flink` ServiceAccount grants access to pods, configmaps, and deployments — but **not services**.
 
@@ -95,7 +95,7 @@ rules:
 
 This is additive — Kubernetes merges permissions across all Roles bound to the same subject, so the Helm-managed Role is unaffected. The `flink-rbac` Makefile target applies this manifest and runs automatically as a dependency of `flink-deploy`.
 
-### Port Forwarding (automated)
+### **2.3 Port Forwarding (automated)**
 
 A VSCode pre-launch task (`.vscode/tasks.json`) runs a helper script (`.vscode/port-forward-taskmanager.sh`) that:
 
@@ -119,7 +119,7 @@ If you need to port-forward manually (e.g., outside VSCode):
 kubectl port-forward -n confluent <taskmanager-pod> 5005:5005
 ```
 
-### VSCode Debug Configuration
+### **2.4 VSCode Debug Configuration**
 
 The launch config (`.vscode/launch.json`) attaches to `localhost:5005` with a `preLaunchTask` that triggers the port-forward:
 
@@ -137,7 +137,7 @@ The launch config (`.vscode/launch.json`) attaches to `localhost:5005` with a `p
 
 The `projectName` is `"app"` because that is the Gradle subproject name defined in `examples/ptf_udf/java/settings.gradle.kts`. This tells the debugger which classpath and source roots to use for resolving breakpoints.
 
-## Important Caveats
+## **3.0 Important Caveats**
 
 - **TaskManager must be running** — the TaskManager pod only exists while a Flink job is active. Deploy your UDF first (`make deploy-cp-ptf-udf`) before attaching the debugger
 - **Source must match** — the local code you have open in VSCode must match the JAR deployed to the cluster, or breakpoints won't align
@@ -145,6 +145,6 @@ The `projectName` is `"app"` because that is the Gradle subproject name defined 
 - **Single TaskManager** — if you have multiple TaskManagers, you're only attached to one. Debug with `parallelism=1` to keep things simple
 - **`suspend=y`** is useful if you need to debug the `open()` lifecycle method, since it pauses the JVM before any processing starts
 
-## For Confluent Cloud
+## **4.0 For Confluent Cloud**
 
-Remote debugging is **not possible** on Confluent Cloud — you don't have access to the underlying JVMs. For that environment, stick with local MiniCluster integration tests or logging.
+_Remote debugging is **NOT POSSIBLE** on Confluent Cloud — you don't have access to the underlying JVMs. For that environment, stick with local MiniCluster integration tests or logging._
