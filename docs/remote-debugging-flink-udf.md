@@ -43,9 +43,7 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
 5. **Send a test event** to trigger the breakpoint:
 
     ```bash
-    kubectl exec -it kafka-0 -n confluent -- bash -c \
-      "echo '{\"user_id\":\"alice\",\"event_type\":\"login\",\"payload\":\"web\"}' \
-       | kafka-console-producer --bootstrap-server localhost:9071 --topic user_events"
+    make produce-user-events-record
     ```
 
 6. **Debug** — VSCode pauses at your breakpoint. Inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
