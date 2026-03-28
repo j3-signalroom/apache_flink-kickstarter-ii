@@ -485,7 +485,7 @@ You can attach VSCode's debugger to a running Flink TaskManager and _hit breakpo
     String eventType = input.getFieldAs("event_type");
     ```
 
-2. **Attach the debugger** — open the **Run and Debug** panel (`Shift+Cmd+D`), select **"Attach to Flink TaskManager"** from the dropdown, and press **F5**. VSCode will automatically port-forward to the TaskManager pod and attach to the JDWP agent on port `5005`.
+2. **Attach the debugger** — open the **Run and Debug** panel (`Shift+Cmd+D`), select **"Attach to Flink TaskManager"** from the dropdown, and press **F5**. [VSCode will automatically port-forward](.vscode/port-forward-taskmanager.sh) to the TaskManager pod and attach to the JDWP agent on port `5005`.
 
 3. **Send a test event** — produce a single JSON message to the `user_events` topic to trigger the breakpoint:
 
