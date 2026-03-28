@@ -25,6 +25,9 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 + [**2.0 The Examples**](#20-the-examples)
 + [**3.0 Debugging a Flink UDF**](#30-debugging-a-flink-udf)
 + [**4.0 Resources**](#40-resources)
+    - [**4.1 Confluent for Kubernetes (CfK)**](#41-confluent-for-kubernetes-cfk)
+    - [**4.2 Confluent Platform for Apache Flink**](#42-confluent-platform-for-apache-flink)
+    - [**4.3 Confluent Cloud for Apache Flink**](#43-confluent-cloud-for-apache-flink)
 <!-- tocstop -->
 
 ---
@@ -499,6 +502,16 @@ You can attach VSCode's debugger to a running Flink TaskManager and _hit breakpo
 
 ---
 ## **4.0 Resources**
-- [Manage Confluent Platform with Confluent for Kubernetes](https://docs.confluent.io/operator/current/co-manage-overview.html)
 
+### **4.1 Confluent for Kubernetes (CfK)**
+- [Manage Confluent Platform with Confluent for Kubernetes](https://docs.confluent.io/operator/current/co-manage-overview.html)
+- [Minikube](https://minikube.sigs.k8s.io/docs/)
+
+### **4.2 Confluent Platform for Apache Flink**
+- [Stream Processing with Confluent Platform for Apache Flink](https://docs.confluent.io/cp-flink/current/overview.html)
+- [Architecture and Features of Confluent Platform for Apache Flink](https://docs.confluent.io/cp-flink/current/concepts/overview.html#)
 - [Get Started with Confluent Platform for Apache Flink](https://docs.confluent.io/platform/current/flink/get-started/overview.html)
+
+### **4.3 Confluent Cloud for Apache Flink**
+- [Stream Processing with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/overview.html)
+- [Get Started with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/get-started/overview.html)
