@@ -488,7 +488,7 @@ You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink
     String eventType = input.getFieldAs("event_type");
     ```
 
-2. **Attach the debugger** — select the **"Attach to Flink TaskManager"** configuration and start debugging. The IDE will [automatically port-forward](.vscode/port-forward-taskmanager.sh) to the TaskManager pod and attach to the JDWP agent on port `5005`.
+2. **Attach the debugger** — select the **"Attach to Flink TaskManager"** configuration and start debugging. The IDE will [automatically port-forward](scripts/port-forward-taskmanager.sh) to the TaskManager pod and attach to the JDWP agent on port `5005`.
 
     - **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select the configuration from the dropdown, and press **F5**
     - **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select the configuration, and click **Debug** (⌃D / Shift+F9)
