@@ -27,7 +27,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 + [**4.0 Resources**](#40-resources)
     - [**4.1 Confluent for Kubernetes (CfK)**](#41-confluent-for-kubernetes-cfk)
     - [**4.2 Confluent Platform for Apache Flink**](#42-confluent-platform-for-apache-flink)
-    - [**4.3 Confluent Cloud for Apache Flink**](#43-confluent-cloud-for-apache-flink)
+    - [**4.3 Confluent Cloud for Apache Flink (CCAF)**](#43-confluent-cloud-for-apache-flink-ccaf)
 <!-- tocstop -->
 
 ---
@@ -478,7 +478,7 @@ Once the platform is up, head to the examples:
 
 ## **3.0 Debugging a Flink UDF**
 
-You can attach VSCode's debugger to a running Flink TaskManager and _hit breakpoints inside your UDF code_ — even though it's executing on a remote Java Virtual Machine (JVM) inside Kubernetes. The [`FlinkDeployment` Custom Resource (CR)](k8s/base/flink-basic-deployment.yaml) already has **Java Debug Wire Protocol (JDWP)** enabled and the VSCode launch configuration is [pre-wired](.vscode/launch.json).
+You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink TaskManager and _hit breakpoints inside your UDF code_ — even though it's executing on a remote Java Virtual Machine (JVM) inside Kubernetes. The [`FlinkDeployment` Custom Resource (CR)](k8s/base/flink-basic-deployment.yaml) already has **Java Debug Wire Protocol (JDWP)** enabled, and debug configurations are pre-wired for both [VS Code](.vscode/launch.json) and [IntelliJ IDEA](.idea/runConfigurations/).
 
 **Prerequisites:** The Confluent Platform and Flink stack must be running (`make cp-up && make flink-up`), and your UDF must be deployed (`make deploy-cp-ptf-udf`).
 
@@ -488,7 +488,10 @@ You can attach VSCode's debugger to a running Flink TaskManager and _hit breakpo
     String eventType = input.getFieldAs("event_type");
     ```
 
-2. **Attach the debugger** — open the **Run and Debug** panel (`Shift+Cmd+D`), select **"Attach to Flink TaskManager"** from the dropdown, and press **F5**. [VSCode will automatically port-forward](.vscode/port-forward-taskmanager.sh) to the TaskManager pod and attach to the JDWP agent on port `5005`.
+2. **Attach the debugger** — select the **"Attach to Flink TaskManager"** configuration and start debugging. The IDE will [automatically port-forward](.vscode/port-forward-taskmanager.sh) to the TaskManager pod and attach to the JDWP agent on port `5005`.
+
+    - **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select the configuration from the dropdown, and press **F5**
+    - **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select the configuration, and click **Debug** (⌃D / Shift+F9)
 
 3. **Send a test event** — produce a single JSON message to the `user_events` topic to trigger the breakpoint:
 
@@ -496,7 +499,7 @@ You can attach VSCode's debugger to a running Flink TaskManager and _hit breakpo
     make produce-user-events-record
     ```
 
-4. **Debug** — VSCode will pause at your breakpoint. You can inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
+4. **Debug** — your IDE will pause at your breakpoint. You can inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
 
 > For the full deep-dive (how JDWP is configured, how port-forwarding works, important caveats), see [Remote Debugging a Flink PTF UDF](examples/ptf_udf/java/remote-debugging-flink-ptf_udf.md).
 
@@ -512,6 +515,6 @@ You can attach VSCode's debugger to a running Flink TaskManager and _hit breakpo
 - [Architecture and Features of Confluent Platform for Apache Flink](https://docs.confluent.io/cp-flink/current/concepts/overview.html#)
 - [Get Started with Confluent Platform for Apache Flink](https://docs.confluent.io/platform/current/flink/get-started/overview.html)
 
-### **4.3 Confluent Cloud for Apache Flink**
+### **4.3 Confluent Cloud for Apache Flink (CCAF)**
 - [Stream Processing with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/overview.html)
 - [Get Started with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/get-started/overview.html)

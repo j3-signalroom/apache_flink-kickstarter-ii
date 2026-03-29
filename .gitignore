@@ -3,7 +3,6 @@
 Thumbs.db
 
 # IDE files
-.idea/
 *.iml
 .project
 .classpath
