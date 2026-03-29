@@ -10,6 +10,8 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
   - [**2.2 Supplemental RBAC**](#22-supplemental-rbac)
   - [**2.3 Port Forwarding (automated)**](#23-port-forwarding-automated)
   - [**2.4 IDE Debug Configurations**](#24-ide-debug-configurations)
+    - [**2.4.1 VS Code (`.vscode/launch.json`)**](#241-vs-code-vscodelaunchjson)
+    - [**2.4.2 IntelliJ IDEA (`.idea/runConfigurations/`)**](#242-intellij-idea-idearunconfigurations)
 - [**3.0 Important Caveats**](#30-important-caveats)
 - [**4.0 For Confluent Cloud**](#40-for-confluent-cloud)
 <!-- tocstop -->
@@ -134,7 +136,7 @@ kubectl port-forward -n confluent <taskmanager-pod> 5005:5005
 
 Both IDEs ship pre-configured **"Attach to Flink TaskManager"** and **"Debug UDF Tests"** configurations. Each attach configuration wires the port-forward script as a pre-launch step so the entire flow is one click.
 
-#### VS Code (`.vscode/launch.json`)
+#### **2.4.1 VS Code (`.vscode/launch.json`)**
 
 ```json
 {
@@ -150,7 +152,7 @@ Both IDEs ship pre-configured **"Attach to Flink TaskManager"** and **"Debug UDF
 
 The `projectName` is `"app"` because that is the Gradle subproject name defined in `examples/ptf_udf/java/settings.gradle.kts`. This tells the debugger which classpath and source roots to use for resolving breakpoints.
 
-#### IntelliJ IDEA (`.idea/runConfigurations/`)
+#### **2.4.2 IntelliJ IDEA (`.idea/runConfigurations/`)**
 
 IntelliJ run configurations are stored as XML and are automatically recognized when you open the project:
 
