@@ -104,7 +104,7 @@ This is additive — Kubernetes merges permissions across all Roles bound to the
 
 ### **2.3 Port Forwarding (automated)**
 
-Both IDEs run a helper script (`.vscode/port-forward-taskmanager.sh`) as a pre-launch / "Before launch" step that:
+Both IDEs run a helper script (`scripts/port-forward-taskmanager.sh`) as a pre-launch / "Before launch" step that:
 
 1. Kills any existing port-forward on port `5005`
 2. Discovers the TaskManager pod by label (`component=taskmanager`)
@@ -118,7 +118,7 @@ Both IDEs run a helper script (`.vscode/port-forward-taskmanager.sh`) as a pre-l
 {
     "label": "Port Forward Flink TaskManager",
     "type": "shell",
-    "command": "${workspaceFolder}/.vscode/port-forward-taskmanager.sh"
+    "command": "${workspaceFolder}/scripts/port-forward-taskmanager.sh"
 }
 ```
 
@@ -156,7 +156,7 @@ IntelliJ run configurations are stored as XML and are automatically recognized w
 
 | Run Configuration | What it does |
 |---|---|
-| **Port Forward Flink TaskManager** | Shell Script config that runs `.vscode/port-forward-taskmanager.sh` to `kubectl port-forward` port `5005` to the TaskManager pod |
+| **Port Forward Flink TaskManager** | Shell Script config that runs `scripts/port-forward-taskmanager.sh` to `kubectl port-forward` port `5005` to the TaskManager pod |
 | **Attach to Flink TaskManager** | Remote JVM Debug config that attaches to `localhost:5005`. The port-forward config runs automatically as a "Before launch" task |
 | **Debug UDF Tests** | Gradle `test` task scoped to `examples/ptf_udf/java` |
 
