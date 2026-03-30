@@ -1,6 +1,6 @@
 # Confluent Cloud Terraform Deployment ─ User Event Enricher PTF UDF (early access example)
 
-> This example deploys the **User Event Enricher** PTF UDF (source in [examples/ptf_udf/java/](../java/)) to **Confluent Cloud** using Terraform. All infrastructure (environment, Kafka cluster, Flink compute pool, service accounts, API keys) and Flink SQL statements are declared as Terraform resources.
+> This example deploys the **User Event Enricher** PTF UDF (source in [examples/ptf_udf_state_driven/java/](../java/)) to **Confluent Cloud** using Terraform. All infrastructure (environment, Kafka cluster, Flink compute pool, service accounts, API keys) and Flink SQL statements are declared as Terraform resources.
 
 **Table of Contents**
 <!-- toc -->
@@ -27,7 +27,7 @@
 | Where it runs | Confluent Cloud | Confluent Platform + Minikube |
 | How SQL is submitted | `confluent_flink_statement` Terraform resources | `sql-client.sh -f` on the JobManager pod |
 | UDF JAR delivery | `confluent_flink_artifact` (uploaded to CC) | `kubectl exec` to Flink pods |
-| Entry point | `make deploy-cc-ptf-udf` | `make deploy-cp-ptf-udf` |
+| Entry point | `make deploy-cc-ptf-udf-state-driven` | `make deploy-cp-ptf-udf-state-driven` |
 | Requires code compilation | ✅  (Java + Gradle for UDF JAR) | ✅  (Java + Gradle for UDF JAR) |
 | Statement lifecycle | Managed by Terraform state | Managed by Flink session cluster |
 | Same codebase for both? | ✅ (**same Java UDF code**, different Terraform vs SQL Client for deployment) | ✅ (**same Java UDF code**, different Terraform vs SQL Client for deployment) |
@@ -52,7 +52,7 @@ Terraform declares the full Confluent Cloud stack:
 
 ### **2.2 JAR delivery**
 
-On Confluent Cloud, UDF JARs are uploaded as **Flink artifacts** via the `confluent_flink_artifact` resource. The JAR is built from [examples/ptf_udf/java/](../java/) and uploaded directly from the local build output. The `CREATE FUNCTION ... USING JAR` statement references the artifact using a `confluent-artifact://` URI.
+On Confluent Cloud, UDF JARs are uploaded as **Flink artifacts** via the `confluent_flink_artifact` resource. The JAR is built from [examples/ptf_udf_state_driven/java/](../java/) and uploaded directly from the local build output. The `CREATE FUNCTION ... USING JAR` statement references the artifact using a `confluent-artifact://` URI.
 
 ### **2.3 Statement flow**
 
@@ -75,7 +75,7 @@ Terraform manages the SQL statements as `confluent_flink_statement` resources wi
 
 Step 8 is a **long-running streaming job**. It runs continuously, reading from `user_events` and writing enriched output to `enriched_events`.
 
-Once deployment completes, Terraform generates a visual **resource graph** at `examples/ptf_udf/cc_deploy/terraform.png`, providing an at-a-glance view of the infrastructure and resource dependencies: 
+Once deployment completes, Terraform generates a visual **resource graph** at `examples/ptf_udf_state_driven/cc_deploy/terraform.png`, providing an at-a-glance view of the infrastructure and resource dependencies: 
 ![terraform-visualization](terraform.png)
 
 
@@ -90,7 +90,7 @@ Once deployment completes, Terraform generates a visual **resource graph** at `e
 - The UDF JAR must be built before deploying:
 
 ```bash
-make build-ptf-udf            # builds the UDF fat JAR from examples/ptf_udf/java/
+make build-ptf-udf-state-driven   # builds the UDF fat JAR from examples/ptf_udf_state_driven/java/
 ```
 
 ---
@@ -104,14 +104,14 @@ All commands are run from the **project root** (where the `Makefile` lives).
 A single target builds the UDF JAR and runs `terraform apply`:
 
 ```bash
-make deploy-cc-ptf-udf CONFLUENT_API_KEY=<your-key> CONFLUENT_API_SECRET=<your-secret>
+make deploy-cc-ptf-udf-state-driven CONFLUENT_API_KEY=<your-key> CONFLUENT_API_SECRET=<your-secret>
 ```
 
 Behind the scenes this runs:
 
 | Step | What it does |
 |---|---|
-| 1 | `./gradlew clean shadowJar` ─ builds the UDF fat JAR from `examples/ptf_udf/java/` |
+| 1 | `./gradlew clean shadowJar` ─ builds the UDF fat JAR from `examples/ptf_udf_state_driven/java/` |
 | 2 | `terraform init` ─ initializes the Terraform working directory |
 | 3 | `terraform apply -auto-approve` ─ provisions all CC infrastructure and submits Flink SQL statements |
 | 4 | Generates a Terraform visualization at `docs/images/terraform-visualization.png` |
@@ -129,7 +129,7 @@ Monitor the running Flink statements in the Confluent Cloud Console:
 To destroy all Confluent Cloud resources created by Terraform:
 
 ```bash
-make teardown-cc-ptf-udf CONFLUENT_API_KEY=<your-key> CONFLUENT_API_SECRET=<your-secret>
+make teardown-cc-ptf-udf-state-driven CONFLUENT_API_KEY=<your-key> CONFLUENT_API_SECRET=<your-secret>
 ```
 
 This runs `terraform destroy -auto-approve`, removing all Flink statements, the compute pool, Kafka cluster, service accounts, and the environment.

@@ -149,11 +149,11 @@ graph TD
 
     %% ── Phase 9: Build & Deploy PTF UDF ─────────────────────────────────
     subgraph P9["Phase 9 — Build & Deploy PTF UDF"]
-        BUILD_PTF["build-ptf-udf\n./gradlew clean shadowJar"]
-        DEPLOY_CP_PTF["deploy-cp-ptf-udf\ncopy JAR → Flink SQL Client"]
-        TEARDOWN_CP_PTF["teardown-cp-ptf-udf"]
-        DEPLOY_CC_PTF["deploy-cc-ptf-udf\nJAR → Confluent Cloud"]
-        TEARDOWN_CC_PTF["teardown-cc-ptf-udf"]
+        BUILD_PTF["build-ptf-udf-state-driven\n./gradlew clean shadowJar"]
+        DEPLOY_CP_PTF["deploy-cp-ptf-udf-state-driven\ncopy JAR → Flink SQL Client"]
+        TEARDOWN_CP_PTF["teardown-cp-ptf-udf-state-driven"]
+        DEPLOY_CC_PTF["deploy-cc-ptf-udf-state-driven\nJAR → Confluent Cloud"]
+        TEARDOWN_CC_PTF["teardown-cc-ptf-udf-state-driven"]
     end
 
     %% ── Manifests / Templates ───────────────────────────────────────────
@@ -183,10 +183,10 @@ graph TD
     FL_DEPLOY --> MANIFEST
     FL_RBAC --> RBAC_MANIFEST
 
-    %% ── make deploy-cp-ptf-udf dependency chain ─────────────────────────
+    %% ── make deploy-cp-ptf-udf-state-driven dependency chain ─────────────────────────
     DEPLOY_CP_PTF --> BUILD_PTF
 
-    %% ── make deploy-cc-ptf-udf dependency chain ─────────────────────────
+    %% ── make deploy-cc-ptf-udf-state-driven dependency chain ─────────────────────────
     DEPLOY_CC_PTF --> BUILD_PTF
 
     %% ── make cp-down dependency chain ────────────────────────────────────
@@ -385,9 +385,9 @@ make cmf-proxy-inject
 
 | Target | Description |
 |--------|-------------|
-| `build-ptf-udf` | Build the `ptf_udf` fat JAR (requires Gradle) |
-| `deploy-cp-ptf-udf` | Build UDF JAR, copy to Flink pods, and submit SQL via CMF |
-| `teardown-cp-ptf-udf` | Tear down the SQL-based ptf_udf deployment via CMF |
+| `build-ptf-udf-state-driven` | Build the `ptf_udf` fat JAR (requires Gradle) |
+| `deploy-cp-ptf-udf-state-driven` | Build UDF JAR, copy to Flink pods, and submit SQL via CMF |
+| `teardown-cp-ptf-udf-state-driven` | Tear down the SQL-based ptf_udf deployment via CMF |
 </details>
 
 ---
@@ -472,7 +472,7 @@ Once the platform is up, head to the examples:
 
 | Example Type | Example Description | Confluent Platform + Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
-| PTF UDF-type (state-driven) | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf/cc_deploy/README.md)</p> |
+| PTF UDF-type (state-driven) | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_state_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_state_driven/cc_deploy/README.md)</p> |
 
 ---
 
@@ -480,9 +480,9 @@ Once the platform is up, head to the examples:
 
 You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink TaskManager and _hit breakpoints inside your UDF code_ — even though it's executing on a remote Java Virtual Machine (JVM) inside Kubernetes. The [`FlinkDeployment` Custom Resource (CR)](k8s/base/flink-basic-deployment.yaml) already has **Java Debug Wire Protocol (JDWP)** enabled, and debug configurations are pre-wired for both [VS Code](.vscode/launch.json) and [IntelliJ IDEA](.idea/runConfigurations/Attach_to_Flink_TaskManager.xml).
 
-**Prerequisites:** The Confluent Platform and Flink stack must be running (`make cp-up && make flink-up`), and your UDF must be deployed (`make deploy-cp-ptf-udf`).
+**Prerequisites:** The Confluent Platform and Flink stack must be running (`make cp-up && make flink-up`), and your UDF must be deployed (`make deploy-cp-ptf-udf-state-driven`).
 
-1. **Set a breakpoint** — open [`UserEventEnricher.java`](examples/ptf_udf/java/app/src/main/java/ptf/UserEventEnricher.java) and click in the gutter at the first line of the `eval()` method (line 92):
+1. **Set a breakpoint** — open [`UserEventEnricher.java`](examples/ptf_udf_state_driven/java/app/src/main/java/ptf/UserEventEnricher.java) and click in the gutter at the first line of the `eval()` method (line 92):
 
     ```java
     String eventType = input.getFieldAs("event_type");
@@ -501,7 +501,7 @@ You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink
 
 4. **Debug** — your IDE will pause at your breakpoint. You can inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
 
-> For the full deep-dive (how JDWP is configured, how port-forwarding works, important caveats), see [Remote Debugging a Flink PTF UDF](examples/ptf_udf/java/remote-debugging-flink-ptf_udf.md).
+> For the full deep-dive (how JDWP is configured, how port-forwarding works, important caveats), see [Remote Debugging a Flink PTF UDF](examples/ptf_udf_state_driven/java/remote-debugging-flink-ptf_udf.md).
 
 ---
 ## **4.0 Resources**
