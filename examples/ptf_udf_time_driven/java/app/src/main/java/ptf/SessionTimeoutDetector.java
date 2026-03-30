@@ -22,11 +22,9 @@ import org.apache.flink.types.Row;
  * A {@link ProcessTableFunction} that detects user session timeouts using
  * event-time timers.
  *
- * <p>Unlike the companion {@code UserEventEnricher} example (which is purely
- * state-driven — state transitions triggered only by incoming rows), this PTF
- * is <strong>time-driven</strong>: it registers a timer on every event and
- * emits a {@code "session_timeout"} row when the timer fires without a
- * subsequent event.
+ * <p>This PTF is <strong>time-driven</strong>: it registers a timer on every
+ * event and emits a {@code "session_timeout"} row when the timer fires
+ * without a subsequent event.
  *
  * <h3>Behaviour</h3>
  * <ol>
