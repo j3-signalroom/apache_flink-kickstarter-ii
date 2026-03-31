@@ -18,12 +18,12 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
 
 ---
 
-> JDWP is already enabled on the TaskManager, debug configurations for both VS Code and IntelliJ IDEA are in place, and port-forwarding is automated as a pre-launch task. Once your cluster is running and your UDF is deployed, use the **"Attach to Flink TaskManager"** debug configuration to attach to the remote JVM and hit your breakpoints.
+> JDWP is already enabled on the TaskManager, debug configurations for both VS Code and IntelliJ IDEA are in place, and port-forwarding is automated as a pre-launch task. Once your cluster is running and your UDF is deployed, use the **"Attach to Flink TaskManager (State-Driven)"** debug configuration to attach to the remote JVM and hit your breakpoints.
 >
-> **Note:** Make sure you select the **"Attach to Flink TaskManager"** configuration before launching the debugger. Starting a *launch* (rather than *attach*) configuration will attempt to run a local Java process, which fails because UDFs have no `main()` method.
+> **Note:** Make sure you select the **"Attach to Flink TaskManager (State-Driven)"** configuration before launching the debugger. Starting a *launch* (rather than *attach*) configuration will attempt to run a local Java process, which fails because UDFs have no `main()` method.
 >
-> - **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select **"Attach to Flink TaskManager"** from the dropdown, then press **F5**.
-> - **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select **"Attach to Flink TaskManager"**, then click **Debug** (⌃D / Shift+F9).
+> - **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select **"Attach to Flink TaskManager (State-Driven)"** from the dropdown, then press **F5**.
+> - **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select **"Attach to Flink TaskManager (State-Driven)"**, then click **Debug** (⌃D / Shift+F9).
 
 ## **1.0 Quick Start**
 
@@ -41,7 +41,7 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
     String eventType = input.getFieldAs("event_type");
     ```
 
-3. Select the **"Attach to Flink TaskManager"** debug configuration in your IDE:
+3. Select the **"Attach to Flink TaskManager (State-Driven)"** debug configuration in your IDE:
 
     - **VS Code:** Open **Run and Debug** (⇧⌘D) and choose it from the dropdown
     - **IntelliJ IDEA:** Choose it from the **Run/Debug Configurations** dropdown (top-right toolbar)
@@ -134,14 +134,14 @@ kubectl port-forward -n confluent <taskmanager-pod> 5005:5005
 
 ### **2.4 IDE Debug Configurations**
 
-Both IDEs ship pre-configured **"Attach to Flink TaskManager"** and **"Debug UDF Tests"** configurations. Each attach configuration wires the port-forward script as a pre-launch step so the entire flow is one click.
+Both IDEs ship a pre-configured **"Attach to Flink TaskManager (State-Driven)"** remote debug configuration. The attach configuration wires the port-forward script as a pre-launch step so the entire flow is one click.
 
 #### **2.4.1 VS Code (`.vscode/launch.json`)**
 
 ```json
 {
   "type": "java",
-  "name": "Attach to Flink TaskManager",
+  "name": "Attach to Flink TaskManager (State-Driven)",
   "request": "attach",
   "hostName": "localhost",
   "port": 5005,
@@ -159,8 +159,7 @@ IntelliJ run configurations are stored as XML and are automatically recognized w
 | Run Configuration | What it does |
 |---|---|
 | **Port Forward Flink TaskManager** | Shell Script config that runs `scripts/port-forward-taskmanager.sh` to `kubectl port-forward` port `5005` to the TaskManager pod |
-| **Attach to Flink TaskManager** | Remote JVM Debug config that attaches to `localhost:5005`. The port-forward config runs automatically as a "Before launch" task |
-| **Debug UDF Tests** | Gradle `test` task scoped to `examples/ptf_udf_state_driven/java` |
+| **Attach to Flink TaskManager (State-Driven)** | Remote JVM Debug config that attaches to `localhost:5005`. The port-forward config runs automatically as a "Before launch" task |
 
 > **Note:** The Shell Script run configuration requires the **Shell Script** plugin, which is bundled with IntelliJ IDEA 2020.2+.
 
