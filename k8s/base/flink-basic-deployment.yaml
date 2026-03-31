@@ -15,9 +15,9 @@ spec:
   flinkVersion: ${FLINK_VERSION}
   flinkConfiguration:
     taskmanager.numberOfTaskSlots: "2"
-    # Dev-friendly: low memory footprint for Minikube
-    jobmanager.memory.process.size: "1024m"
-    taskmanager.memory.process.size: "1024m"
+    # Dev-friendly: sized for Minikube
+    jobmanager.memory.process.size: "2048m"
+    taskmanager.memory.process.size: "2048m"
     # Remote debugging: JDWP agent on TaskManager (suspend=n so processing starts immediately)
     env.java.opts.taskmanager: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
     # Increase heartbeat timeout to avoid TaskManager death while paused at breakpoints
@@ -62,12 +62,12 @@ spec:
           emptyDir: {}
   jobManager:
     resource:
-      memory: "1024m"
+      memory: "2048m"
       cpu: 0.5
     replicas: 1
   taskManager:
     resource:
-      memory: "1024m"
+      memory: "2048m"
       cpu: 0.5
     replicas: 1
   # No `job:` section = session cluster mode.
