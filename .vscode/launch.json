@@ -3,19 +3,26 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Debug UDF Tests",
-            "request": "launch",
-            "mainClass": "",
-            "projectName": "app",
-            "cwd": "${workspaceFolder}/examples/ptf_udf_state_driven/java"
-        },
-        {
-            "type": "java",
-            "name": "Attach to Flink TaskManager",
+            "name": "Attach to Flink TaskManager (State-Driven)",
             "request": "attach",
             "hostName": "localhost",
             "port": 5005,
             "projectName": "app",
+            "sourcePaths": [
+                "${workspaceFolder}/examples/ptf_udf_state_driven/java/app/src/main/java"
+            ],
+            "preLaunchTask": "Port Forward Flink TaskManager"
+        },
+        {
+            "type": "java",
+            "name": "Attach to Flink TaskManager (Time-Driven)",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": 5005,
+            "projectName": "app",
+            "sourcePaths": [
+                "${workspaceFolder}/examples/ptf_udf_time_driven/java/app/src/main/java"
+            ],
             "preLaunchTask": "Port Forward Flink TaskManager"
         }
     ]
