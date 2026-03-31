@@ -457,36 +457,36 @@ kafka-ui-uninstall: ## Uninstall Kafka UI (safe to run even if not installed)
 # ------------------------------------------------------------------------------
 # Phase 9: Build & Deploy Flink JARs
 # ------------------------------------------------------------------------------
-.PHONY: build-ptf-udf
-build-ptf-udf: ## Build the ptf_udf fat JAR (requires Gradle)
-	@echo "→ Building ptf_udf JAR..."
-	cd examples/ptf_udf/java && ./gradlew clean shadowJar -q
-	@echo "✔ JAR built: $$(ls examples/ptf_udf/java/app/build/libs/*.jar | head -1)"
+.PHONY: build-ptf-udf-state-driven
+build-ptf-udf-state-driven: ## Build the ptf_udf_state_driven fat JAR (requires Gradle)
+	@echo "→ Building ptf_udf_state_driven JAR..."
+	cd examples/ptf_udf_state_driven/java && ./gradlew clean shadowJar -q
+	@echo "✔ JAR built: $$(ls examples/ptf_udf_state_driven/java/app/build/libs/*.jar | head -1)"
 
-.PHONY: deploy-cc-ptf-udf
-deploy-cc-ptf-udf: build-ptf-udf ## Build and deploy the ptf_udf JAR to Confluent Cloud (ACTION, CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
-	@echo "→ Deploying ptf_udf to Confluent Cloud..."
-	$(mkfile_dir)scripts/deploy-cc-ptf-udf.sh create --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
+.PHONY: deploy-cc-ptf-udf-state-driven
+deploy-cc-ptf-udf-state-driven: build-ptf-udf-state-driven ## Build and deploy the ptf_udf_state_driven JAR to Confluent Cloud (ACTION, CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
+	@echo "→ Deploying ptf_udf_state_driven to Confluent Cloud..."
+	$(mkfile_dir)scripts/deploy-cc-ptf-udf-state-driven.sh create --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
 	@echo "✔ Deployment complete."
 
-.PHONY: teardown-cc-ptf-udf
-teardown-cc-ptf-udf: ## Tear down the ptf_udf deployment from Confluent Cloud (CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
-	@echo "→ Tearing down ptf_udf deployment from Confluent Cloud..."
-	$(mkfile_dir)scripts/deploy-cc-ptf-udf.sh destroy --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
+.PHONY: teardown-cc-ptf-udf-state-driven
+teardown-cc-ptf-udf-state-driven: ## Tear down the ptf_udf_state_driven deployment from Confluent Cloud (CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
+	@echo "→ Tearing down ptf_udf_state_driven deployment from Confluent Cloud..."
+	$(mkfile_dir)scripts/deploy-cc-ptf-udf-state-driven.sh destroy --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
 	@echo "✔ Teardown complete."
 
-.PHONY: deploy-cp-ptf-udf
-deploy-cp-ptf-udf: build-ptf-udf ## Build UDF JAR, copy to Flink pods, and execute SQL via Flink SQL Client
-	@echo "→ Deploying ptf_udf via Flink SQL..."
-	$(mkfile_dir)scripts/deploy-cp-ptf-udf.sh create \
+.PHONY: deploy-cp-ptf-udf-state-driven
+deploy-cp-ptf-udf-state-driven: build-ptf-udf-state-driven ## Build UDF JAR, copy to Flink pods, and execute SQL via Flink SQL Client
+	@echo "→ Deploying ptf_udf_state_driven via Flink SQL..."
+	$(mkfile_dir)scripts/deploy-cp-ptf-udf-state-driven.sh create \
 		--namespace="$(NAMESPACE)" \
 		--flink-cluster="$(FLINK_CLUSTER_NAME)"
 	@echo "✔ SQL statements executed."
 
-.PHONY: teardown-cp-ptf-udf
-teardown-cp-ptf-udf: ## Tear down the ptf_udf deployment
-	@echo "→ Tearing down ptf_udf..."
-	$(mkfile_dir)scripts/deploy-cp-ptf-udf.sh destroy \
+.PHONY: teardown-cp-ptf-udf-state-driven
+teardown-cp-ptf-udf-state-driven: ## Tear down the ptf_udf_state_driven deployment
+	@echo "→ Tearing down ptf_udf_state_driven..."
+	$(mkfile_dir)scripts/deploy-cp-ptf-udf-state-driven.sh destroy \
 		--namespace="$(NAMESPACE)" \
 		--flink-cluster="$(FLINK_CLUSTER_NAME)"
 	@echo "✔ Teardown complete."
@@ -497,6 +497,47 @@ produce-user-events-record: ## Produce one sample user events to the 'user_event
 		"echo '{\"user_id\":\"alice\",\"event_type\":\"login\",\"payload\":\"web\"}' \
 		| kafka-console-producer --bootstrap-server localhost:9071 --topic user_events"
 	@echo "→ Produce one sample user events to the 'user_events' topic"
+
+.PHONY: build-ptf-udf-time-driven
+build-ptf-udf-time-driven: ## Build the ptf_udf_time_driven fat JAR (requires Gradle)
+	@echo "→ Building ptf_udf_time_driven JAR..."
+	cd examples/ptf_udf_time_driven/java && ./gradlew clean shadowJar -q
+	@echo "✔ JAR built: $$(ls examples/ptf_udf_time_driven/java/app/build/libs/*.jar | head -1)"
+
+.PHONY: deploy-cc-ptf-udf-time-driven
+deploy-cc-ptf-udf-time-driven: build-ptf-udf-time-driven ## Build and deploy the ptf_udf_time_driven JAR to Confluent Cloud (CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
+	@echo "→ Deploying ptf_udf_time_driven to Confluent Cloud..."
+	$(mkfile_dir)scripts/deploy-cc-ptf-udf-time-driven.sh create --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
+	@echo "✔ Deployment complete."
+
+.PHONY: teardown-cc-ptf-udf-time-driven
+teardown-cc-ptf-udf-time-driven: ## Tear down the ptf_udf_time_driven deployment from Confluent Cloud (CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
+	@echo "→ Tearing down ptf_udf_time_driven deployment from Confluent Cloud..."
+	$(mkfile_dir)scripts/deploy-cc-ptf-udf-time-driven.sh destroy --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
+	@echo "✔ Teardown complete."
+
+.PHONY: deploy-cp-ptf-udf-time-driven
+deploy-cp-ptf-udf-time-driven: build-ptf-udf-time-driven ## Build time-driven UDF JAR, copy to Flink pods, and execute SQL via Flink SQL Client
+	@echo "→ Deploying ptf_udf_time_driven via Flink SQL..."
+	$(mkfile_dir)scripts/deploy-cp-ptf-udf-time-driven.sh create \
+		--namespace="$(NAMESPACE)" \
+		--flink-cluster="$(FLINK_CLUSTER_NAME)"
+	@echo "✔ SQL statements executed."
+
+.PHONY: teardown-cp-ptf-udf-time-driven
+teardown-cp-ptf-udf-time-driven: ## Tear down the ptf_udf_time_driven deployment
+	@echo "→ Tearing down ptf_udf_time_driven..."
+	$(mkfile_dir)scripts/deploy-cp-ptf-udf-time-driven.sh destroy \
+		--namespace="$(NAMESPACE)" \
+		--flink-cluster="$(FLINK_CLUSTER_NAME)"
+	@echo "✔ Teardown complete."
+
+.PHONY: produce-user-activity-record
+produce-user-activity-record: ## Produce one sample user activity event to the 'user_activity' topic using kafka-console-producer
+	@kubectl exec -it kafka-0 -n confluent -- bash -c \
+		"echo '{\"user_id\":\"alice\",\"event_type\":\"login\",\"payload\":\"web\",\"event_time\":\"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\"}' \
+		| kafka-console-producer --bootstrap-server localhost:9071 --topic user_activity"
+	@echo "→ Produced one sample user activity event to the 'user_activity' topic"
 
 
 # ------------------------------------------------------------------------------

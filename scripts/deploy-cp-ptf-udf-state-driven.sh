@@ -2,7 +2,7 @@
 
 #
 # *** Script Syntax ***
-# ./deploy-cp-ptf-udf.sh <create | destroy> [--namespace=confluent]
+# ./deploy-cp-ptf-udf-state-driven.sh <create | destroy> [--namespace=confluent]
 #                                           [--flink-cluster=flink-basic]
 #
 #
@@ -35,7 +35,7 @@ print_step() {
 # Resolve directories relative to script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-JAR_PATH="$PROJECT_DIR/examples/ptf_udf/java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
+JAR_PATH="$PROJECT_DIR/examples/ptf_udf_state_driven/java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
 JAR_POD_PATH="/opt/flink/usrlib/user-event-enricher.jar"
 
 # Defaults (overridable via arguments)
@@ -143,7 +143,7 @@ copy_udf_jar_to_flink_pods() {
 
     if [ ! -f "$JAR_PATH" ]; then
         print_error "JAR not found at: ${JAR_PATH}"
-        print_error "Run 'make build-ptf-udf' first."
+        print_error "Run 'make build-ptf-udf-state-driven' first."
         exit 1
     fi
 

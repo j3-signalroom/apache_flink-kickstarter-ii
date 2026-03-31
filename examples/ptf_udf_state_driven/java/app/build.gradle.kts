@@ -49,7 +49,4 @@ tasks.shadowJar {
     archiveClassifier.set("")
     mergeServiceFiles()
     exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
-    manifest {
-        attributes("Main-Class" to "ptf.FlinkJob")
-    }
 }
