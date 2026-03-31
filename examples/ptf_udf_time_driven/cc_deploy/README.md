@@ -59,19 +59,19 @@ On Confluent Cloud, UDF JARs are uploaded as **Flink artifacts** via the `conflu
 Terraform manages the SQL statements as `confluent_flink_statement` resources with explicit `depends_on` ordering:
 
 ```
-┌───────────────────────────────────────��─────────────────────────────┐
-│  Step 1:  DROP TABLE IF EXISTS user_activity            → OK        │
-│  Step 2:  CREATE TABLE user_activity (...)              → OK        │
-│           (includes event_time with watermark)                      │
-│  Step 3:  INSERT INTO user_activity VALUES (sample data) → submitted│
-│  Step 4:  DROP TABLE IF EXISTS timeout_events           → OK        │
-│  Step 5:  CREATE TABLE timeout_events (...)             → OK        │
-│  Step 6:  Upload UDF JAR as confluent_flink_artifact    → OK        │
-│  Step 7:  CREATE FUNCTION session_timeout_detector      → OK        │
-│           USING JAR 'confluent-artifact://...'                      │
-│  Step 8:  INSERT INTO timeout_events                    → submitted │
-│           SELECT ... FROM TABLE(session_timeout_detector())         │
-└─��─────────────────────────���────────────────────────────���────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│  Step 1:  DROP TABLE IF EXISTS user_activity            → OK         │
+│  Step 2:  CREATE TABLE user_activity (...)              → OK         │
+│           (includes event_time with watermark)                       │
+│  Step 3:  INSERT INTO user_activity VALUES (sample data) → submitted │
+│  Step 4:  DROP TABLE IF EXISTS timeout_events           → OK         │
+│  Step 5:  CREATE TABLE timeout_events (...)             → OK         │
+│  Step 6:  Upload UDF JAR as confluent_flink_artifact    → OK         │
+│  Step 7:  CREATE FUNCTION session_timeout_detector      → OK         │
+│           USING JAR 'confluent-artifact://...'                       │
+│  Step 8:  INSERT INTO timeout_events                    → submitted  │
+│           SELECT ... FROM TABLE(session_timeout_detector())          │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 Step 8 is a **long-running streaming job**. It runs continuously, reading from `user_activity` and writing timeout detection output to `timeout_events`.
