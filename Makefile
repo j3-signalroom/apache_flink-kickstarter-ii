@@ -458,34 +458,34 @@ kafka-ui-uninstall: ## Uninstall Kafka UI (safe to run even if not installed)
 # Phase 9: Build & Deploy Flink JARs
 # ------------------------------------------------------------------------------
 .PHONY: build-ptf-udf-state-driven
-build-ptf-udf-state-driven: ## Build the ptf_udf fat JAR (requires Gradle)
-	@echo "→ Building ptf_udf JAR..."
+build-ptf-udf-state-driven: ## Build the ptf_udf_state_driven fat JAR (requires Gradle)
+	@echo "→ Building ptf_udf_state_driven JAR..."
 	cd examples/ptf_udf_state_driven/java && ./gradlew clean shadowJar -q
 	@echo "✔ JAR built: $$(ls examples/ptf_udf_state_driven/java/app/build/libs/*.jar | head -1)"
 
 .PHONY: deploy-cc-ptf-udf-state-driven
-deploy-cc-ptf-udf-state-driven: build-ptf-udf-state-driven ## Build and deploy the ptf_udf JAR to Confluent Cloud (ACTION, CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
-	@echo "→ Deploying ptf_udf to Confluent Cloud..."
+deploy-cc-ptf-udf-state-driven: build-ptf-udf-state-driven ## Build and deploy the ptf_udf_state_driven JAR to Confluent Cloud (ACTION, CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
+	@echo "→ Deploying ptf_udf_state_driven to Confluent Cloud..."
 	$(mkfile_dir)scripts/deploy-cc-ptf-udf-state-driven.sh create --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
 	@echo "✔ Deployment complete."
 
 .PHONY: teardown-cc-ptf-udf-state-driven
-teardown-cc-ptf-udf-state-driven: ## Tear down the ptf_udf deployment from Confluent Cloud (CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
-	@echo "→ Tearing down ptf_udf deployment from Confluent Cloud..."
+teardown-cc-ptf-udf-state-driven: ## Tear down the ptf_udf_state_driven deployment from Confluent Cloud (CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
+	@echo "→ Tearing down ptf_udf_state_driven deployment from Confluent Cloud..."
 	$(mkfile_dir)scripts/deploy-cc-ptf-udf-state-driven.sh destroy --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
 	@echo "✔ Teardown complete."
 
 .PHONY: deploy-cp-ptf-udf-state-driven
 deploy-cp-ptf-udf-state-driven: build-ptf-udf-state-driven ## Build UDF JAR, copy to Flink pods, and execute SQL via Flink SQL Client
-	@echo "→ Deploying ptf_udf via Flink SQL..."
+	@echo "→ Deploying ptf_udf_state_driven via Flink SQL..."
 	$(mkfile_dir)scripts/deploy-cp-ptf-udf-state-driven.sh create \
 		--namespace="$(NAMESPACE)" \
 		--flink-cluster="$(FLINK_CLUSTER_NAME)"
 	@echo "✔ SQL statements executed."
 
 .PHONY: teardown-cp-ptf-udf-state-driven
-teardown-cp-ptf-udf-state-driven: ## Tear down the ptf_udf deployment
-	@echo "→ Tearing down ptf_udf..."
+teardown-cp-ptf-udf-state-driven: ## Tear down the ptf_udf_state_driven deployment
+	@echo "→ Tearing down ptf_udf_state_driven..."
 	$(mkfile_dir)scripts/deploy-cp-ptf-udf-state-driven.sh destroy \
 		--namespace="$(NAMESPACE)" \
 		--flink-cluster="$(FLINK_CLUSTER_NAME)"

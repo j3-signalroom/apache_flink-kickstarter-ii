@@ -18,6 +18,7 @@ import org.apache.flink.table.annotation.StateHint;
 import org.apache.flink.table.functions.ProcessTableFunction;
 import org.apache.flink.types.Row;
 
+
 /**
  * A {@link ProcessTableFunction} that detects user session timeouts using
  * event-time timers.
