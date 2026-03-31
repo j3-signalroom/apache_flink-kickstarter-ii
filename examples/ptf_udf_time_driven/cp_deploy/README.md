@@ -28,9 +28,9 @@
 | How SQL is submitted | `sql-client.sh -f` on the JobManager pod | `confluent_flink_statement` Terraform resources |
 | UDF JAR delivery | `kubectl exec` to Flink pods | `confluent_flink_artifact` (uploaded to CC) |
 | Entry point | `make deploy-cp-ptf-udf-time-driven` | `make deploy-cc-ptf-udf-time-driven` |
-| Requires code compilation | ✅  (Java + Gradle for UDF JAR) | ✅  (Java + Gradle for UDF JAR) |
+| Requires code compilation | Yes (Java + Gradle for UDF JAR) | Yes (Java + Gradle for UDF JAR) |
 | Statement lifecycle | Managed by Flink session cluster | Managed by Terraform state |
-| Same codebase for both? | ✅ (**same Java UDF code**, different Terraform vs SQL Client for deployment) | ✅ (**same Java UDF code**, different Terraform vs SQL Client for deployment) |
+| Same codebase for both? | Yes (**same Java UDF code**, different Terraform vs SQL Client for deployment) | Yes (**same Java UDF code**, different Terraform vs SQL Client for deployment) |
 
 ---
 
@@ -61,15 +61,15 @@ The script pre-creates Kafka topics, then executes all SQL in a single `sql-clie
 │                                                                      │
 │  Step 1:  DROP TABLE IF EXISTS user_activity            → OK         │
 │  Step 2:  CREATE TABLE user_activity (... WITH kafka)   → OK         │
-│           (includes event_time with watermark)                       ��
+│           (includes event_time with watermark)                       │
 │  Step 3:  INSERT INTO user_activity VALUES (sample data) → submitted │
-���  Step 4:  DROP TABLE IF EXISTS timeout_events           → OK         │
+│  Step 4:  DROP TABLE IF EXISTS timeout_events           → OK         │
 │  Step 5:  CREATE TABLE timeout_events (... WITH kafka)  → OK         │
 │  Step 6:  CREATE FUNCTION session_timeout_detector      → OK         │
 │           USING JAR '/opt/flink/usrlib/...'                          │
 │  Step 7:  INSERT INTO timeout_events                    → submitted  │
 │           SELECT ... FROM TABLE(session_timeout_detector())          │
-└─────��──────────────────────────────────��───────────────────────────���─┘
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 Step 7 is a **long-running streaming job**. It runs continuously, reading from `user_activity` and writing timeout detection output to `timeout_events`.
