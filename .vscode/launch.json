@@ -3,25 +3,25 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Attach to Flink TaskManager (State-Driven)",
+            "name": "Attach to Flink TaskManager (Row-Driven)",
             "request": "attach",
             "hostName": "localhost",
             "port": 5005,
             "projectName": "app",
             "sourcePaths": [
-                "${workspaceFolder}/examples/ptf_udf_state_driven/java/app/src/main/java"
+                "${workspaceFolder}/examples/ptf_udf_row_driven/java/app/src/main/java"
             ],
             "preLaunchTask": "Port Forward Flink TaskManager"
         },
         {
             "type": "java",
-            "name": "Attach to Flink TaskManager (Time-Driven)",
+            "name": "Attach to Flink TaskManager (Timer-Driven)",
             "request": "attach",
             "hostName": "localhost",
             "port": 5005,
             "projectName": "app",
             "sourcePaths": [
-                "${workspaceFolder}/examples/ptf_udf_time_driven/java/app/src/main/java"
+                "${workspaceFolder}/examples/ptf_udf_timer_driven/java/app/src/main/java"
             ],
             "preLaunchTask": "Port Forward Flink TaskManager"
         }
