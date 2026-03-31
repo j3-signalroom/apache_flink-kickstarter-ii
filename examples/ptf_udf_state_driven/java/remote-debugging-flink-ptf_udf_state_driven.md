@@ -1,4 +1,4 @@
-# Remote Debugging a Flink PTF UDF
+# Remote Debugging a State-Driven Flink PTF UDF
 
 Flink TaskManagers are JVM processes, so you can enable **Java remote debugging (JDWP)** and attach your IDE (VS Code or IntelliJ IDEA) to them.
 

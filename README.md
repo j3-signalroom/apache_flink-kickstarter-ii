@@ -24,6 +24,8 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
         - [**1.2.1 Required Tools**](#121-required-tools)
 + [**2.0 The Examples**](#20-the-examples)
 + [**3.0 Debugging a Flink UDF**](#30-debugging-a-flink-udf)
+    - [**3.1 Debugging the state-driven PTF (`UserEventEnricher`)**](#31-debugging-the-state-driven-ptf-usereventenricher)
+    - [**3.2 Debugging the time-driven PTF (`SessionTimeoutDetector`)**](#32-debugging-the-time-driven-ptf-sessiontimeoutdetector)
 + [**4.0 Resources**](#40-resources)
     - [**4.1 Confluent for Kubernetes (CfK)**](#41-confluent-for-kubernetes-cfk)
     - [**4.2 Confluent Platform for Apache Flink**](#42-confluent-platform-for-apache-flink)
@@ -147,13 +149,18 @@ graph TD
         KUI_UN["kafka-ui-uninstall"]
     end
 
-    %% ── Phase 9: Build & Deploy PTF UDF ─────────────────────────────────
-    subgraph P9["Phase 9 — Build & Deploy PTF UDF"]
-        BUILD_PTF["build-ptf-udf-state-driven\n./gradlew clean shadowJar"]
-        DEPLOY_CP_PTF["deploy-cp-ptf-udf-state-driven\ncopy JAR → Flink SQL Client"]
-        TEARDOWN_CP_PTF["teardown-cp-ptf-udf-state-driven"]
-        DEPLOY_CC_PTF["deploy-cc-ptf-udf-state-driven\nJAR → Confluent Cloud"]
-        TEARDOWN_CC_PTF["teardown-cc-ptf-udf-state-driven"]
+    %% ── Phase 9: Build & Deploy PTF UDFs ────────────────────────────────
+    subgraph P9["Phase 9 — Build & Deploy PTF UDFs"]
+        BUILD_PTF_SD["build-ptf-udf-state-driven\n./gradlew clean shadowJar"]
+        DEPLOY_CP_PTF_SD["deploy-cp-ptf-udf-state-driven\ncopy JAR → Flink SQL Client"]
+        TEARDOWN_CP_PTF_SD["teardown-cp-ptf-udf-state-driven"]
+        DEPLOY_CC_PTF_SD["deploy-cc-ptf-udf-state-driven\nJAR → Confluent Cloud"]
+        TEARDOWN_CC_PTF_SD["teardown-cc-ptf-udf-state-driven"]
+        BUILD_PTF_TD["build-ptf-udf-time-driven\n./gradlew clean shadowJar"]
+        DEPLOY_CP_PTF_TD["deploy-cp-ptf-udf-time-driven\ncopy JAR → Flink SQL Client"]
+        TEARDOWN_CP_PTF_TD["teardown-cp-ptf-udf-time-driven"]
+        DEPLOY_CC_PTF_TD["deploy-cc-ptf-udf-time-driven\nJAR → Confluent Cloud"]
+        TEARDOWN_CC_PTF_TD["teardown-cc-ptf-udf-time-driven"]
     end
 
     %% ── Manifests / Templates ───────────────────────────────────────────
@@ -184,10 +191,16 @@ graph TD
     FL_RBAC --> RBAC_MANIFEST
 
     %% ── make deploy-cp-ptf-udf-state-driven dependency chain ─────────────────────────
-    DEPLOY_CP_PTF --> BUILD_PTF
+    DEPLOY_CP_PTF_SD --> BUILD_PTF_SD
 
     %% ── make deploy-cc-ptf-udf-state-driven dependency chain ─────────────────────────
-    DEPLOY_CC_PTF --> BUILD_PTF
+    DEPLOY_CC_PTF_SD --> BUILD_PTF_SD
+
+    %% ── make deploy-cp-ptf-udf-time-driven dependency chain ──────────────────────────
+    DEPLOY_CP_PTF_TD --> BUILD_PTF_TD
+
+    %% ── make deploy-cc-ptf-udf-time-driven dependency chain ──────────────────────────
+    DEPLOY_CC_PTF_TD --> BUILD_PTF_TD
 
     %% ── make cp-down dependency chain ────────────────────────────────────
     CP_DOWN --> KUI_UN
@@ -222,9 +235,9 @@ graph TD
     classDef composite fill:#2a1a2e,stroke:#9b59b6,color:#dbb8ff
 
     class CP_UP,FLINK_UP,CP_DOWN,FLINK_DOWN,TEARDOWN entry
-    class CP_CORE_UP,DEPLOY_CP_PTF,DEPLOY_CC_PTF composite
-    class CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF install
-    class MK_STOP,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN,TEARDOWN_CP_PTF,TEARDOWN_CC_PTF remove
+    class CP_CORE_UP,DEPLOY_CP_PTF_SD,DEPLOY_CC_PTF_SD,DEPLOY_CP_PTF_TD,DEPLOY_CC_PTF_TD composite
+    class CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF_SD,BUILD_PTF_TD install
+    class MK_STOP,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN,TEARDOWN_CP_PTF_SD,TEARDOWN_CC_PTF_SD,TEARDOWN_CP_PTF_TD,TEARDOWN_CC_PTF_TD remove
     class C3,FL_UI,CMF_OPEN,KUI_OPEN ui
     class MANIFEST,RBAC_MANIFEST file
 ```
@@ -385,9 +398,16 @@ make cmf-proxy-inject
 
 | Target | Description |
 |--------|-------------|
-| `build-ptf-udf-state-driven` | Build the `ptf_udf` fat JAR (requires Gradle) |
-| `deploy-cp-ptf-udf-state-driven` | Build UDF JAR, copy to Flink pods, and submit SQL via CMF |
-| `teardown-cp-ptf-udf-state-driven` | Tear down the SQL-based ptf_udf deployment via CMF |
+| `build-ptf-udf-state-driven` | Build the state-driven PTF UDF fat JAR (requires Gradle) |
+| `deploy-cp-ptf-udf-state-driven` | Build state-driven UDF JAR, copy to Flink pods, and submit SQL via Flink SQL Client |
+| `teardown-cp-ptf-udf-state-driven` | Tear down the state-driven PTF UDF deployment |
+| `deploy-cc-ptf-udf-state-driven` | Build and deploy the state-driven UDF JAR to Confluent Cloud via Terraform |
+| `teardown-cc-ptf-udf-state-driven` | Tear down the state-driven PTF UDF deployment from Confluent Cloud |
+| `build-ptf-udf-time-driven` | Build the time-driven PTF UDF fat JAR (requires Gradle) |
+| `deploy-cp-ptf-udf-time-driven` | Build time-driven UDF JAR, copy to Flink pods, and submit SQL via Flink SQL Client |
+| `teardown-cp-ptf-udf-time-driven` | Tear down the time-driven PTF UDF deployment |
+| `deploy-cc-ptf-udf-time-driven` | Build and deploy the time-driven UDF JAR to Confluent Cloud via Terraform |
+| `teardown-cc-ptf-udf-time-driven` | Tear down the time-driven PTF UDF deployment from Confluent Cloud |
 </details>
 
 ---
@@ -473,6 +493,7 @@ Once the platform is up, head to the examples:
 | Example Type | Example Description | Confluent Platform + Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
 | PTF UDF-type (state-driven) | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_state_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_state_driven/cc_deploy/README.md)</p> |
+| PTF UDF-type (time-driven) | Walks through building, deploying, and testing a timer-driven **ProcessTableFunction** that detects user session timeouts using event-time timers. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_time_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_time_driven/cc_deploy/README.md)</p> |
 
 ---
 
@@ -480,9 +501,13 @@ Once the platform is up, head to the examples:
 
 You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink TaskManager and _hit breakpoints inside your UDF code_ — even though it's executing on a remote Java Virtual Machine (JVM) inside Kubernetes. The [`FlinkDeployment` Custom Resource (CR)](k8s/base/flink-basic-deployment.yaml) already has **Java Debug Wire Protocol (JDWP)** enabled, and debug configurations are pre-wired for both [VS Code](.vscode/launch.json) and [IntelliJ IDEA](.idea/runConfigurations/Attach_to_Flink_TaskManager.xml).
 
-**Prerequisites:** The Confluent Platform and Flink stack must be running (`make cp-up && make flink-up`), and your UDF must be deployed (`make deploy-cp-ptf-udf-state-driven`).
+**Prerequisites:** The Confluent Platform and Flink stack must be running (`make cp-up && make flink-up`), and your UDF must be deployed.
 
-1. **Set a breakpoint** — open [`UserEventEnricher.java`](examples/ptf_udf_state_driven/java/app/src/main/java/ptf/UserEventEnricher.java) and click in the gutter at the first line of the `eval()` method (line 92):
+### **3.1 Debugging the state-driven PTF (`UserEventEnricher`)**
+
+Deploy first: `make deploy-cp-ptf-udf-state-driven`
+
+1. **Set a breakpoint** — open [`UserEventEnricher.java`](examples/ptf_udf_state_driven/java/app/src/main/java/ptf/UserEventEnricher.java) and click in the gutter at the first line of the `eval()` method:
 
     ```java
     String eventType = input.getFieldAs("event_type");
@@ -501,7 +526,40 @@ You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink
 
 4. **Debug** — your IDE will pause at your breakpoint. You can inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
 
-> For the full deep-dive (how JDWP is configured, how port-forwarding works, important caveats), see [Remote Debugging a Flink PTF UDF](examples/ptf_udf_state_driven/java/remote-debugging-flink-ptf_udf.md).
+> For the full deep-dive, see [Remote Debugging a State-Driven Flink PTF UDF](examples/ptf_udf_state_driven/java/remote-debugging-flink-ptf_udf_state_driven.md).
+
+### **3.2 Debugging the time-driven PTF (`SessionTimeoutDetector`)**
+
+Deploy first: `make deploy-cp-ptf-udf-time-driven`
+
+1. **Set a breakpoint** — open [`SessionTimeoutDetector.java`](examples/ptf_udf_time_driven/java/app/src/main/java/ptf/SessionTimeoutDetector.java) and click in the gutter at the first line of the `eval()` method:
+
+    ```java
+    String eventType = input.getFieldAs("event_type");
+    ```
+
+    Or, to debug the timer callback, set a breakpoint at the first line of `onTimer()`:
+
+    ```java
+    collect(Row.of(
+    ```
+
+2. **Attach the debugger** — same as above, select the **"Attach to Flink TaskManager"** configuration.
+
+    - **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select the configuration from the dropdown, and press **F5**
+    - **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select the configuration, and click **Debug** (⌃D / Shift+F9)
+
+3. **Send a test event** — produce a single JSON message to the `user_activity` topic to trigger the breakpoint:
+
+    ```bash
+    make produce-user-activity-record
+    ```
+
+4. **Debug** — your IDE will pause at your breakpoint. Inspect `input`, `state`, and local variables, step through the timer registration logic, and watch `state.eventCount` and `state.lastEventType` update as you step over lines.
+
+> **Timer debugging tip:** Timers fire when the watermark advances past the timer's registered time. While paused at a breakpoint, watermarks don't advance, so `onTimer()` won't fire until you resume execution and let the watermark progress.
+
+> For the full deep-dive, see [Remote Debugging a Time-Driven Flink PTF UDF](examples/ptf_udf_time_driven/java/remote-debugging-flink-ptf_udf_time_driven.md).
 
 ---
 ## **4.0 Resources**

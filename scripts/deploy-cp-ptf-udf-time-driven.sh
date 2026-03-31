@@ -35,8 +35,8 @@ print_step() {
 # Resolve directories relative to script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-JAR_PATH="$PROJECT_DIR/examples/ptf_udf_time_driven/java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
-JAR_POD_PATH="/opt/flink/usrlib/session-timeout-detector.jar"
+TIME_JAR_PATH="$PROJECT_DIR/examples/ptf_udf_time_driven/java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
+TIME_JAR_POD_PATH="/opt/flink/usrlib/session-timeout-detector.jar"
 
 # Defaults (overridable via arguments)
 NAMESPACE="confluent"
@@ -141,8 +141,8 @@ sys.exit(0)
 copy_udf_jar_to_flink_pods() {
     print_step "Copying UDF JAR to Flink pods..."
 
-    if [ ! -f "$JAR_PATH" ]; then
-        print_error "JAR not found at: ${JAR_PATH}"
+    if [ ! -f "$TIME_JAR_PATH" ]; then
+        print_error "Time-driven JAR not found at: ${TIME_JAR_PATH}"
         print_error "Run 'make build-ptf-udf-time-driven' first."
         exit 1
     fi
@@ -156,9 +156,9 @@ copy_udf_jar_to_flink_pods() {
     for pod in $all_pods; do
         print_info "Copying UDF JAR to pod: ${pod}"
         local dest_dir
-        dest_dir=$(dirname "$JAR_POD_PATH")
+        dest_dir=$(dirname "$TIME_JAR_POD_PATH")
         kubectl exec -n "$NAMESPACE" "$pod" -- mkdir -p "$dest_dir"
-        cat "$JAR_PATH" | kubectl exec -n "$NAMESPACE" -i "$pod" -- sh -c "cat > ${JAR_POD_PATH}"
+        cat "$TIME_JAR_PATH" | kubectl exec -n "$NAMESPACE" -i "$pod" -- sh -c "cat > ${TIME_JAR_POD_PATH}"
     done
 
     print_info "UDF JAR copied to all Flink pods."
@@ -177,7 +177,7 @@ do_create() {
 
     # Step 1: Pre-create Kafka topics (CFK broker has auto.create.topics.enable=false)
     print_step "Creating Kafka topics..."
-    for topic in user_events enriched_events user_activity timeout_events; do
+    for topic in user_activity timeout_events; do
         kubectl exec -n "$NAMESPACE" kafka-0 -- \
             kafka-topics --bootstrap-server kafka:9071 \
                          --create --if-not-exists \
@@ -191,78 +191,12 @@ do_create() {
     # Step 2: Run all SQL in a single sql-client session so that tables
     #         created by earlier statements are visible to later ones
     #         (the default_catalog is in-memory and per-session).
-    run_sql "Deploy PTF UDF pipelines (state-driven + time-driven)" \
+    run_sql "Deploy time-driven PTF UDF pipeline (SessionTimeoutDetector)" \
         "-- ═══════════════════════════════════════════════════════════════════
--- State-driven PTF: UserEventEnricher (row-driven session tracking)
--- ═══════════════════════════════════════════════════════════════════
-
--- Source table (state-driven)
-DROP TABLE IF EXISTS user_events;
-
-CREATE TABLE user_events (
-    user_id    STRING,
-    event_type STRING,
-    payload    STRING
-) WITH (
-    'connector'                    = 'kafka',
-    'topic'                        = 'user_events',
-    'properties.bootstrap.servers' = 'kafka:9071',
-    'format'                       = 'json',
-    'scan.startup.mode'            = 'earliest-offset'
-);
-
--- Sample data (state-driven)
-INSERT INTO user_events (user_id, event_type, payload)
-VALUES
-    ('alice',   'login',    'web'),
-    ('bob',     'click',    'button-checkout'),
-    ('alice',   'purchase', 'order-1234'),
-    ('charlie', 'login',    'mobile'),
-    ('bob',     'logout',   'session-end'),
-    ('alice',   'click',    'button-settings');
-
--- Sink table (state-driven)
-DROP TABLE IF EXISTS enriched_events;
-
-CREATE TABLE enriched_events (
-    user_id     STRING,
-    event_type  STRING,
-    payload     STRING,
-    session_id  BIGINT,
-    event_count BIGINT,
-    last_event  STRING
-) WITH (
-    'connector'                    = 'kafka',
-    'topic'                        = 'enriched_events',
-    'properties.bootstrap.servers' = 'kafka:9071',
-    'format'                       = 'json'
-);
-
--- Register the state-driven UDF
-CREATE FUNCTION IF NOT EXISTS user_event_enricher
-    AS 'ptf.UserEventEnricher'
-    USING JAR 'file://${JAR_POD_PATH}';
-
--- Start the state-driven enrichment pipeline
-INSERT INTO enriched_events
-SELECT
-    user_id,
-    event_type,
-    payload,
-    session_id,
-    event_count,
-    last_event
-FROM TABLE(
-    user_event_enricher(
-        input => TABLE user_events PARTITION BY user_id
-    )
-);
-
--- ═══════════════════════════════════════════════════════════════════
 -- Time-driven PTF: SessionTimeoutDetector (timer-based inactivity)
 -- ═══════════════════════════════════════════════════════════════════
 
--- Source table with event-time watermark (time-driven)
+-- Source table with event-time watermark
 DROP TABLE IF EXISTS user_activity;
 
 CREATE TABLE user_activity (
@@ -279,7 +213,7 @@ CREATE TABLE user_activity (
     'scan.startup.mode'            = 'earliest-offset'
 );
 
--- Sample data with event timestamps (time-driven)
+-- Sample data with event timestamps
 INSERT INTO user_activity (user_id, event_type, payload, event_time)
 VALUES
     ('alice',   'login',    'web',             TO_TIMESTAMP_LTZ(1000, 3)),
@@ -289,7 +223,7 @@ VALUES
     ('alice',   'purchase', 'order-42',        TO_TIMESTAMP_LTZ(120000, 3)),
     ('bob',     'logout',   'session-end',     TO_TIMESTAMP_LTZ(180000, 3));
 
--- Sink table (time-driven)
+-- Sink table
 DROP TABLE IF EXISTS timeout_events;
 
 CREATE TABLE timeout_events (
@@ -308,7 +242,7 @@ CREATE TABLE timeout_events (
 -- Register the time-driven UDF
 CREATE FUNCTION IF NOT EXISTS session_timeout_detector
     AS 'ptf.SessionTimeoutDetector'
-    USING JAR 'file://${JAR_POD_PATH}';
+    USING JAR 'file://${TIME_JAR_POD_PATH}';
 
 -- Start the time-driven timeout detection pipeline
 INSERT INTO timeout_events
@@ -372,11 +306,8 @@ except:
     fi
 
     # Drop functions and tables in a single session
-    run_sql "Drop UDFs, tables" \
-        "DROP FUNCTION IF EXISTS user_event_enricher;
-DROP FUNCTION IF EXISTS session_timeout_detector;
-DROP TABLE IF EXISTS enriched_events;
-DROP TABLE IF EXISTS user_events;
+    run_sql "Drop UDF and tables" \
+        "DROP FUNCTION IF EXISTS session_timeout_detector;
 DROP TABLE IF EXISTS timeout_events;
 DROP TABLE IF EXISTS user_activity;"
 
