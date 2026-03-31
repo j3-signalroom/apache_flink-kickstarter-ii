@@ -1,4 +1,4 @@
-# Remote Debugging a Flink PTF UDF
+# Remote Debugging a State-Driven Flink PTF UDF
 
 Flink TaskManagers are JVM processes, so you can enable **Java remote debugging (JDWP)** and attach your IDE (VS Code or IntelliJ IDEA) to them.
 
@@ -32,7 +32,7 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
     ```bash
     make cp-up               # Confluent Platform + Kafka UI
     make flink-up            # Flink Operator + CMF + Flink session cluster
-    make deploy-cp-ptf-udf   # Build UDF JAR, copy to Flink pods, submit SQL
+    make deploy-cp-ptf-udf-state-driven   # Build UDF JAR, copy to Flink pods, submit SQL
     ```
 
 2. **Set a breakpoint** in your UDF — open `UserEventEnricher.java` and click in the gutter at the first line of the `eval()` method:
@@ -150,7 +150,7 @@ Both IDEs ship pre-configured **"Attach to Flink TaskManager"** and **"Debug UDF
 }
 ```
 
-The `projectName` is `"app"` because that is the Gradle subproject name defined in `examples/ptf_udf/java/settings.gradle.kts`. This tells the debugger which classpath and source roots to use for resolving breakpoints.
+The `projectName` is `"app"` because that is the Gradle subproject name defined in `examples/ptf_udf_state_driven/java/settings.gradle.kts`. This tells the debugger which classpath and source roots to use for resolving breakpoints.
 
 #### **2.4.2 IntelliJ IDEA (`.idea/runConfigurations/`)**
 
@@ -160,13 +160,13 @@ IntelliJ run configurations are stored as XML and are automatically recognized w
 |---|---|
 | **Port Forward Flink TaskManager** | Shell Script config that runs `scripts/port-forward-taskmanager.sh` to `kubectl port-forward` port `5005` to the TaskManager pod |
 | **Attach to Flink TaskManager** | Remote JVM Debug config that attaches to `localhost:5005`. The port-forward config runs automatically as a "Before launch" task |
-| **Debug UDF Tests** | Gradle `test` task scoped to `examples/ptf_udf/java` |
+| **Debug UDF Tests** | Gradle `test` task scoped to `examples/ptf_udf_state_driven/java` |
 
 > **Note:** The Shell Script run configuration requires the **Shell Script** plugin, which is bundled with IntelliJ IDEA 2020.2+.
 
 ## **3.0 Important Caveats**
 
-- **TaskManager must be running** — the TaskManager pod only exists while a Flink job is active. Deploy your UDF first (`make deploy-cp-ptf-udf`) before attaching the debugger
+- **TaskManager must be running** — the TaskManager pod only exists while a Flink job is active. Deploy your UDF first (`make deploy-cp-ptf-udf-state-driven`) before attaching the debugger
 - **Source must match** — the local code you have open in your IDE must match the JAR deployed to the cluster, or breakpoints won't align
 - **Timeouts** — pausing too long at a breakpoint can trigger Flink's heartbeat timeout, causing the TaskManager to be considered dead. The `heartbeat.timeout` is already set to `5 minutes` in the Flink config
 - **Single TaskManager** — if you have multiple TaskManagers, you're only attached to one. Debug with `parallelism=1` to keep things simple
