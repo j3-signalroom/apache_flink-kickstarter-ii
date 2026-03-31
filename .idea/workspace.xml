@@ -62,7 +62,7 @@
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/examples/ptf_udf_state_driven/java/app/src/main/java/ptf/UserEventEnricher.java</url>
+          <url>file://$PROJECT_DIR$/examples/ptf_udf_row_driven/java/app/src/main/java/ptf/UserEventEnricher.java</url>
           <line>101</line>
           <option name="timeStamp" value="1" />
         </line-breakpoint>
