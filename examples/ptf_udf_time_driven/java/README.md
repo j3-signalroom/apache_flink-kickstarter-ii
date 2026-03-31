@@ -106,9 +106,9 @@ timed_out    BOOLEAN   ─ false for regular events, true for timeout events
 Kafka (user_activity)
         │
         ▼
-  ┌──────────────┐
+  ┌───────────────┐
   │ user_activity │   Flink SQL source table (JSON / event-time watermark)
-  └──────┬───────┘
+  └──────┬────────┘
          │
          ▼
   SessionTimeoutDetector(
@@ -121,9 +121,9 @@ Kafka (user_activity)
          │    • timer fires → emit "session_timeout" row, clear state
          │
          ▼
-  ┌─────────────────┐
-  │ timeout_events   │   Flink SQL sink table → Kafka (timeout_events)
-  └─────────────────┘
+  ┌────────────────┐
+  │ timeout_events │   Flink SQL sink table → Kafka (timeout_events)
+  └────────────────┘
 ```
 
 **Example timeline for user `alice`:**
