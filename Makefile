@@ -49,6 +49,11 @@ SHELL               := /bin/bash
 
 .DEFAULT_GOAL       := help
 
+# Detect the running platform for package manager selection
+UNAME_S            := $(shell uname -s)
+IS_DARWIN          := $(filter Darwin,$(UNAME_S))
+IS_LINUX           := $(filter Linux,$(UNAME_S))
+
 # Directory of the current Makefile
 mkfile_dir         := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
@@ -65,14 +70,29 @@ help: ## Show this help message
 	@echo ""
 
 # ------------------------------------------------------------------------------
-# Phase 1: Prerequisites (macOS)
+# Phase 1: Prerequisites (macOS or Linux)
 # ------------------------------------------------------------------------------
 .PHONY: install-prereqs
-install-prereqs: ## Install docker, kubectl, minikube, helm, and gradle via Homebrew (macOS)
+install-prereqs: ## Install docker, kubectl, minikube, helm, and gradle via Homebrew (macOS) or apt-get (Linux)
 	@echo "→ Installing prerequisites..."
-	@(test -d /Applications/Docker.app || test -f /usr/local/bin/kubectl.docker) || brew install --cask docker
-	brew install kubernetes-cli minikube helm gettext gradle
-	@echo "✔ Prerequisites installed. Launch Docker Desktop before running 'make minikube-start'."
+	@if [ "$(IS_DARWIN)" = "Darwin" ]; then \
+		(test -d /Applications/Docker.app || test -f /usr/local/bin/kubectl.docker) || brew install --cask docker; \
+		brew install kubernetes-cli minikube helm gettext gradle; \
+		echo "✔ Prerequisites installed. Launch Docker Desktop before running 'make minikube-start'."; \
+	elif [ "$(IS_LINUX)" = "Linux" ]; then \
+		command -v apt-get >/dev/null 2>&1 || { echo "✘ apt-get not found. Install prerequisites manually for your Linux distribution."; exit 1; }; \
+		apt-get update; \
+		apt-get install -y ca-certificates curl gnupg lsb-release docker.io gettext gradle; \
+		KUBECTL_VERSION=$$(curl -L -s https://dl.k8s.io/release/stable.txt); \
+		curl -LO "https://dl.k8s.io/release/$$KUBECTL_VERSION/bin/linux/amd64/kubectl"; \
+		install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl; \
+		curl -Lo /tmp/minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64; \
+		install -o root -g root -m 0755 /tmp/minikube /usr/local/bin/minikube; \
+		curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash; \
+		echo "✔ Prerequisites installed. Ensure Docker is running before running 'make minikube-start'."; \
+	else \
+		echo "✘ Unsupported OS: $(UNAME_S). Install prerequisites manually."; exit 1; \
+	fi
 	
 .PHONY: check-prereqs
 check-prereqs: ## Verify required tools are available
