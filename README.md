@@ -23,9 +23,13 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
     - [**1.2 Confluent Cloud Setup (early access example)**](#12-confluent-cloud-setup-early-access-example)
         - [**1.2.1 Required Tools**](#121-required-tools)
 + [**2.0 The Examples**](#20-the-examples)
-+ [**3.0 Debugging a Flink UDF**](#30-debugging-a-flink-udf)
-    - [**3.1 Debugging the row-driven PTF (`UserEventEnricher`)**](#31-debugging-the-row-driven-ptf-usereventenricher)
-    - [**3.2 Debugging the timer-driven PTF (`SessionTimeoutDetector`)**](#32-debugging-the-timer-driven-ptf-sessiontimeoutdetector)
+    - [**2.1 Apache Flink User-Defined Functions (UDF)**](#21-apache-flink-user-defined-functions-udf)
+        - [**2.1.1 Process Table Functions (PTF)**](#211-process-table-functions-ptf)
++ [**3.0 Debugging the Examples**](#30-debugging-the-examples)
+    - [**3.1 Apache Flink UDF Debugging with Java Debug Wire Protocol (JDWP)**](#31-apache-flink-udf-debugging-with-java-debug-wire-protocol-jdwp)
+        - [**3.1.1 Process Table Functions (PTF)**](#311-process-table-functions-ptf)
+            - [**3.1.1.1 Debugging the row-driven PTF (`UserEventEnricher`)**](#3111-debugging-the-row-driven-ptf-usereventenricher)
+            - [**3.1.1.2 Debugging the timer-driven PTF (`SessionTimeoutDetector`)**](#3112-debugging-the-timer-driven-ptf-sessiontimeoutdetector)
 + [**4.0 Resources**](#40-resources)
     - [**4.1 Confluent for Kubernetes (CfK)**](#41-confluent-for-kubernetes-cfk)
     - [**4.2 Confluent Platform for Apache Flink**](#42-confluent-platform-for-apache-flink)
@@ -490,6 +494,10 @@ Make sure the following tools are installed on your local machine:
 
 Once the platform is up, head to the examples:
 
+### **2.1 Apache Flink User-Defined Functions (UDF)**
+
+#### **2.1.1 Process Table Functions (PTF)**
+
 | Example Type | Example Description | Confluent Platform + Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
 | PTF UDF-type (row-driven) | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
@@ -497,13 +505,17 @@ Once the platform is up, head to the examples:
 
 ---
 
-## **3.0 Debugging a Flink UDF**
+## **3.0 Debugging the Examples**
+
+### **3.1 Apache Flink UDF Debugging with Java Debug Wire Protocol (JDWP)**
 
 You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink TaskManager and _hit breakpoints inside your UDF code_ — even though it's executing on a remote Java Virtual Machine (JVM) inside Kubernetes. The [`FlinkDeployment` Custom Resource (CR)](k8s/base/flink-basic-deployment.yaml) already has **Java Debug Wire Protocol (JDWP)** enabled, and debug configurations are pre-wired for both [VS Code](.vscode/launch.json) and [IntelliJ IDEA](.idea/runConfigurations/).
 
 **Prerequisites:** The Confluent Platform and Flink stack must be running (`make cp-up && make flink-up`), and your UDF must be deployed.
 
-### **3.1 Debugging the row-driven PTF (`UserEventEnricher`)**
+#### **3.1.1 Process Table Functions (PTF)**
+
+##### **3.1.1.1 Debugging the row-driven PTF (`UserEventEnricher`)**
 
 Deploy first: `make deploy-cp-ptf-udf-row-driven`
 
@@ -528,7 +540,7 @@ Deploy first: `make deploy-cp-ptf-udf-row-driven`
 
 > For the full deep-dive, see [Remote Debugging a Row-Driven Flink PTF UDF](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md).
 
-### **3.2 Debugging the timer-driven PTF (`SessionTimeoutDetector`)**
+##### **3.1.1.2 Debugging the timer-driven PTF (`SessionTimeoutDetector`)**
 
 Deploy first: `make deploy-cp-ptf-udf-timer-driven`
 
@@ -562,6 +574,7 @@ Deploy first: `make deploy-cp-ptf-udf-timer-driven`
 > For the full deep-dive, see [Remote Debugging a Timer-Driven Flink PTF UDF](examples/ptf_udf_timer_driven/java/remote-debugging-flink-ptf_udf_timer_driven.md).
 
 ---
+
 ## **4.0 Resources**
 
 ### **4.1 Confluent for Kubernetes (CfK)**
