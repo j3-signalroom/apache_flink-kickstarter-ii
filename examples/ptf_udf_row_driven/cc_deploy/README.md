@@ -1,4 +1,4 @@
-# Confluent Cloud Terraform Deployment ─ User Event Enricher PTF UDF
+# Confluent Cloud Terraform Deployment ─ User Event Enricher PTF UDF (early access example)
 
 > This example deploys the **User Event Enricher** PTF UDF (source in [examples/ptf_udf_row_driven/java/](../java/)) to **Confluent Cloud** using Terraform. All infrastructure (environment, Kafka cluster, Flink compute pool, service accounts, API keys) and Flink SQL statements are declared as Terraform resources.
 
