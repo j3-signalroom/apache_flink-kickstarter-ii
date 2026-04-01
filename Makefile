@@ -70,7 +70,7 @@ help: ## Show this help message
 	@echo ""
 
 # ------------------------------------------------------------------------------
-# Phase 1: Prerequisites (macOS)
+# Phase 1: Prerequisites (macOS or Linux)
 # ------------------------------------------------------------------------------
 .PHONY: install-prereqs
 install-prereqs: ## Install docker, kubectl, minikube, helm, and gradle via Homebrew (macOS) or apt-get (Linux)
