@@ -49,13 +49,13 @@ A Makefile-driven quickstart that deploys a full local streaming stack on Miniku
 - **Kafka UI** ([Provectus](https://provectus.com/)) for cluster inspection
 
 #### **1.1.1 Required Tools**
-macOS with Homebrew. To install all required tools in one step:
+macOS with Homebrew or Linux with apt-get. To install all required tools in one step:
 
 ```bash
 make install-prereqs
 ```
 
-This installs `kubernetes-cli`, `minikube`, `helm`, `gettext`, and `gradle` via Homebrew. Once complete, **launch Docker Desktop** before proceeding.
+This installs `kubernetes-cli`, `minikube`, `helm`, `gettext`, and `gradle` via Homebrew (macOS) or apt-get (Linux). Once complete, **launch Docker Desktop** before proceeding.
 
 To verify all tools are present without installing:
 
