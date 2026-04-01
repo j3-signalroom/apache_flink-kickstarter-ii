@@ -21,14 +21,33 @@
 #   9. Flink JAR build (Gradle shadow JAR) and REST API job submission
 # ==============================================================================
 
+# To setup from scratch on a new Vultr VM, run the following commands in order:
+# make install-prereqs   # installs docker, kubectl, minikube, helm
+# make cp-up             # Minikube → CFK operator → CP → Kafka UI
+# make flink-up          # cert-manager → Flink operator → CMF → session cluster
+
+# Once everything is up, you can access the UIs:
+# http://localhost:8080	Kafka UI
+# http://localhost:9021	Control Center
+# http://localhost:8081	Flink UI
+
 CONFLUENT_MANIFEST  ?= k8s/base/confluent-platform-c3++.yaml
 NAMESPACE           ?= confluent
 MINIKUBE_CPUS       ?= 6
 MINIKUBE_MEM        ?= 20480
 MINIKUBE_DISK       ?= 50g
 
+# Detect the Minikube node architecture (fallback to host architecture if kubectl is unavailable).
+MINIKUBE_NODE_ARCH  := $(shell kubectl get node -o jsonpath='{.items[0].status.nodeInfo.architecture}' 2>/dev/null || uname -m)
+ifeq ($(MINIKUBE_NODE_ARCH),x86_64)
+MINIKUBE_NODE_ARCH := amd64
+endif
+ifeq ($(MINIKUBE_NODE_ARCH),aarch64)
+MINIKUBE_NODE_ARCH := arm64
+endif
+
 # CMF manages Flink via confluentinc/cp-flink images — not the open-source flink image
-FLINK_IMAGE         ?= confluentinc/cp-flink:2.1.1-cp1-java21-arm64
+FLINK_IMAGE         ?= confluentinc/cp-flink:2.1.1-cp1-java21$(if $(filter arm64,$(MINIKUBE_NODE_ARCH)),-arm64,)
 FLINK_OPERATOR_VER  ?= 1.130.0
 FLINK_VERSION       ?= v2_1
 FLINK_CLUSTER_NAME  ?= flink-basic
@@ -83,10 +102,11 @@ install-prereqs: ## Install docker, kubectl, minikube, helm, and gradle via Home
 		command -v apt-get >/dev/null 2>&1 || { echo "✘ apt-get not found. Install prerequisites manually for your Linux distribution."; exit 1; }; \
 		apt-get update; \
 		apt-get install -y ca-certificates curl gnupg lsb-release docker.io gettext gradle; \
+		HOST_ARCH=$$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'); \
 		KUBECTL_VERSION=$$(curl -L -s https://dl.k8s.io/release/stable.txt); \
-		curl -LO "https://dl.k8s.io/release/$$KUBECTL_VERSION/bin/linux/amd64/kubectl"; \
+		curl -LO "https://dl.k8s.io/release/$$KUBECTL_VERSION/bin/linux/$$HOST_ARCH/kubectl"; \
 		install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl; \
-		curl -Lo /tmp/minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64; \
+		curl -Lo /tmp/minikube "https://storage.googleapis.com/minikube/releases/latest/minikube-linux-$$HOST_ARCH"; \
 		install -o root -g root -m 0755 /tmp/minikube /usr/local/bin/minikube; \
 		curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash; \
 		echo "✔ Prerequisites installed. Ensure Docker is running before running 'make minikube-start'."; \
@@ -109,8 +129,22 @@ check-prereqs: ## Verify required tools are available
 .PHONY: minikube-start
 minikube-start: ## Start Minikube with resources required for Confluent Platform + Flink
 	@echo "→ Starting Minikube (cpus=$(MINIKUBE_CPUS), memory=$(MINIKUBE_MEM), disk=$(MINIKUBE_DISK))..."
+	@MINIKUBE_FORCE=""
+	@if [ "$$EUID" = "0" ]; then \
+		echo "⚠ Minikube Docker driver should not be used as root."; \
+		if [ -t 1 ]; then \
+			read -p "Continue with --force anyway? [y/N]: " answer; \
+			case "$$answer" in \
+				y|Y|yes|YES|Yes) MINIKUBE_FORCE="--force" ;; \
+			*) echo "Aborting. Run as a non-root user or use 'minikube start --driver=none' instead."; exit 1 ;; \
+			esac; \
+		else \
+			echo "Non-interactive shell detected; cannot prompt. Run as a non-root user or use 'minikube start --driver=none' instead."; exit 1; \
+		fi; \
+	fi; \
 	minikube start \
 		--driver=docker \
+		$$MINIKUBE_FORCE \
 		--cpus=$(MINIKUBE_CPUS) \
 		--memory=$(MINIKUBE_MEM) \
 		--disk-size=$(MINIKUBE_DISK)
