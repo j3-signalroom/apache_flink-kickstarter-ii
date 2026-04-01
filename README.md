@@ -20,7 +20,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
         - [**1.1.6 `Makefile` Individual Target Reference**](#116-makefile-individual-target-reference)
         - [**1.1.7 `Makefile` Target Configuration Reference**](#1170-makefile-target-configuration-reference)
         - [**1.1.8 `Makefile` Target Teardown**](#118-makefile-target-teardown)
-    - [**1.2 Confluent Cloud Setup (early access example)**](#12-confluent-cloud-setup-early-access-example)
+    - [**1.2 Confluent Cloud Setup**](#12-confluent-cloud-setup)
         - [**1.2.1 Required Tools**](#121-required-tools)
 + [**2.0 The Examples**](#20-the-examples)
     - [**2.1 Apache Flink User-Defined Functions (UDF)**](#21-apache-flink-user-defined-functions-udf)
@@ -473,7 +473,7 @@ make cp-down      # CP + Kafka UI + CFK Operator
 
 ---
 
-### **1.2 Confluent Cloud Setup (early access example)**
+### **1.2 Confluent Cloud Setup**
 
 #### **1.2.1 Required Tools**
 
