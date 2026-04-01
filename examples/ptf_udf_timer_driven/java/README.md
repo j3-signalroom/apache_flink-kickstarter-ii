@@ -161,6 +161,6 @@ Kafka (user_activity)
 ---
 
 ## **4.0 Resources**
-- [Process Table Functions (PTFs) ─ Apache Flink docs](https://nightlies.apache.org/flink/flink-docs-master/docs/dev/table/functions/ptfs/)
-- [ProcessTableFunction API Javadoc](https://nightlies.apache.org/flink/flink-docs-master/api/java/org/apache/flink/table/functions/ProcessTableFunction.html)
+- [Apache Flink User-defined Functions](https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/functions/udfs/)
 - [Create a User-Defined Function with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html)
+- [Process Table Functions in Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/concepts/process-table-functions.html)
