@@ -7,6 +7,10 @@ Thumbs.db
 .project
 .classpath
 .settings/
+.idea/workspace.xml                 # stores user-specific UI settings)\
+.idea/misc.xml                      # contains local paths, SDK names, etc.)
+.idea/tasks.xml                     # user-specific tasks
+.idea/deploymentTargetSelector.xml  # user-specific deployment settings
 
 # Build output
 target/
