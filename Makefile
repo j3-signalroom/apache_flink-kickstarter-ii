@@ -101,7 +101,11 @@ install-prereqs: ## Install docker, kubectl, minikube, helm, and gradle via Home
 	elif [ "$(IS_LINUX)" = "Linux" ]; then \
 		command -v apt-get >/dev/null 2>&1 || { echo "✘ apt-get not found. Install prerequisites manually for your Linux distribution."; exit 1; }; \
 		apt-get update; \
-		apt-get install -y ca-certificates curl gnupg lsb-release docker.io gettext gradle; \
+		apt-get install -y ca-certificates curl gnupg lsb-release docker.io gettext gradle openjdk-21-jdk; \
+		JDK_RELEASE=/usr/lib/jvm/java-21-openjdk-$$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')/release; \
+		if [ -f "$$JDK_RELEASE" ] && ! grep -q IMAGE_TYPE "$$JDK_RELEASE"; then \
+			echo 'IMAGE_TYPE="JDK"' >> "$$JDK_RELEASE"; \
+		fi; \
 		HOST_ARCH=$$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/'); \
 		KUBECTL_VERSION=$$(curl -L -s https://dl.k8s.io/release/stable.txt); \
 		curl -LO "https://dl.k8s.io/release/$$KUBECTL_VERSION/bin/linux/$$HOST_ARCH/kubectl"; \
@@ -514,6 +518,10 @@ kafka-ui-uninstall: ## Uninstall Kafka UI (safe to run even if not installed)
 .PHONY: build-ptf-udf-row-driven
 build-ptf-udf-row-driven: ## Build the ptf_udf_row_driven fat JAR (requires Gradle)
 	@echo "→ Building ptf_udf_row_driven JAR..."
+	@if [ ! -f examples/ptf_udf_row_driven/java/gradle/wrapper/gradle-wrapper.jar ]; then \
+		echo "→ gradle-wrapper.jar missing — regenerating..."; \
+		cd examples/ptf_udf_row_driven/java && gradle wrapper --gradle-version 9.4.1 -q; \
+	fi
 	cd examples/ptf_udf_row_driven/java && ./gradlew clean shadowJar -q
 	@echo "✔ JAR built: $$(ls examples/ptf_udf_row_driven/java/app/build/libs/*.jar | head -1)"
 
@@ -555,6 +563,10 @@ produce-user-events-record: ## Produce one sample user events to the 'user_event
 .PHONY: build-ptf-udf-timer-driven
 build-ptf-udf-timer-driven: ## Build the ptf_udf_timer_driven fat JAR (requires Gradle)
 	@echo "→ Building ptf_udf_timer_driven JAR..."
+	@if [ ! -f examples/ptf_udf_timer_driven/java/gradle/wrapper/gradle-wrapper.jar ]; then \
+		echo "→ gradle-wrapper.jar missing — regenerating..."; \
+		cd examples/ptf_udf_timer_driven/java && gradle wrapper --gradle-version 9.4.1 -q; \
+	fi
 	cd examples/ptf_udf_timer_driven/java && ./gradlew clean shadowJar -q
 	@echo "✔ JAR built: $$(ls examples/ptf_udf_timer_driven/java/app/build/libs/*.jar | head -1)"
 
