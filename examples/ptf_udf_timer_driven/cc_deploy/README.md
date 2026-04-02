@@ -15,7 +15,8 @@
     + [**4.1 Deploy**](#41-deploy)
     + [**4.2 Monitor**](#42-monitor)
     + [**4.3 Tear down**](#43-tear-down)
-+ [**5.0 Resources**](#50-resources)
++ [**5.0 Troubleshooting**](#50-troubleshooting)
++ [**6.0 Resources**](#60-resources)
 <!-- tocstop -->
 
 ## **1.0 Overview**
@@ -136,7 +137,21 @@ This runs `terraform destroy -auto-approve`, removing all Flink statements, the 
 
 ---
 
-## **5.0 Resources**
+## **5.0 Troubleshooting**
+
+If you encounter an error during `make deploy-cc-ptf-udf-timer-driven` that looks like the following, it is because your organization does not have early access to timer services for PTF UDFs. Please contact your Confluent Account Executive to request access:
+
+```
+│ Error: error waiting for Flink Statement "tf-2026-04-02-100522-54a7b07c-4a42-4d53-90e0-034cb2ae1ea4" to provision: Flink Statement "tf-2026-04-02-100522-54a7b07c-4a42-4d53-90e0-034cb2ae1ea4" provisioning status is "FAILED": Method 'onTimer' of function class 'ptf.SessionTimeoutDetector' - Timer service is not supported for PTFs.; could not parse error details; raw response body: "{\"api_version\":\"sql/v1\",\"environment_id\":\"env-m60dnq\",\"kind\":\"Statement\",\"metadata\":{\"created_at\":\"2026-04-02T14:05:22.440172Z\",\"labels\":{},\"resource_version\":\"5\",\"self\":\"https://flink.us-east-1.aws.confluent.cloud/sql/v1/organizations/bd545cc3-8e7c-4387-b6d8-b6d1497a9df7/environments/env-m60dnq/statements/tf-2026-04-02-100522-54a7b07c-4a42-4d53-90e0-034cb2ae1ea4\",\"uid\":\"eff86f2f-bb53-474d-87bd-3300ead6db9f\",\"updated_at\":\"2026-04-02T14:05:22.64651Z\"},\"name\":\"tf-2026-04-02-100522-54a7b07c-4a42-4d53-90e0-034cb2ae1ea4\",\"organization_id\":\"bd545cc3-8e7c-4387-b6d8-b6d1497a9df7\",\"spec\":{\"compute_pool_id\":\"lfcp-nnpz1v\",\"execution_mode\":\"STREAMING\",\"principal\":\"sa-nvj798k\",\"properties\":{\"sql.current-catalog\":\"ptf-udf-timer-driven\",\"sql.current-database\":\"ptf-udf-timer-driven\"},\"statement\":\"CREATE FUNCTION IF NOT EXISTS session_timeout_detector\\n  AS 'ptf.SessionTimeoutDetector'\\n  USING JAR 'confluent-artifact://cfa-q57pk2';\\n\",\"stopped\":false},\"status\":{\"detail\":\"\",\"network_kind\":\"PUBLIC\",\"phase\":\"PENDING\",\"traits\":{\"connection_refs\":[],\"is_append_only\":true,\"is_bounded\":true,\"schema\":{},\"sql_kind\":\"CREATE_FUNCTION\",\"upsert_columns\":null},\"warnings\":[]}}"
+│ 
+│   with confluent_flink_statement.create_session_timeout_detector,
+│   on setup-confluent-flink.tf line 340, in resource "confluent_flink_statement" "create_session_timeout_detector":
+│  340: resource "confluent_flink_statement" "create_session_timeout_detector" {
+```
+
+---
+
+## **6.0 Resources**
 
 - [Confluent Terraform Provider](https://registry.terraform.io/providers/confluentinc/confluent/latest/docs)
 - [confluent_flink_statement Resource](https://registry.terraform.io/providers/confluentinc/confluent/latest/docs/resources/confluent_flink_statement)
