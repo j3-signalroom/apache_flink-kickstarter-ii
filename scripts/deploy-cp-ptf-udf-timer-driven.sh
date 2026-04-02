@@ -255,7 +255,8 @@ SELECT
 FROM TABLE(
     session_timeout_detector(
         input   => TABLE user_activity PARTITION BY user_id,
-        on_time => DESCRIPTOR(event_time)
+        on_time => DESCRIPTOR(event_time),
+        uid     => 'timeout-events-v1'
     )
 );"
 
@@ -310,6 +311,17 @@ except:
         "DROP FUNCTION IF EXISTS session_timeout_detector;
 DROP TABLE IF EXISTS timeout_events;
 DROP TABLE IF EXISTS user_activity;"
+
+    # Delete the associated Kafka topics
+    print_step "Deleting Kafka topics..."
+    for topic in timeout_events user_activity; do
+        kubectl exec -n "$NAMESPACE" kafka-0 -- \
+            kafka-topics --bootstrap-server kafka:9071 \
+                         --delete --if-exists \
+                         --topic "$topic" 2>/dev/null \
+            && print_info "Topic '${topic}' deleted." \
+            || print_warn "Topic '${topic}' may not exist."
+    done
 
     print_info "Teardown complete."
 }

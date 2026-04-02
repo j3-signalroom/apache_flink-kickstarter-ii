@@ -63,8 +63,7 @@ resource "confluent_flink_compute_pool" "ptf_udf_timer_driven" {
     id = confluent_environment.ptf_udf_timer_driven.id
   }
   depends_on = [
-    confluent_role_binding.flink_sql_runner_as_resource_owner_transactional_access,
-    confluent_api_key.flink_sql_runner_api_key,
+    confluent_role_binding.flink_sql_runner_as_resource_owner_transactional_access
   ]
 }
 
@@ -91,34 +90,9 @@ module "flink_api_key_rotation" {
     }
 
     # Optional Input(s)
-    key_display_name = "Confluent Schema Registry Cluster Service Account API Key - {date} - Managed by Terraform Cloud"
+    key_display_name = "Flink Service Account API Key - {date} - Managed by Terraform Cloud"
     number_of_api_keys_to_retain = var.number_of_api_keys_to_retain
     day_count = var.day_count
-}
-
-# Create the Flink-specific API key that will be used to submit statements.
-resource "confluent_api_key" "flink_sql_runner_api_key" {
-  display_name = "apache_flink_flink_statements_runner_api_key"
-  description  = "Flink API Key that is owned by 'flink_sql_runner' service account"
-  owner {
-    id          = confluent_service_account.flink_sql_runner.id
-    api_version = confluent_service_account.flink_sql_runner.api_version
-    kind        = confluent_service_account.flink_sql_runner.kind
-  }
-  managed_resource {
-    id          = data.confluent_flink_region.ptf_udf_timer_driven.id
-    api_version = data.confluent_flink_region.ptf_udf_timer_driven.api_version
-    kind        = data.confluent_flink_region.ptf_udf_timer_driven.kind
-
-    environment {
-      id = confluent_environment.ptf_udf_timer_driven.id
-    }
-  }
-
-  depends_on = [
-    confluent_environment.ptf_udf_timer_driven,
-    confluent_service_account.flink_sql_runner
-  ]
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -156,7 +130,7 @@ resource "confluent_flink_statement" "drop_user_activity" {
   }
 
   lifecycle {
-    ignore_changes = [statement]
+    ignore_changes = [statement, compute_pool]
   }
 }
 
@@ -198,8 +172,13 @@ resource "confluent_flink_statement" "user_activity_source" {
     id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
   }
 
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
   depends_on = [
-    confluent_flink_statement.drop_user_activity
+    confluent_flink_statement.drop_user_activity,
+    confluent_kafka_topic.user_activity
   ]
 }
 
@@ -242,6 +221,10 @@ resource "confluent_flink_statement" "insert_user_activity" {
     id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
   }
 
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
   depends_on = [
     confluent_flink_statement.user_activity_source
   ]
@@ -278,7 +261,7 @@ resource "confluent_flink_statement" "drop_timeout_events" {
   }
 
   lifecycle {
-    ignore_changes = [statement]
+    ignore_changes = [statement, compute_pool]
   }
 }
 
@@ -320,9 +303,14 @@ resource "confluent_flink_statement" "timeout_events_sink" {
     id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
   }
 
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
   depends_on = [
     confluent_flink_statement.insert_user_activity,
-    confluent_flink_statement.drop_timeout_events
+    confluent_flink_statement.drop_timeout_events,
+    confluent_kafka_topic.timeout_events
   ]
 }
 
@@ -384,7 +372,7 @@ resource "confluent_flink_statement" "create_session_timeout_detector" {
   }
 
   lifecycle {
-    ignore_changes = [statement]
+    ignore_changes = [statement, compute_pool]
   }
 
   depends_on = [
@@ -404,7 +392,8 @@ resource "confluent_flink_statement" "insert_timeout_events" {
       FROM TABLE(
         session_timeout_detector(
           input   => TABLE user_activity PARTITION BY user_id,
-          on_time => DESCRIPTOR(event_time)
+          on_time => DESCRIPTOR(event_time),
+          uid     => 'timeout-events-v1'
         )
       );
   EOT
@@ -434,6 +423,10 @@ resource "confluent_flink_statement" "insert_timeout_events" {
 
   compute_pool {
     id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
   }
 
   depends_on = [
