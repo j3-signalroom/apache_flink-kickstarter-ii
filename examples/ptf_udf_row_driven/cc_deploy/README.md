@@ -83,7 +83,7 @@ Once deployment completes, Terraform generates a visual **resource graph** at `e
 
 ## **3.0 Prerequisites**
 
-- macOS with Homebrew
+- macOS with Homebrew or Linux with apt-get
 - Java 17+
 - Terraform installed
 - A Confluent Cloud account with a **Cloud API key** and **secret** ([create one here](https://confluent.cloud/settings/api-keys))
