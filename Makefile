@@ -21,14 +21,36 @@
 #   9. Flink JAR build (Gradle shadow JAR) and REST API job submission
 # ==============================================================================
 
+# To setup from scratch on a new Vultr VM, run the following commands in order:
+# make install-prereqs  # installs docker, kubectl, minikube, helm
+# make cp-up            # Minikube → CFK operator → CP → Kafka UI
+# make flink-up         # cert-manager → Flink operator → CMF → session cluster
+
+# Then to open the UIs:
+# make c3-open      	# Control Center → http://localhost:9021
+# make flink-ui     	# Flink UI       → http://localhost:8081
+# make kafka-ui-open 	# Kafka UI      → http://localhost:8080
+
+# creates topics: user_events and enriched_events
+# make deploy-cp-ptf-udf-row-driven
+
 CONFLUENT_MANIFEST  ?= k8s/base/confluent-platform-c3++.yaml
 NAMESPACE           ?= confluent
 MINIKUBE_CPUS       ?= 6
 MINIKUBE_MEM        ?= 20480
 MINIKUBE_DISK       ?= 50g
 
+# Detect the Minikube node architecture (fallback to host architecture if kubectl is unavailable).
+MINIKUBE_NODE_ARCH  := $(shell kubectl get node -o jsonpath='{.items[0].status.nodeInfo.architecture}' 2>/dev/null || uname -m)
+ifeq ($(MINIKUBE_NODE_ARCH),x86_64)
+MINIKUBE_NODE_ARCH := amd64
+endif
+ifeq ($(MINIKUBE_NODE_ARCH),aarch64)
+MINIKUBE_NODE_ARCH := arm64
+endif
+
 # CMF manages Flink via confluentinc/cp-flink images — not the open-source flink image
-FLINK_IMAGE         ?= confluentinc/cp-flink:2.1.1-cp1-java21-arm64
+FLINK_IMAGE         ?= confluentinc/cp-flink:2.1.1-cp1-java21$(if $(filter arm64,$(MINIKUBE_NODE_ARCH)),-arm64,)
 FLINK_OPERATOR_VER  ?= 1.130.0
 FLINK_VERSION       ?= v2_1
 FLINK_CLUSTER_NAME  ?= flink-basic
@@ -49,10 +71,14 @@ SHELL               := /bin/bash
 
 .DEFAULT_GOAL       := help
 
-# Detect the running platform for package manager selection
+# Detect the running platform for package manager selection and OS-specific commands
 UNAME_S            := $(shell uname -s)
 IS_DARWIN          := $(filter Darwin,$(UNAME_S))
 IS_LINUX           := $(filter Linux,$(UNAME_S))
+
+# Cross-platform "open in browser" command
+# On Linux, only attempt xdg-open if a display is available (skips on headless servers)
+OPEN_CMD           := $(if $(IS_DARWIN),open,$(if $(DISPLAY),xdg-open,echo "→ Open in your browser:"))
 
 # Directory of the current Makefile
 mkfile_dir         := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
@@ -73,23 +99,33 @@ help: ## Show this help message
 # Phase 1: Prerequisites (macOS or Linux)
 # ------------------------------------------------------------------------------
 .PHONY: install-prereqs
-install-prereqs: ## Install docker, kubectl, minikube, helm, and gradle via Homebrew (macOS) or apt-get (Linux)
+install-prereqs: ## Install docker, kubectl, minikube, helm, gradle, and JDK 21 via Homebrew (macOS) or apt-get (Linux)
 	@echo "→ Installing prerequisites..."
 	@if [ "$(IS_DARWIN)" = "Darwin" ]; then \
 		(test -d /Applications/Docker.app || test -f /usr/local/bin/kubectl.docker) || brew install --cask docker; \
-		brew install kubernetes-cli minikube helm gettext gradle; \
-		echo "✔ Prerequisites installed. Launch Docker Desktop before running 'make minikube-start'."; \
+		brew install kubernetes-cli minikube helm gettext gradle openjdk@21; \
+		echo "✔ Prerequisites installed."; \
 	elif [ "$(IS_LINUX)" = "Linux" ]; then \
 		command -v apt-get >/dev/null 2>&1 || { echo "✘ apt-get not found. Install prerequisites manually for your Linux distribution."; exit 1; }; \
 		apt-get update; \
-		apt-get install -y ca-certificates curl gnupg lsb-release docker.io gettext gradle; \
+		apt-get install -y ca-certificates curl gnupg lsb-release docker.io gettext gradle xdg-utils openjdk-21-jdk; \
+		JDK_RELEASE=/usr/lib/jvm/java-21-openjdk-$$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')/release; \
+		if [ -f "$$JDK_RELEASE" ] && ! grep -q IMAGE_TYPE "$$JDK_RELEASE"; then \
+			echo 'IMAGE_TYPE="JDK"' >> "$$JDK_RELEASE"; \
+		fi; \
+		ARCH=$$(uname -m); \
+		case "$$ARCH" in \
+			x86_64)  DL_ARCH=amd64 ;; \
+			aarch64) DL_ARCH=arm64 ;; \
+			*)       echo "✘ Unsupported architecture: $$ARCH"; exit 1 ;; \
+		esac; \
 		KUBECTL_VERSION=$$(curl -L -s https://dl.k8s.io/release/stable.txt); \
-		curl -LO "https://dl.k8s.io/release/$$KUBECTL_VERSION/bin/linux/amd64/kubectl"; \
-		install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl; \
-		curl -Lo /tmp/minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64; \
+		curl -LO "https://dl.k8s.io/release/$$KUBECTL_VERSION/bin/linux/$$DL_ARCH/kubectl"; \
+		install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl; rm -f kubectl; \
+		curl -Lo /tmp/minikube "https://storage.googleapis.com/minikube/releases/latest/minikube-linux-$$DL_ARCH"; \
 		install -o root -g root -m 0755 /tmp/minikube /usr/local/bin/minikube; \
 		curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash; \
-		echo "✔ Prerequisites installed. Ensure Docker is running before running 'make minikube-start'."; \
+		echo "✔ Prerequisites installed."; \
 	else \
 		echo "✘ Unsupported OS: $(UNAME_S). Install prerequisites manually."; exit 1; \
 	fi
@@ -98,9 +134,15 @@ install-prereqs: ## Install docker, kubectl, minikube, helm, and gradle via Home
 check-prereqs: ## Verify required tools are available
 	@echo "→ Checking prerequisites..."
 	@command -v docker    >/dev/null 2>&1 || (echo "✘ docker not found"    && exit 1)
+	@docker info >/dev/null 2>&1 || echo "⚠ docker is installed but not running — 'make minikube-start' will attempt to start it"
 	@command -v kubectl   >/dev/null 2>&1 || (echo "✘ kubectl not found"   && exit 1)
 	@command -v minikube  >/dev/null 2>&1 || (echo "✘ minikube not found"  && exit 1)
 	@command -v helm      >/dev/null 2>&1 || (echo "✘ helm not found"      && exit 1)
+	@command -v java      >/dev/null 2>&1 || (echo "✘ java not found"      && exit 1)
+	@JAVA_VER=$$(java -version 2>&1 | head -1 | sed 's/.*"\([0-9]*\)\..*/\1/'); \
+	if [ "$$JAVA_VER" != "21" ]; then \
+		echo "✘ JDK 21 required but found JDK $$JAVA_VER. Install JDK 21 or set JAVA_HOME accordingly."; exit 1; \
+	fi
 	@echo "✔ All prerequisites found."
 
 # ------------------------------------------------------------------------------
@@ -108,9 +150,48 @@ check-prereqs: ## Verify required tools are available
 # ------------------------------------------------------------------------------
 .PHONY: minikube-start
 minikube-start: ## Start Minikube with resources required for Confluent Platform + Flink
+	@echo "→ Checking Docker is running..."
+	@if ! docker info >/dev/null 2>&1; then \
+		echo "⚠ Docker is not running. Attempting to start it..."; \
+		if [ "$(IS_DARWIN)" = "Darwin" ]; then \
+			open -a Docker; \
+			echo "→ Waiting for Docker Desktop to start (up to 60s)..."; \
+			for i in $$(seq 1 30); do \
+				docker info >/dev/null 2>&1 && break; \
+				sleep 2; \
+			done; \
+		elif [ "$(IS_LINUX)" = "Linux" ]; then \
+			systemctl start docker 2>/dev/null || service docker start 2>/dev/null || true; \
+			echo "→ Waiting for Docker daemon to start (up to 30s)..."; \
+			for i in $$(seq 1 15); do \
+				docker info >/dev/null 2>&1 && break; \
+				sleep 2; \
+			done; \
+		fi; \
+		if ! docker info >/dev/null 2>&1; then \
+			echo "✘ Docker failed to start. Please start Docker manually and retry."; exit 1; \
+		fi; \
+		echo "✔ Docker is running."; \
+	else \
+		echo "✔ Docker is already running."; \
+	fi
 	@echo "→ Starting Minikube (cpus=$(MINIKUBE_CPUS), memory=$(MINIKUBE_MEM), disk=$(MINIKUBE_DISK))..."
+	@MINIKUBE_FORCE=""
+	@if [ "$$EUID" = "0" ]; then \
+		echo "⚠ Minikube Docker driver should not be used as root."; \
+		if [ -t 1 ]; then \
+			read -p "Continue with --force anyway? [y/N]: " answer; \
+			case "$$answer" in \
+				y|Y|yes|YES|Yes) MINIKUBE_FORCE="--force" ;; \
+			*) echo "Aborting. Run as a non-root user or use 'minikube start --driver=none' instead."; exit 1 ;; \
+			esac; \
+		else \
+			echo "Non-interactive shell detected; cannot prompt. Run as a non-root user or use 'minikube start --driver=none' instead."; exit 1; \
+		fi; \
+	fi; \
 	minikube start \
 		--driver=docker \
+		$$MINIKUBE_FORCE \
 		--cpus=$(MINIKUBE_CPUS) \
 		--memory=$(MINIKUBE_MEM) \
 		--disk-size=$(MINIKUBE_DISK)
@@ -205,21 +286,23 @@ cp-delete: ## Remove all CP components, wait for termination, and clean up PVCs
 # ------------------------------------------------------------------------------
 .PHONY: c3-open
 c3-open: ## Port-forward Control Center in the background and open it in your browser ('make c3-stop' to kill)
-	@if lsof -iTCP:$(C3_PORT) -sTCP:LISTEN -t >/dev/null 2>&1; then \
+	@if (lsof -iTCP:$(C3_PORT) -sTCP:LISTEN -t >/dev/null 2>&1) || \
+	   (ss -tlnp 2>/dev/null | grep -q ':$(C3_PORT) '); then \
 		echo "→ Port $(C3_PORT) is already in use."; \
-		echo "  Opening http://localhost:$(C3_PORT) in your browser."; \
-		open http://localhost:$(C3_PORT); \
-		exit 0; \
-	fi
-	@echo "→ Forwarding Control Center to http://localhost:$(C3_PORT) (background)"
-	@kubectl port-forward -n $(NAMESPACE) controlcenter-0 $(C3_PORT):$(C3_PORT) >/dev/null 2>&1 & \
-	echo $$! > /tmp/c3-pf.pid; \
-	sleep 1; \
-	if kill -0 $$(cat /tmp/c3-pf.pid) 2>/dev/null; then \
-		echo "✔ Port-forward running (PID $$(cat /tmp/c3-pf.pid)). Stop with 'make c3-stop'."; \
-		open http://localhost:$(C3_PORT); \
+		echo "  Open in your browser: http://localhost:$(C3_PORT)"; \
+		$(OPEN_CMD) http://localhost:$(C3_PORT); \
 	else \
-		echo "✘ Port-forward failed to start."; exit 1; \
+		echo "→ Forwarding Control Center to http://localhost:$(C3_PORT) (background)"; \
+		kubectl port-forward -n $(NAMESPACE) controlcenter-0 $(C3_PORT):$(C3_PORT) >/dev/null 2>&1 & \
+		echo $$! > /tmp/c3-pf.pid; \
+		sleep 1; \
+		if kill -0 $$(cat /tmp/c3-pf.pid) 2>/dev/null; then \
+			echo "✔ Port-forward running (PID $$(cat /tmp/c3-pf.pid)). Stop with 'make c3-stop'."; \
+			echo "  Open in your browser: http://localhost:$(C3_PORT)"; \
+			$(OPEN_CMD) http://localhost:$(C3_PORT); \
+		else \
+			echo "✘ Port-forward failed to start."; exit 1; \
+		fi; \
 	fi
 
 .PHONY: c3-stop
@@ -279,7 +362,7 @@ flink-rbac: ## Apply supplemental RBAC so the flink SA can read services (needed
 flink-deploy: flink-rbac ## Deploy a Flink session cluster using $(FLINK_MANIFEST) (image=$(FLINK_IMAGE), version=$(FLINK_VERSION))
 	@echo "→ Deploying Flink session cluster from $(FLINK_MANIFEST) (image=$(FLINK_IMAGE), flinkVersion=$(FLINK_VERSION))..."
 	@test -f $(FLINK_MANIFEST) || (echo "✘ $(FLINK_MANIFEST) not found. Is it alongside the Makefile?" && exit 1)
-	@command -v envsubst >/dev/null 2>&1 || (echo "✘ envsubst not found. Install gettext: brew install gettext" && exit 1)
+	@command -v envsubst >/dev/null 2>&1 || (echo "✘ envsubst not found. Install gettext: brew install gettext (macOS) or apt-get install -y gettext (Linux)" && exit 1)
 	FLINK_IMAGE=$(FLINK_IMAGE) FLINK_VERSION=$(FLINK_VERSION) \
 		envsubst '$$FLINK_IMAGE $$FLINK_VERSION' < $(FLINK_MANIFEST) | kubectl apply -f -
 	@echo "✔ Flink cluster deployed (image=$(FLINK_IMAGE), flinkVersion=$(FLINK_VERSION))."
@@ -294,26 +377,28 @@ flink-status: ## Show status of all Flink pods and FlinkDeployment CRs
 
 .PHONY: flink-ui
 flink-ui: ## Port-forward the Flink UI in the background and open it in your browser ('make flink-ui-stop' to kill)
-	@if lsof -iTCP:$(FLINK_UI_PORT) -sTCP:LISTEN -t >/dev/null 2>&1; then \
+	@if (lsof -iTCP:$(FLINK_UI_PORT) -sTCP:LISTEN -t >/dev/null 2>&1) || \
+	   (ss -tlnp 2>/dev/null | grep -q ':$(FLINK_UI_PORT) '); then \
 		echo "→ Port $(FLINK_UI_PORT) is already in use."; \
-		echo "  Opening http://localhost:$(FLINK_UI_PORT) in your browser."; \
-		open http://localhost:$(FLINK_UI_PORT); \
-		exit 0; \
-	fi
-	@FLINK_POD=$$(kubectl get pods -n $(NAMESPACE) -l component=jobmanager --no-headers -o custom-columns=":metadata.name" | head -1); \
-	if [ -z "$$FLINK_POD" ]; then \
-		echo "✘ No Flink JobManager pod found. Is the cluster deployed?"; exit 1; \
-	fi; \
-	echo "→ Forwarding Flink UI to http://localhost:$(FLINK_UI_PORT) (background)"; \
-	echo "   Pod: $$FLINK_POD"; \
-	kubectl port-forward -n $(NAMESPACE) $$FLINK_POD $(FLINK_UI_PORT):$(FLINK_UI_PORT) >/dev/null 2>&1 & \
-	echo $$! > /tmp/flink-ui-pf.pid; \
-	sleep 1; \
-	if kill -0 $$(cat /tmp/flink-ui-pf.pid) 2>/dev/null; then \
-		echo "✔ Port-forward running (PID $$(cat /tmp/flink-ui-pf.pid)). Stop with 'make flink-ui-stop'."; \
-		open http://localhost:$(FLINK_UI_PORT); \
+		echo "  Open in your browser: http://localhost:$(FLINK_UI_PORT)"; \
+		$(OPEN_CMD) http://localhost:$(FLINK_UI_PORT); \
 	else \
-		echo "✘ Port-forward failed to start."; exit 1; \
+		FLINK_POD=$$(kubectl get pods -n $(NAMESPACE) -l component=jobmanager --no-headers -o custom-columns=":metadata.name" | head -1); \
+		if [ -z "$$FLINK_POD" ]; then \
+			echo "✘ No Flink JobManager pod found. Is the cluster deployed?"; exit 1; \
+		fi; \
+		echo "→ Forwarding Flink UI to http://localhost:$(FLINK_UI_PORT) (background)"; \
+		echo "   Pod: $$FLINK_POD"; \
+		kubectl port-forward -n $(NAMESPACE) $$FLINK_POD $(FLINK_UI_PORT):$(FLINK_UI_PORT) >/dev/null 2>&1 & \
+		echo $$! > /tmp/flink-ui-pf.pid; \
+		sleep 1; \
+		if kill -0 $$(cat /tmp/flink-ui-pf.pid) 2>/dev/null; then \
+			echo "✔ Port-forward running (PID $$(cat /tmp/flink-ui-pf.pid)). Stop with 'make flink-ui-stop'."; \
+			echo "  Open in your browser: http://localhost:$(FLINK_UI_PORT)"; \
+			$(OPEN_CMD) http://localhost:$(FLINK_UI_PORT); \
+		else \
+			echo "✘ Port-forward failed to start."; exit 1; \
+		fi; \
 	fi
 
 .PHONY: flink-ui-stop
@@ -389,7 +474,7 @@ cmf-open: ## Port-forward CMF REST API to localhost:$(CMF_PORT)
 	@echo "   Press Ctrl+C to stop."
 	@CURRENT_PGID=`ps -o "pgid=" -p $$PPID`; \
 	trap "kill -TERM -$$CURRENT_PGID 2>/dev/null" EXIT INT TERM; \
-	(sleep 2 && open http://localhost:$(CMF_PORT)/cmf/api/v1/environments) & \
+	(sleep 2 && $(OPEN_CMD) http://localhost:$(CMF_PORT)/cmf/api/v1/environments) & \
 	kubectl port-forward -n $(NAMESPACE) svc/cmf-service $(CMF_PORT):80
 
 .PHONY: cmf-uninstall
@@ -463,10 +548,36 @@ kafka-ui-status: ## Check Kafka UI pod status
 	kubectl get pods -n $(NAMESPACE) | grep kafka-ui
 
 .PHONY: kafka-ui-open
-kafka-ui-open: ## Port-forward Kafka UI and open it in your browser
-	@echo "→ Forwarding Kafka UI to http://localhost:$(KAFKA_UI_PORT)"
-	@echo "   Press Ctrl+C to stop."
-	@CURRENT_PGID=`ps -o "pgid=" -p $$PPID`; 	trap "kill -TERM -$$CURRENT_PGID 2>/dev/null" EXIT INT TERM; 	(sleep 2 && open http://localhost:$(KAFKA_UI_PORT)) & 	kubectl port-forward -n $(NAMESPACE) svc/kafka-ui $(KAFKA_UI_PORT):80
+kafka-ui-open: ## Port-forward Kafka UI in the background and open it in your browser ('make kafka-ui-stop' to kill)
+	@if (lsof -iTCP:$(KAFKA_UI_PORT) -sTCP:LISTEN -t >/dev/null 2>&1) || \
+	   (ss -tlnp 2>/dev/null | grep -q ':$(KAFKA_UI_PORT) '); then \
+		echo "→ Port $(KAFKA_UI_PORT) is already in use."; \
+		echo "  Open in your browser: http://localhost:$(KAFKA_UI_PORT)"; \
+		$(OPEN_CMD) http://localhost:$(KAFKA_UI_PORT); \
+	else \
+		echo "→ Forwarding Kafka UI to http://localhost:$(KAFKA_UI_PORT) (background)"; \
+		kubectl port-forward -n $(NAMESPACE) svc/kafka-ui $(KAFKA_UI_PORT):80 >/dev/null 2>&1 & \
+		echo $$! > /tmp/kafka-ui-pf.pid; \
+		sleep 1; \
+		if kill -0 $$(cat /tmp/kafka-ui-pf.pid) 2>/dev/null; then \
+			echo "✔ Port-forward running (PID $$(cat /tmp/kafka-ui-pf.pid)). Stop with 'make kafka-ui-stop'."; \
+			echo "  Open in your browser: http://localhost:$(KAFKA_UI_PORT)"; \
+			$(OPEN_CMD) http://localhost:$(KAFKA_UI_PORT); \
+		else \
+			echo "✘ Port-forward failed to start."; exit 1; \
+		fi; \
+	fi
+
+.PHONY: kafka-ui-stop
+kafka-ui-stop: ## Stop the background Kafka UI port-forward
+	@if [ -f /tmp/kafka-ui-pf.pid ] && kill -0 $$(cat /tmp/kafka-ui-pf.pid) 2>/dev/null; then \
+		kill $$(cat /tmp/kafka-ui-pf.pid); \
+		rm -f /tmp/kafka-ui-pf.pid; \
+		echo "✔ Kafka UI port-forward stopped."; \
+	else \
+		echo "→ No active Kafka UI port-forward found."; \
+		rm -f /tmp/kafka-ui-pf.pid; \
+	fi
 
 .PHONY: kafka-ui-uninstall
 kafka-ui-uninstall: ## Uninstall Kafka UI (safe to run even if not installed)
@@ -480,6 +591,10 @@ kafka-ui-uninstall: ## Uninstall Kafka UI (safe to run even if not installed)
 .PHONY: build-ptf-udf-row-driven
 build-ptf-udf-row-driven: ## Build the ptf_udf_row_driven fat JAR (requires Gradle)
 	@echo "→ Building ptf_udf_row_driven JAR..."
+	@if [ ! -f examples/ptf_udf_row_driven/java/gradle/wrapper/gradle-wrapper.jar ]; then \
+		echo "→ gradle-wrapper.jar missing — regenerating..."; \
+		cd examples/ptf_udf_row_driven/java && gradle wrapper --gradle-version 9.4.1 -q; \
+	fi
 	cd examples/ptf_udf_row_driven/java && ./gradlew clean shadowJar -q
 	@echo "✔ JAR built: $$(ls examples/ptf_udf_row_driven/java/app/build/libs/*.jar | head -1)"
 
@@ -521,6 +636,10 @@ produce-user-events-record: ## Produce one sample user events to the 'user_event
 .PHONY: build-ptf-udf-timer-driven
 build-ptf-udf-timer-driven: ## Build the ptf_udf_timer_driven fat JAR (requires Gradle)
 	@echo "→ Building ptf_udf_timer_driven JAR..."
+	@if [ ! -f examples/ptf_udf_timer_driven/java/gradle/wrapper/gradle-wrapper.jar ]; then \
+		echo "→ gradle-wrapper.jar missing — regenerating..."; \
+		cd examples/ptf_udf_timer_driven/java && gradle wrapper --gradle-version 9.4.1 -q; \
+	fi
 	cd examples/ptf_udf_timer_driven/java && ./gradlew clean shadowJar -q
 	@echo "✔ JAR built: $$(ls examples/ptf_udf_timer_driven/java/app/build/libs/*.jar | head -1)"
 
@@ -613,3 +732,31 @@ confluent-teardown: ## Full teardown: remove Flink, Kafka UI, CP, Operator, name
 	@kubectl get pods -n $(NAMESPACE) 2>/dev/null || echo "→ Namespace gone — all clean."
 	$(MAKE) minikube-stop
 	@echo "✔ Full teardown complete."
+
+.PHONY: uninstall-prereqs
+uninstall-prereqs: ## Uninstall all tools installed by install-prereqs (docker, kubectl, minikube, helm, gradle, openjdk)
+	@echo "→ Uninstalling prerequisites..."
+	@if [ "$(IS_DARWIN)" = "Darwin" ]; then \
+		brew uninstall --cask docker 2>/dev/null || true; \
+		brew uninstall kubernetes-cli minikube helm gettext gradle 2>/dev/null || true; \
+		echo "✔ Prerequisites removed. You may need to manually delete Docker Desktop data from ~/Library/Application Support/Docker."; \
+	elif [ "$(IS_LINUX)" = "Linux" ]; then \
+		command -v apt-get >/dev/null 2>&1 || { echo "✘ apt-get not found. Remove prerequisites manually."; exit 1; }; \
+		rm -f /usr/local/bin/kubectl /usr/local/bin/minikube; \
+		apt-get remove -y gradle openjdk-21-jdk docker.io gettext 2>/dev/null || true; \
+		apt-get autoremove -y 2>/dev/null || true; \
+		helm_bin=$$(which helm 2>/dev/null); \
+		if [ -n "$$helm_bin" ]; then rm -f "$$helm_bin"; echo "→ Removed helm."; fi; \
+		echo "✔ Prerequisites removed."; \
+	else \
+		echo "✘ Unsupported OS: $(UNAME_S). Remove prerequisites manually."; exit 1; \
+	fi
+
+.PHONY: nuke
+nuke: ## Full wipe: confluent-teardown + minikube-delete + uninstall-prereqs (leaves machine as close to factory as possible)
+	@echo "⚠ This will destroy the Minikube cluster and uninstall all tools. Ctrl+C within 5s to abort."
+	@sleep 5
+	@minikube status --format='{{.Host}}' 2>/dev/null | grep -q "Running" && $(MAKE) confluent-teardown || echo "→ Minikube not running, skipping confluent-teardown."
+	$(MAKE) minikube-delete
+	$(MAKE) uninstall-prereqs
+	@echo "✔ Nuke complete. Machine restored to pre-install state."

@@ -20,6 +20,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
         - [**1.1.6 `Makefile` Individual Target Reference**](#116-makefile-individual-target-reference)
         - [**1.1.7 `Makefile` Target Configuration Reference**](#1170-makefile-target-configuration-reference)
         - [**1.1.8 `Makefile` Target Teardown**](#118-makefile-target-teardown)
+        - [**1.1.9 Remote Server Setup (SSH Tunneling)**](#119-remote-server-setup-ssh-tunneling)
     - [**1.2 Confluent Cloud Setup**](#12-confluent-cloud-setup)
         - [**1.2.1 Required Tools**](#121-required-tools)
 + [**2.0 The Examples**](#20-the-examples)
@@ -431,7 +432,7 @@ All variables are overridable at the command line.
 | `MINIKUBE_MEM` | `20480` | Memory in MB |
 | `MINIKUBE_DISK` | `50g` | Disk size |
 | `FLINK_OPERATOR_VER` | `1.130.0` | Confluent Flink Kubernetes Operator version |
-| `FLINK_IMAGE` | `confluentinc/cp-flink:2.1.1-cp1-java21-arm64` | Flink container image |
+| `FLINK_IMAGE` | `confluentinc/cp-flink:2.1.1-cp1-java21` (auto-selects `-arm64` suffix on arm64 nodes) | Flink container image |
 | `FLINK_VERSION` | `v2_1` | Flink API version string for the FlinkDeployment CR |
 | `FLINK_CLUSTER_NAME` | `flink-basic` | Name of the FlinkDeployment resource |
 | `FLINK_MANIFEST` | `k8s/base/flink-basic-deployment.yaml` | Path to FlinkDeployment template |
@@ -470,6 +471,77 @@ To keep Minikube running but remove all deployed components:
 make flink-down   # Flink cluster + CMF + operator + cert-manager
 make cp-down      # CP + Kafka UI + CFK Operator
 ```
+
+---
+
+#### **1.1.9 Remote Server Setup (SSH Tunneling)**
+
+If the full stack is running on a remote server (e.g., a Vultr VPS), you need two things: a terminal on the remote to run `make` targets, and an SSH tunnel to reach the UIs from your local browser.
+
+##### **Step 0 — Authorize your local machine's SSH public key on the remote server**
+
+On the remote server, append your local machine's public key to the authorized keys file so you can connect without a password:
+
+```bash
+echo "your-public-key-string" >> ~/.ssh/[file-name]
+```
+
+Replace `your-public-key-string` with the contents of your local `~/.ssh/[file-name].pub` (e.g., `cat ~/.ssh/ssh-key-dev-cloud-server-access.pub` on your Mac), and `[file-name]` with the name of your authorized keys file (typically `authorized_keys`).
+
+For example:
+
+```bash
+echo "ssh-ed25519 AAAA...your-key... user@macbook" >> ~/.ssh/authorized_keys
+```
+
+Then make sure permissions are correct on the remote:
+
+```bash
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+```
+
+##### **Step 1 — Add an entry to `~/.ssh/config` on your local machine**
+
+```
+Host [label for the remote server]
+  HostName [IP address]
+  User root
+  IdentityFile ~/.ssh/ssh-key-dev-cloud-server-access
+  IdentitiesOnly yes
+  LocalForward 9021 localhost:9021
+  LocalForward 8081 localhost:8081
+  LocalForward 8080 localhost:8080
+```
+
+The three `LocalForward` lines tunnel the UI ports from the remote server to your local machine automatically every time you connect.
+
+##### **Step 2 — Terminal 1: bring up the stack on the remote**
+
+```bash
+ssh [label for the remote server]
+cd /path/to/apache_flink-kickstarter-ii
+make cp-up
+make flink-up
+```
+
+##### **Step 3 — Terminal 2: open the SSH tunnel**
+
+```bash
+ssh [label for the remote server]
+```
+
+Connecting activates the `LocalForward` rules. No extra flags needed.
+
+##### **Step 4 — Open the UIs in your local browser**
+
+| URL | UI |
+|-----|----|
+| `http://localhost:9021` | Confluent Control Center |
+| `http://localhost:8081` | Apache Flink UI |
+| `http://localhost:8080` | Kafka UI |
+
+> The port-forwards on the remote side are started by `make c3-open`, `make flink-ui`, and `make kafka-ui-open` (called internally by `make cp-up` / `make flink-up`). The SSH `LocalForward` simply bridges your laptop to those already-listening ports on the remote.
 
 ---
 
