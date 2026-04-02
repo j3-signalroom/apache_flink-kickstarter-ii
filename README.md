@@ -478,6 +478,29 @@ make cp-down      # CP + Kafka UI + CFK Operator
 
 If the full stack is running on a remote server (e.g., a Vultr VPS), you need two things: a terminal on the remote to run `make` targets, and an SSH tunnel to reach the UIs from your local browser.
 
+##### **Step 0 — Authorize your local machine's SSH public key on the remote server**
+
+On the remote server, append your local machine's public key to the authorized keys file so you can connect without a password:
+
+```bash
+echo "your-public-key-string" >> ~/.ssh/[file-name]
+```
+
+Replace `your-public-key-string` with the contents of your local `~/.ssh/[file-name].pub` (e.g., `cat ~/.ssh/ssh-key-dev-cloud-server-access.pub` on your Mac), and `[file-name]` with the name of your authorized keys file (typically `authorized_keys`).
+
+For example:
+
+```bash
+echo "ssh-ed25519 AAAA...your-key... user@macbook" >> ~/.ssh/authorized_keys
+```
+
+Then make sure permissions are correct on the remote:
+
+```bash
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+```
+
 ##### **Step 1 — Add an entry to `~/.ssh/config` on your local machine**
 
 ```
