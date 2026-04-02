@@ -1,5 +1,9 @@
 # ![apache-flink-logo](apache_flink.png) Apache Flink Kickstarter II **[UNDER CONSTRUCTION]**
 
+> **_On GitHub, Watch → Custom → Releases is the most useful setting if you just want to know when something significant ships for this project._**
+
+> ![subscribe](subscribe.png)
+
 **Apache Flink Kickstarter II** is the 2026 evolution of my original Kickstarter project ─ rebuilt to showcase the cutting edge of **Apache Flink 2.1.x**.
 
 Designed as a hands-on, production-minded accelerator, it brings Flink to life _locally_ on **Confluent Platform + Minikube**, while drawing direct comparisons to **Confluent Cloud for Apache Flink** ─ so you can clearly see what’s possible across environments.
