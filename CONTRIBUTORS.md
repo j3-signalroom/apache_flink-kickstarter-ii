@@ -8,7 +8,7 @@ Thank you to everyone who has contributed to this project!
 
 ## Contributors
 
-- **Frank Lee** - [@FrankLeeSOH](https://github.com/FrankLeeSOH)
+- **Frank Lee** — [@FrankLeeSOH](https://github.com/FrankLeeSOH)
 
 ## How to Contribute
 

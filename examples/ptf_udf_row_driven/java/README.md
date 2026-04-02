@@ -131,4 +131,6 @@ Kafka (user_events)
 - **`PARTITION BY`** ─ the SQL-side mechanism that keys the input table so each `user_id` gets its own isolated state instance.
 
 ## **3.0 Resources**
+- [Apache Flink User-defined Functions](https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/functions/udfs/)
 - [Create a User-Defined Function with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html)
+- [Process Table Functions in Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/concepts/process-table-functions.html)
