@@ -395,7 +395,8 @@ resource "confluent_flink_statement" "insert_enriched_events" {
         last_event
       FROM TABLE(
         user_event_enricher(
-          input => TABLE user_events PARTITION BY user_id
+          input => TABLE user_events PARTITION BY user_id,
+          uid   => 'enriched-events-v1'
         )
       );
   EOT

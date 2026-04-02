@@ -255,7 +255,8 @@ SELECT
 FROM TABLE(
     session_timeout_detector(
         input   => TABLE user_activity PARTITION BY user_id,
-        on_time => DESCRIPTOR(event_time)
+        on_time => DESCRIPTOR(event_time),
+        uid     => 'timeout-events-v1'
     )
 );"
 
