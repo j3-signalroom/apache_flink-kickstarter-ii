@@ -318,12 +318,16 @@ resource "confluent_flink_statement" "timeout_events_sink" {
 # Upload the JAR as a Flink artifact
 # ═══════════════════════════════════════════════════════════════════════════════
 
+locals {
+  ptf_jar_path = "${path.module}/../java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
+}
+
 resource "confluent_flink_artifact" "ptf_udf_timer_driven" {
   display_name     = "ptf-udf-timer-driven"
   content_format   = "JAR"
   cloud            = local.cloud
   region           = local.aws_region
-  artifact_file    = "${path.module}/../java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
+  artifact_file    = local.ptf_jar_path
 
   environment {
     id = confluent_environment.ptf_udf_timer_driven.id
@@ -333,6 +337,14 @@ resource "confluent_flink_artifact" "ptf_udf_timer_driven" {
     confluent_flink_statement.insert_user_activity,
     confluent_flink_statement.timeout_events_sink,
   ]
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.ptf_jar_hash.output]
+  }
+}
+
+resource "terraform_data" "ptf_jar_hash" {
+  input = filesha256(local.ptf_jar_path)
 }
 
 # ── Timer-driven UDF registration and pipeline ─────────────────────────────────

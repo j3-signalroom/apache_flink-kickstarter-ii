@@ -105,8 +105,7 @@ public class SessionTimeoutDetector extends ProcessTableFunction<Row> {
     public void eval(
             Context ctx,
             @StateHint SessionState state,
-            @ArgumentHint({ArgumentTrait.SET_SEMANTIC_TABLE,
-                           ArgumentTrait.REQUIRE_ON_TIME})
+            @ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)
             Row input
     ) {
         String eventType = input.getFieldAs("event_type");
