@@ -307,6 +307,17 @@ except:
 DROP TABLE IF EXISTS enriched_events;
 DROP TABLE IF EXISTS user_events;"
 
+    # Delete the associated Kafka topics
+    print_step "Deleting Kafka topics..."
+    for topic in user_events enriched_events; do
+        kubectl exec -n "$NAMESPACE" kafka-0 -- \
+            kafka-topics --bootstrap-server kafka:9071 \
+                         --delete --if-exists \
+                         --topic "$topic" 2>/dev/null \
+            && print_info "Topic '${topic}' deleted." \
+            || print_warn "Topic '${topic}' may not exist."
+    done
+
     print_info "Teardown complete."
 }
 
