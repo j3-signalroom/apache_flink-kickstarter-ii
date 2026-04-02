@@ -78,7 +78,7 @@ Step 7 is a **long-running streaming job**. It runs continuously, reading from `
 
 ## **3.0 Prerequisites**
 
-- macOS with Homebrew and Docker Desktop running
+- macOS with Homebrew or Linux with apt-get, and Docker Desktop running
 - Java 17+
 - Confluent Platform and Flink stack already deployed:
 
