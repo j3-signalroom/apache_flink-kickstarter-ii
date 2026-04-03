@@ -99,7 +99,7 @@ help: ## Show this help message
 # Phase 1: Prerequisites (macOS or Linux)
 # ------------------------------------------------------------------------------
 .PHONY: install-prereqs
-install-prereqs: ## Install docker, kubectl, minikube, helm, gradle, and JDK 21 via Homebrew (macOS) or apt-get (Linux)
+install-prereqs: ## Install docker, kubectl, minikube, helm, gettext, gradle, and OpenJDK 21 via Homebrew (macOS) or apt-get (Linux)
 	@echo "→ Installing prerequisites..."
 	@if [ "$(IS_DARWIN)" = "Darwin" ]; then \
 		(test -d /Applications/Docker.app || test -f /usr/local/bin/kubectl.docker) || brew install --cask docker; \
@@ -144,6 +144,25 @@ check-prereqs: ## Verify required tools are available
 		echo "✘ JDK 21 required but found JDK $$JAVA_VER. Install JDK 21 or set JAVA_HOME accordingly."; exit 1; \
 	fi
 	@echo "✔ All prerequisites found."
+
+.PHONY: uninstall-prereqs
+uninstall-prereqs: ## Uninstall all tools installed by install-prereqs (docker, kubectl, minikube, helm, gradle, openjdk)
+	@echo "→ Uninstalling prerequisites..."
+	@if [ "$(IS_DARWIN)" = "Darwin" ]; then \
+		brew uninstall --cask docker 2>/dev/null || true; \
+		brew uninstall kubernetes-cli minikube helm gettext gradle 2>/dev/null || true; \
+		echo "✔ Prerequisites removed. You may need to manually delete Docker Desktop data from ~/Library/Application Support/Docker."; \
+	elif [ "$(IS_LINUX)" = "Linux" ]; then \
+		command -v apt-get >/dev/null 2>&1 || { echo "✘ apt-get not found. Remove prerequisites manually."; exit 1; }; \
+		rm -f /usr/local/bin/kubectl /usr/local/bin/minikube; \
+		apt-get remove -y gradle openjdk-21-jdk docker.io gettext 2>/dev/null || true; \
+		apt-get autoremove -y 2>/dev/null || true; \
+		helm_bin=$$(which helm 2>/dev/null); \
+		if [ -n "$$helm_bin" ]; then rm -f "$$helm_bin"; echo "→ Removed helm."; fi; \
+		echo "✔ Prerequisites removed."; \
+	else \
+		echo "✘ Unsupported OS: $(UNAME_S). Remove prerequisites manually."; exit 1; \
+	fi
 
 # ------------------------------------------------------------------------------
 # Phase 2: Minikube cluster
@@ -732,25 +751,6 @@ confluent-teardown: ## Full teardown: remove Flink, Kafka UI, CP, Operator, name
 	@kubectl get pods -n $(NAMESPACE) 2>/dev/null || echo "→ Namespace gone — all clean."
 	$(MAKE) minikube-stop
 	@echo "✔ Full teardown complete."
-
-.PHONY: uninstall-prereqs
-uninstall-prereqs: ## Uninstall all tools installed by install-prereqs (docker, kubectl, minikube, helm, gradle, openjdk)
-	@echo "→ Uninstalling prerequisites..."
-	@if [ "$(IS_DARWIN)" = "Darwin" ]; then \
-		brew uninstall --cask docker 2>/dev/null || true; \
-		brew uninstall kubernetes-cli minikube helm gettext gradle 2>/dev/null || true; \
-		echo "✔ Prerequisites removed. You may need to manually delete Docker Desktop data from ~/Library/Application Support/Docker."; \
-	elif [ "$(IS_LINUX)" = "Linux" ]; then \
-		command -v apt-get >/dev/null 2>&1 || { echo "✘ apt-get not found. Remove prerequisites manually."; exit 1; }; \
-		rm -f /usr/local/bin/kubectl /usr/local/bin/minikube; \
-		apt-get remove -y gradle openjdk-21-jdk docker.io gettext 2>/dev/null || true; \
-		apt-get autoremove -y 2>/dev/null || true; \
-		helm_bin=$$(which helm 2>/dev/null); \
-		if [ -n "$$helm_bin" ]; then rm -f "$$helm_bin"; echo "→ Removed helm."; fi; \
-		echo "✔ Prerequisites removed."; \
-	else \
-		echo "✘ Unsupported OS: $(UNAME_S). Remove prerequisites manually."; exit 1; \
-	fi
 
 .PHONY: nuke
 nuke: ## Full wipe: confluent-teardown + minikube-delete + uninstall-prereqs (leaves machine as close to factory as possible)
