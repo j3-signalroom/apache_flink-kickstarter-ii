@@ -6,6 +6,8 @@
 >
 > This example demonstrates how the Process Table Function (PTF) API in Flink 2.1+ enables building fully stateful, **timer-driven** operators in Java that are directly callable from SQL.
 
+> **_Note: The `ArgumentTrait.REQUIRE_ON_TIME` trait is not yet supported in Confluent Cloud early access. Please see the [Known Issues](../../KNOWN_ISSUES.md#argumenttraitrequire_on_time-not-supported-in-confluent-cloud-early-access) section for details._**
+
 **Table of Contents**
 <!-- toc -->
 + [**1.0 Timers and timer-driven processing in a Process Table Function**](#10-timers-and-timer-driven-processing-in-a-process-table-function)
