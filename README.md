@@ -44,7 +44,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 ## **1.0 Prerequisites**
 
 ### **1.1 Confluent Platform Local Setup**
-To **_run_**, **_test_**, and **_debug_** Apache Flink like a production engineer, this project provides a full Confluent Platform stack running locally on Minikube—no cloud required.
+To **_run_**, **_test_**, and **_debug_** Apache Flink like a production engineer, this project provides a full Confluent Platform stack running locally on [Minikube](https://minikube.sigs.k8s.io/docs/) — no cloud required.
 
 You get a production-like environment on your laptop:
 
