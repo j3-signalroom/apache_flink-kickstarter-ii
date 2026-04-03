@@ -27,6 +27,6 @@ So the trait essentially functions as **documentation-as-enforcement** — it ch
 
 Since Confluent Cloud doesn't support it yet, your SQL query should always include the `on_time => DESCRIPTOR(event_time)` argument by convention. This shifts the responsibility from the planner to the query writer.
 
-The current solution is to ensure that all queries using `session_timeout_detector` include the `on_time` descriptor, and to recognize that the planner won’t detect missing `on_time` arguments until the trait is supported in Confluent Cloud. However, the function will still work as long as the `on_time` argument is included in the SQL query in both OSS Apache Flink, Confluent Platform, and Confluent Cloud.
+The current solution is to ensure that all queries using `session_timeout_detector` include the `on_time` descriptor, and to recognize that the planner won’t detect missing `on_time` arguments until the trait is supported in Confluent Cloud. **_However, the function will still work as long as the `on_time` argument is included in the SQL query in both OSS Apache Flink, Confluent Platform, and Confluent Cloud._**
 
 [`PR #154`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/pull/154)
