@@ -14,17 +14,17 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 <!-- toc -->
 + [**1.0 Prerequisites**](#10-prerequisites)
     - [**1.1 Confluent Platform Local Setup**](#11-confluent-platform-local-setup)
-        - [**1.1.1 Required Tools**](#111-required-tools)
-        - [**1.1.2 Resource Requirements**](#112-resource-requirements)
-        - [**1.1.3 `Makefile` Architecture**](#113-makefile-architecture)
-        - [**1.1.4 Using the `Makefile` Targets Quickstart**](#114-using-the-makefile-targets-quickstart)
-        - [**1.1.5 `Makefile` Composite Workflow Target Reference**](#115-makefile-composite-workflow-target-reference)
-        - [**1.1.6 `Makefile` Individual Target Reference**](#116-makefile-individual-target-reference)
-        - [**1.1.7 `Makefile` Target Configuration Reference**](#1170-makefile-target-configuration-reference)
-        - [**1.1.8 `Makefile` Target Teardown**](#118-makefile-target-teardown)
-        - [**1.1.9 Remote Server Setup (SSH Tunneling)**](#119-remote-server-setup-ssh-tunneling)
+        - [**1.1.1 Requirements**](#111-requirements)
+        - [**1.1.2 Using the Makefile to Deploy Infrastructure Locally**](#112-using-the-makefile-to-deploy-infrastructure-locally)
+            - [**1.1.2.1 Install the Tooling (One Command Setup)**](#1121-install-the-tooling-one-command-setup)
+            - [**1.1.2.2 Full stack (CP + Kafka UI)**](#1122-full-stack-cp--kafka-ui)
+            - [**1.1.2.3 Add Apache Flink + CMF (run separately after `make cp-up`)**](#1123-add-apache-flink--cmf-run-separately-after-make-cp-up)
+        - [**1.1.3 `Makefile` Composite Workflow Target Reference**](#113-makefile-composite-workflow-target-reference)
+        - [**1.1.4 `Makefile` Individual Target Reference**](#114-makefile-individual-target-reference)
+        - [**1.1.5 `Makefile` Target Configuration Reference**](#115-makefile-target-configuration-reference)
+        - [**1.1.6 Remote Server Setup (SSH Tunneling)**](#116-remote-server-setup-ssh-tunneling)
     - [**1.2 Confluent Cloud Setup**](#12-confluent-cloud-setup)
-        - [**1.2.1 Required Tools**](#121-required-tools)
+        - [**1.2.1 Requirements**](#121-requirements)
 + [**2.0 The Examples**](#20-the-examples)
     - [**2.1 Apache Flink User-Defined Functions (UDF)**](#21-apache-flink-user-defined-functions-udf)
         - [**2.1.1 Process Table Functions (PTF)**](#211-process-table-functions-ptf)
@@ -44,52 +44,36 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 ## **1.0 Prerequisites**
 
 ### **1.1 Confluent Platform Local Setup**
-A Makefile-driven quickstart that deploys a full local streaming stack on Minikube:
+To **_run_**, **_test_**, and **_debug_** Apache Flink like a production engineer, this project provides a full Confluent Platform stack running locally on Minikube—no cloud required.
+
+You get a production-like environment on your laptop:
 
 - **Confluent Platform** (KRaft mode) via Confluent for Kubernetes (CFK)
 - **Apache Flink 2.1.1** via the Confluent Flink Kubernetes Operator 1.130
 - **Confluent Manager for Apache Flink (CMF) 2.1** for Flink environment management
 - **Kafka UI** ([Provectus](https://provectus.com/)) for cluster inspection
 
-#### **1.1.1 Required Tools**
-macOS with Homebrew or Linux with apt-get. To install all required tools in one step:
+The included [`Makefile`](https://makefiletutorial.com/) acts as your control plane—automating setup, teardown, and day-to-day workflows—so you can focus on building Flink pipelines, not infrastructure.
 
-```bash
-make install-prereqs
-```
+> Build locally. Debug with confidence. Deploy to production-ready environments.
 
-This installs `kubernetes-cli`, `minikube`, `helm`, `gettext`, and `gradle` via Homebrew (macOS) or apt-get (Linux). Once complete, **launch Docker Desktop** before proceeding.
+#### **1.1.1 Requirements**
 
-To verify all tools are present without installing:
+To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with apt-get)**.
 
-```bash
-make check-prereqs
-```
-
-> Required: `docker`, `kubectl`, `minikube`, `helm`, `envsubst`, and `gradle`.
-
----
-
-#### **1.1.2 Resource Requirements**
-
-Minikube is configured with the following defaults, which are required to run the full stack:
+The full stack—**Minikube + Confluent Platform + Flink + CMF + Kafka UI**—is resource-intensive and designed to mirror a production-like environment. The following defaults are recommended:
 
 | Resource | Default |
-|----------|---------|
-| CPUs | 6 |
-| Memory | 20 GB |
-| Disk | 50 GB |
+| -------- | ------- |
+| CPUs     | 6       |
+| Memory   | 20 GB   |
+| Disk     | 50 GB   |
 
-Override any of these at the command line:
+> These settings ensure stable performance across all components. You can tune them if needed, but lower resources may lead to pod restarts or degraded performance.
 
-```bash
-make cp-up MINIKUBE_CPUS=8 MINIKUBE_MEM=24576
-```
+#### **1.1.2 Using the Makefile to Deploy Infrastructure Locally**
 
----
-
-#### **1.1.3 `Makefile` Architecture**
-
+**`Makefile` Architecture**
 ```mermaid
 graph TD
     %% ── Composite entry points ──────────────────────────────────────────
@@ -251,9 +235,18 @@ graph TD
 
 ---
 
-#### **1.1.4 Using the `Makefile` Targets Quickstart**
+##### **1.1.2.1 Install the Tooling (One Command Setup)**
+Get everything you need to deploy the full stack locally with a single command:
 
-##### **1.1.4.1 Full stack (CP + Kafka UI)**
+```bash
+make install-prereqs
+```
+
+This installs `docker`, `kubernetes-cli`, `minikube`, `helm`, `gettext`, `gradle`, and `openjdk-21`, via Homebrew (macOS) or apt-get (Linux). Once complete, **launch Docker Desktop** before proceeding.
+
+---
+
+##### **1.1.2.2 Full stack (CP + Kafka UI)**
 
 ```bash
 make cp-up
@@ -267,7 +260,7 @@ Once pods are up, open Control Center:
 make c3-open        # http://localhost:9021
 ```
 
-##### **1.1.4.2 Add Apache Flink + CMF (run separately after `make cp-up`)**
+##### **1.1.2.3 Add Apache Flink + CMF (run separately after `make cp-up`)**
 
 ```bash
 make flink-up
@@ -291,7 +284,7 @@ make cmf-proxy-inject
 
 ---
 
-#### **1.1.5 `Makefile` Composite Workflow Target Reference**
+#### **1.1.3 `Makefile` Composite Workflow Target Reference**
 
 | Target | What it does |
 |--------|-------------|
@@ -303,7 +296,7 @@ make cmf-proxy-inject
 
 ---
 
-#### **1.1.6 `Makefile` Individual Target Reference**
+#### **1.1.4 `Makefile` Individual Target Reference**
 
 <details>
 <summary>Phase 1 — Prerequisites</summary>
@@ -419,7 +412,7 @@ make cmf-proxy-inject
 
 ---
 
-#### **1.1.7.0 `Makefile` Target Configuration Reference**
+#### **1.1.5 `Makefile` Target Configuration Reference**
 
 All variables are overridable at the command line.
 
@@ -459,24 +452,7 @@ make flink-deploy FLINK_IMAGE=confluentinc/cp-flink:2.1.1-cp1-java21-arm64 FLINK
 
 ---
 
-#### **1.1.8 `Makefile` Target Teardown**
-
-Remove everything and stop Minikube:
-
-```bash
-make confluent-teardown
-```
-
-To keep Minikube running but remove all deployed components:
-
-```bash
-make flink-down   # Flink cluster + CMF + operator + cert-manager
-make cp-down      # CP + Kafka UI + CFK Operator
-```
-
----
-
-#### **1.1.9 Remote Server Setup (SSH Tunneling)**
+#### **1.1.6 Remote Server Setup (SSH Tunneling)**
 
 If the full stack is running on a remote server (e.g., a Vultr VPS), you need two things: a terminal on the remote to run `make` targets, and an SSH tunnel to reach the UIs from your local browser.
 
@@ -549,7 +525,7 @@ Connecting activates the `LocalForward` rules. No extra flags needed.
 
 ### **1.2 Confluent Cloud Setup**
 
-#### **1.2.1 Required Tools**
+#### **1.2.1 Requirements**
 
 Before you begin, ensure you have access to the following cloud accounts:
 
@@ -558,8 +534,8 @@ Before you begin, ensure you have access to the following cloud accounts:
 
 Make sure the following tools are installed on your local machine:
 
-* **[Confluent CLI version 4 or higher](https://docs.confluent.io/confluent-cli/4.0/overview.html)**
-* **[Java JDK 17](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html)**
+* **[Java JDK 21](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)**
+* **[Gradle](https://gradle.org/install/)**
 * **[Terraform CLI version 1.13.0 or higher](https://developer.hashicorp.com/terraform/install)**
 
 ---
