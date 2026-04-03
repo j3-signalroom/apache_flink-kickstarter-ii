@@ -61,7 +61,7 @@ The included [`Makefile`](https://makefiletutorial.com/) acts as your control pl
 
 To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with apt-get)**.
 
-The full stack—**Minikube + Confluent Platform + Flink + CMF + Kafka UI**—is resource-intensive and designed to mirror a production-like environment. The following defaults are recommended:
+The full stack — **Minikube + Confluent Platform + Flink + CMF + Kafka UI** — is resource-intensive and designed to mirror a production-like environment. The following defaults are recommended:
 
 | Resource | Default |
 | -------- | ------- |
