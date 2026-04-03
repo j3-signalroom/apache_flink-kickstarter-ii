@@ -558,7 +558,7 @@ Before you begin, ensure you have access to the following cloud accounts:
 Make sure the following tools are installed on your local machine:
 
 * **[Java JDK 21](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)**
-* **[Gradle](https://gradle.org/install/)**
+* **[Gradle 9.4.1 or higher](https://gradle.org/install/)**
 * **[Terraform CLI version 1.13.0 or higher](https://developer.hashicorp.com/terraform/install)**
 
 ---
