@@ -82,16 +82,20 @@ graph TD
     CP_DOWN(["`**make cp-down**`"])
     FLINK_DOWN(["`**make flink-down**`"])
     TEARDOWN(["`**make confluent-teardown**`"])
+    NUKE(["`**make nuke**`"])
 
     %% ── Phase 1: Prerequisites ──────────────────────────────────────────
     subgraph P1["Phase 1 — Prerequisites"]
-        CHECK_PRE["check-prereqs\ndocker · kubectl · minikube · helm"]
+        INSTALL_PRE["install-prereqs\ndocker · kubectl · minikube\nhelm · gettext · gradle · openjdk-21"]
+        CHECK_PRE["check-prereqs\ndocker · kubectl · minikube · helm · java 21"]
+        UNINSTALL_PRE["uninstall-prereqs\nremove all installed tooling"]
     end
 
     %% ── Phase 2: Minikube ───────────────────────────────────────────────
     subgraph P2["Phase 2 — Minikube"]
         MK_START["minikube-start\ncpus=6 · mem=20GB · disk=50GB"]
         MK_STOP["minikube-stop"]
+        MK_DELETE["minikube-delete"]
     end
 
     %% ── Phase 3: Confluent Operator ─────────────────────────────────────
@@ -210,6 +214,11 @@ graph TD
     TEARDOWN -->|"3 — delete namespace"| NS
     TEARDOWN -->|"4"| MK_STOP
 
+    %% ── make nuke ─────────────────────────────────────────────────────────
+    NUKE -->|"1"| TEARDOWN
+    NUKE -->|"2"| MK_DELETE
+    NUKE -->|"3"| UNINSTALL_PRE
+
     %% ── UI access ────────────────────────────────────────────────────────
     CP_DEPLOY -.->|"once Running"| C3
     FL_DEPLOY -.->|"once Running"| FL_UI
@@ -225,10 +234,10 @@ graph TD
     classDef file     fill:#2d2b1b,stroke:#8b7500,color:#ffe680
     classDef composite fill:#2a1a2e,stroke:#9b59b6,color:#dbb8ff
 
-    class CP_UP,FLINK_UP,CP_DOWN,FLINK_DOWN,TEARDOWN entry
+    class CP_UP,FLINK_UP,CP_DOWN,FLINK_DOWN,TEARDOWN,NUKE entry
     class CP_CORE_UP,DEPLOY_CP_PTF_SD,DEPLOY_CC_PTF_SD,DEPLOY_CP_PTF_TD,DEPLOY_CC_PTF_TD composite
-    class CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF_SD,BUILD_PTF_TD install
-    class MK_STOP,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN,TEARDOWN_CP_PTF_SD,TEARDOWN_CC_PTF_SD,TEARDOWN_CP_PTF_TD,TEARDOWN_CC_PTF_TD remove
+    class INSTALL_PRE,CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF_SD,BUILD_PTF_TD install
+    class MK_STOP,MK_DELETE,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN,UNINSTALL_PRE,TEARDOWN_CP_PTF_SD,TEARDOWN_CC_PTF_SD,TEARDOWN_CP_PTF_TD,TEARDOWN_CC_PTF_TD remove
     class C3,FL_UI,CMF_OPEN,KUI_OPEN ui
     class MANIFEST,RBAC_MANIFEST file
 ```
@@ -293,6 +302,7 @@ make cmf-proxy-inject
 | `make cp-down` | Remove CP, Kafka UI, and Operator (Minikube keeps running) |
 | `make flink-down` | Remove Flink cluster, CMF, Operator, and cert-manager |
 | `make confluent-teardown` | Full teardown: everything + stop Minikube |
+| `make nuke` | Full wipe: confluent-teardown + minikube-delete + uninstall-prereqs (leaves machine as close to factory as possible) |
 
 ---
 
@@ -305,6 +315,8 @@ make cmf-proxy-inject
 |--------|-------------|
 | `install-prereqs` | Install Docker Desktop, kubectl, Minikube, Helm, envsubst, and Gradle via Homebrew |
 | `check-prereqs` | Verify all required tools are available |
+| `uninstall-prereqs` | Uninstall all prerequisites installed by `install-prereqs` (safe to run even if not installed) |
+
 </details>
 
 <details>
@@ -456,7 +468,8 @@ make flink-deploy FLINK_IMAGE=confluentinc/cp-flink:2.1.1-cp1-java21-arm64 FLINK
 
 If the full stack is running on a remote server (e.g., a Vultr VPS), you need two things: a terminal on the remote to run `make` targets, and an SSH tunnel to reach the UIs from your local browser.
 
-##### **Step 0 — Authorize your local machine's SSH public key on the remote server**
+<details>
+<summary>Step 0 — Authorize your local machine's SSH public key on the remote server</summary>
 
 On the remote server, append your local machine's public key to the authorized keys file so you can connect without a password:
 
@@ -479,7 +492,10 @@ chmod 700 ~/.ssh
 chmod 600 ~/.ssh/authorized_keys
 ```
 
-##### **Step 1 — Add an entry to `~/.ssh/config` on your local machine**
+</details>
+
+<details>
+<summary>Step 1 — Add an entry to `~/.ssh/config` on your local machine</summary>
 
 ```
 Host [label for the remote server]
@@ -493,8 +509,10 @@ Host [label for the remote server]
 ```
 
 The three `LocalForward` lines tunnel the UI ports from the remote server to your local machine automatically every time you connect.
+</details>
 
-##### **Step 2 — Terminal 1: bring up the stack on the remote**
+<details>
+<summary>Step 2 — Terminal 1: bring up the stack on the remote</summary>
 
 ```bash
 ssh [label for the remote server]
@@ -502,16 +520,20 @@ cd /path/to/apache_flink-kickstarter-ii
 make cp-up
 make flink-up
 ```
+</details>
 
-##### **Step 3 — Terminal 2: open the SSH tunnel**
+<details>
+<summary>Step 3 — Terminal 2: open the SSH tunnel</summary>
 
 ```bash
 ssh [label for the remote server]
 ```
 
 Connecting activates the `LocalForward` rules. No extra flags needed.
+</details>
 
-##### **Step 4 — Open the UIs in your local browser**
+<details>
+<summary>Step 4 — Open the UIs in your local browser</summary>
 
 | URL | UI |
 |-----|----|
@@ -520,6 +542,7 @@ Connecting activates the `LocalForward` rules. No extra flags needed.
 | `http://localhost:8080` | Kafka UI |
 
 > The port-forwards on the remote side are started by `make c3-open`, `make flink-ui`, and `make kafka-ui-open` (called internally by `make cp-up` / `make flink-up`). The SSH `LocalForward` simply bridges your laptop to those already-listening ports on the remote.
+</details>
 
 ---
 
