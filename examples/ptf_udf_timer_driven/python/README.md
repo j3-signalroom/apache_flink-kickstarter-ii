@@ -55,11 +55,17 @@ Write the timer and state logic in Java (where PTFs are natively supported), and
 t_env.execute_sql("""
     CREATE FUNCTION session_timeout_detector
       AS 'ptf.SessionTimeoutDetector'
-      USING JAR '/path/to/session-timeout-detector.jar'
+      USING JAR '/path/to/timer-driven-ptf-udfs.jar'
+""")
+
+t_env.execute_sql("""
+    CREATE FUNCTION per_event_follow_up
+      AS 'ptf.PerEventFollowUp'
+      USING JAR '/path/to/timer-driven-ptf-udfs.jar'
 """)
 ```
 
-The PTF runs in the JVM; your PyFlink job just references it in SQL.
+Both PTFs run in the JVM from the same JAR; your PyFlink job just references them in SQL.
 
 ### **2.3 ─ Option 3: Approximate with PyFlink DataStream API**
 

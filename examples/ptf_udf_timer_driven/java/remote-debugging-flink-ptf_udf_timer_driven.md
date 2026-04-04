@@ -1,6 +1,6 @@
-# Remote Debugging a Timer-Driven Flink PTF UDF
+# Remote Debugging Timer-Driven Flink PTF UDFs
 
-Flink TaskManagers are JVM processes, so you can enable **Java remote debugging (JDWP)** and attach your IDE (VS Code or IntelliJ IDEA) to them.
+Flink TaskManagers are JVM processes, so you can enable **Java remote debugging (JDWP)** and attach your IDE (VS Code or IntelliJ IDEA) to them. This guide covers debugging both the **Session Timeout Detector** (named timers) and the **Per-Event Follow-Up** (unnamed timers) UDFs.
 
 **Table of Contents**
 <!-- toc -->

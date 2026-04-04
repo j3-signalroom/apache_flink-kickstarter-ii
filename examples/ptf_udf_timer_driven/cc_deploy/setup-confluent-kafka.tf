@@ -66,3 +66,27 @@ resource "confluent_kafka_topic" "timeout_events" {
     secret = module.kafka_api_key_rotation.active_api_key.secret
   }
 }
+
+resource "confluent_kafka_topic" "user_actions" {
+  kafka_cluster {
+    id = confluent_kafka_cluster.ptf_udf_timer_driven.id
+  }
+  topic_name    = "user_actions"
+  rest_endpoint = confluent_kafka_cluster.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.kafka_api_key_rotation.active_api_key.id
+    secret = module.kafka_api_key_rotation.active_api_key.secret
+  }
+}
+
+resource "confluent_kafka_topic" "follow_up_events" {
+  kafka_cluster {
+    id = confluent_kafka_cluster.ptf_udf_timer_driven.id
+  }
+  topic_name    = "follow_up_events"
+  rest_endpoint = confluent_kafka_cluster.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.kafka_api_key_rotation.active_api_key.id
+    secret = module.kafka_api_key_rotation.active_api_key.secret
+  }
+}
