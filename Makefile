@@ -8,7 +8,7 @@
 # Orchestrates the full lifecycle of a local Confluent Platform environment
 # running on Minikube, from prerequisite installation through Flink job
 # deployment.  Phases include:
-#   1. Prerequisite tooling (Docker, kubectl, Minikube, Helm, Gradle)
+#   1. Prerequisite tooling (Docker, kubectl, Minikube, Helm, Gradle, OpenJDK 21)
 #   2. Minikube cluster management (start, stop, delete)
 #   3. Confluent for Kubernetes (CFK) operator
 #   4. Confluent Platform components in KRaft mode (Kafka, Schema Registry,
@@ -21,18 +21,6 @@
 #   9. Flink JAR build (Gradle shadow JAR) and REST API job submission
 # ==============================================================================
 
-# To setup from scratch on a new Vultr VM, run the following commands in order:
-# make install-prereqs  # installs docker, kubectl, minikube, helm
-# make cp-up            # Minikube → CFK operator → CP → Kafka UI
-# make flink-up         # cert-manager → Flink operator → CMF → session cluster
-
-# Then to open the UIs:
-# make c3-open      	# Control Center → http://localhost:9021
-# make flink-ui     	# Flink UI       → http://localhost:8081
-# make kafka-ui-open 	# Kafka UI      → http://localhost:8080
-
-# creates topics: user_events and enriched_events
-# make deploy-cp-ptf-udf-row-driven
 
 CONFLUENT_MANIFEST  ?= k8s/base/confluent-platform-c3++.yaml
 NAMESPACE           ?= confluent
