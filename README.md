@@ -578,8 +578,8 @@ Once the platform is up, head to the examples:
 
 | Type | Purpose | Confluent Platform on Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
-| PTF UDF-type (row-driven) | Walks through building, deploying, and testing a stateful **PTF** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
-| PTF UDF-type (timer-driven) | Walks through building, deploying, and testing four timer-driven **PTF** UDFs bundled in one JAR: **Session Timeout Detector** (named timers / inactivity pattern), **Abandoned Cart Detector** (named timers / inactivity pattern for e-commerce), **Per-Event Follow-Up** (unnamed timers / scheduling pattern), and **SLA Monitor** (unnamed timers / deadline enforcement). | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
+| PTF UDF-type (row-driven) | Walks through *building*, *deploying*, and *testing* a **`row-driven`** **PTF** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
+| PTF UDF-type (timer-driven) | Walks through *building*, *deploying*, and *testing* four **`timer-driven`** **PTF** UDFs bundled in one JAR: **Session Timeout Detector** (named timers using the inactivity pattern), **Abandoned Cart Detector** (named timers using the inactivity pattern for e-commerce), **Per-Event Follow-Up** (unnamed timers using the scheduling pattern), and **SLA Monitor** (unnamed timers using the scheduling pattern). | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
 
 ---
 
