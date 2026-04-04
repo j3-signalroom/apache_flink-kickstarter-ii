@@ -202,7 +202,7 @@ Kafka (user_activity)
 
 The `AbandonedCartDetector` PTF reads shopping cart events from a Kafka topic (`cart_events`), monitors per-cart inactivity using **named timers**, and writes enriched output (including abandonment alerts) to a second Kafka topic (`abandoned_cart_events`).
 
-This is a second example of the **inactivity pattern** (like the Session Timeout Detector), applied to the e-commerce domain. It demonstrates that the same named-timer technique generalizes across use cases ─ and adds **conditional output on timer fire**: if the cart was checked out, no abandonment event is emitted.
+This is a second example of the **inactivity pattern** (like the Session Timeout Detector), applied to the e-commerce domain. It demonstrates that the same named-timer technique generalizes across use cases and adds **conditional output on timer fire**: if the cart was checked out, no abandonment event is emitted.
 
 ### **3.1 Detection logic**
 
@@ -226,7 +226,7 @@ item_count     BIGINT    ─ total cart actions before this output
 is_abandoned   BOOLEAN   ─ false for regular events, true for abandonment events
 ```
 
-### **5.2 How it works end-to-end**
+### **3.2 How it works end-to-end**
 
 ```
 Kafka (cart_events)
@@ -269,7 +269,7 @@ Kafka (cart_events)
 | T+15m | `checkout` ($999.00) | State: checkedOut=true. Timer reset. | `(checkout, laptop, 999.00, 2, false)` |
 | T+24h15m | *(timer fires)* | Already checked out → **no output**. Clear state. | *(nothing emitted)* |
 
-### **5.3 Key concepts illustrated**
+### **3.3 Key concepts illustrated**
 
 - **Inactivity pattern in e-commerce** ─ the same named-timer technique from the Session Timeout Detector, applied to cart abandonment detection.
 - **Conditional output on timer fire** ─ unlike the Session Timeout Detector which always emits on timeout, the Abandoned Cart Detector skips output for checked-out carts.
@@ -304,7 +304,7 @@ follow_up_count  BIGINT    ─ total follow-ups emitted before this output
 is_follow_up     BOOLEAN   ─ false for regular events, true for follow-up events
 ```
 
-### **5.2 How it works end-to-end**
+### **4.2 How it works end-to-end**
 
 ```
 Kafka (user_actions)
@@ -343,7 +343,7 @@ Kafka (user_actions)
 
 Notice that **all three timers fire** ─ unlike the Session Timeout Detector where only the last timer would have fired.
 
-### **5.3 Key concepts illustrated**
+### **4.3 Key concepts illustrated**
 
 - **Unnamed timers** ─ each `registerOnTime(time)` call (without a name) adds a new independent timer. No replacement, no deduplication by name.
 - **Additive state** ─ unlike the Session Timeout Detector which clears state on timeout, the Per-Event Follow-Up preserves state across follow-ups.
