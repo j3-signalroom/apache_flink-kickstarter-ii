@@ -685,6 +685,13 @@ produce-user-activity-record: ## Produce one sample user activity event to the '
 		| kafka-console-producer --bootstrap-server localhost:9071 --topic user_activity"
 	@echo "→ Produced one sample user activity event to the 'user_activity' topic"
 
+.PHONY: produce-user-actions-record
+produce-user-actions-record: ## Produce one sample user action event to the 'user_actions' topic using kafka-console-producer
+	@kubectl exec -it kafka-0 -n confluent -- bash -c \
+		"echo '{\"user_id\":\"alice\",\"event_type\":\"login\",\"payload\":\"web\",\"event_time\":\"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\"}' \
+		| kafka-console-producer --bootstrap-server localhost:9071 --topic user_actions"
+	@echo "→ Produced one sample user action event to the 'user_actions' topic"
+
 
 # ------------------------------------------------------------------------------
 # Composite workflows

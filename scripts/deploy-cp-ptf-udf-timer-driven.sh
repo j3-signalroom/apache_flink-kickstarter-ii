@@ -177,7 +177,7 @@ do_create() {
 
     # Step 1: Pre-create Kafka topics (CFK broker has auto.create.topics.enable=false)
     print_step "Creating Kafka topics..."
-    for topic in user_activity timeout_events; do
+    for topic in user_activity timeout_events user_actions follow_up_events; do
         kubectl exec -n "$NAMESPACE" kafka-0 -- \
             kafka-topics --bootstrap-server kafka:9071 \
                          --create --if-not-exists \
@@ -258,10 +258,80 @@ FROM TABLE(
         on_time => DESCRIPTOR(event_time),
         uid     => 'timeout-events-v1'
     )
+);
+
+-- ═══════════════════════════════════════════════════════════════════
+-- Unnamed timer-driven PTF: PerEventFollowUp (per-event follow-up)
+-- ═══════════════════════════════════════════════════════════════════
+
+-- Source table with event-time watermark
+DROP TABLE IF EXISTS user_actions;
+
+CREATE TABLE user_actions (
+    user_id    STRING,
+    event_type STRING,
+    payload    STRING,
+    event_time TIMESTAMP_LTZ(3),
+    WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND
+) WITH (
+    'connector'                    = 'kafka',
+    'topic'                        = 'user_actions',
+    'properties.bootstrap.servers' = 'kafka:9071',
+    'format'                       = 'json',
+    'scan.startup.mode'            = 'earliest-offset'
+);
+
+-- Sample data with event timestamps
+INSERT INTO user_actions (user_id, event_type, payload, event_time)
+VALUES
+    ('alice',   'login',    'web',             TO_TIMESTAMP_LTZ(1000, 3)),
+    ('bob',     'click',    'button-checkout', TO_TIMESTAMP_LTZ(2000, 3)),
+    ('alice',   'click',    'button-home',     TO_TIMESTAMP_LTZ(30000, 3)),
+    ('charlie', 'login',    'mobile',          TO_TIMESTAMP_LTZ(60000, 3)),
+    ('alice',   'purchase', 'order-42',        TO_TIMESTAMP_LTZ(120000, 3)),
+    ('bob',     'logout',   'session-end',     TO_TIMESTAMP_LTZ(180000, 3));
+
+-- Sink table
+DROP TABLE IF EXISTS follow_up_events;
+
+CREATE TABLE follow_up_events (
+    user_id          STRING,
+    event_type       STRING,
+    payload          STRING,
+    event_count      BIGINT,
+    follow_up_count  BIGINT,
+    is_follow_up     BOOLEAN
+) WITH (
+    'connector'                    = 'kafka',
+    'topic'                        = 'follow_up_events',
+    'properties.bootstrap.servers' = 'kafka:9071',
+    'format'                       = 'json'
+);
+
+-- Register the unnamed timer-driven UDF (same JAR, different class)
+CREATE FUNCTION IF NOT EXISTS per_event_follow_up
+    AS 'ptf.PerEventFollowUp'
+    USING JAR 'file://${TIME_JAR_POD_PATH}';
+
+-- Start the unnamed timer-driven follow-up pipeline
+INSERT INTO follow_up_events
+SELECT
+    user_id,
+    event_type,
+    payload,
+    event_count,
+    follow_up_count,
+    is_follow_up
+FROM TABLE(
+    per_event_follow_up(
+        input   => TABLE user_actions PARTITION BY user_id,
+        on_time => DESCRIPTOR(event_time),
+        uid     => 'follow-up-events-v1'
+    )
 );"
 
     print_info "All statements executed successfully."
-    print_info "Run 'make flink-ui' to monitor the running timeout detection job."
+    print_info "Run 'make flink-ui' to monitor the running jobs."
 }
 
 # ===========================================================================
@@ -307,14 +377,17 @@ except:
     fi
 
     # Drop functions and tables in a single session
-    run_sql "Drop UDF and tables" \
+    run_sql "Drop UDFs and tables" \
         "DROP FUNCTION IF EXISTS session_timeout_detector;
+DROP FUNCTION IF EXISTS per_event_follow_up;
 DROP TABLE IF EXISTS timeout_events;
-DROP TABLE IF EXISTS user_activity;"
+DROP TABLE IF EXISTS user_activity;
+DROP TABLE IF EXISTS follow_up_events;
+DROP TABLE IF EXISTS user_actions;"
 
     # Delete the associated Kafka topics
     print_step "Deleting Kafka topics..."
-    for topic in timeout_events user_activity; do
+    for topic in timeout_events user_activity follow_up_events user_actions; do
         kubectl exec -n "$NAMESPACE" kafka-0 -- \
             kafka-topics --bootstrap-server kafka:9071 \
                          --delete --if-exists \

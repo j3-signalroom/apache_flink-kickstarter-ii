@@ -571,10 +571,10 @@ Once the platform is up, head to the examples:
 
 #### **2.1.1 Process Table Functions (PTF)**
 
-| Example Type | Example Description | Confluent Platform on Minikube | Confluent Cloud |
+| Type | Purpose | Confluent Platform on Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
 | PTF UDF-type (row-driven) | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
-| PTF UDF-type (timer-driven) | Walks through building, deploying, and testing a timer-driven **ProcessTableFunction** that detects user session timeouts using event-time timers. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
+| PTF UDF-type (timer-driven) | Walks through building, deploying, and testing two timer-driven **ProcessTableFunction** UDFs bundled in one JAR: **Session Timeout Detector** (named timers) and **Per-Event Follow-Up** (unnamed timers). | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
 
 ---
 
@@ -613,7 +613,7 @@ Deploy first: `make deploy-cp-ptf-udf-row-driven`
 
 > For the full deep-dive, see [Remote Debugging a Row-Driven Flink PTF UDF](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md).
 
-##### **3.1.1.2 Debugging the timer-driven PTF (`SessionTimeoutDetector`)**
+##### **3.1.1.2 Debugging the timer-driven PTFs (`SessionTimeoutDetector` and `PerEventFollowUp`)**
 
 Deploy first: `make deploy-cp-ptf-udf-timer-driven`
 
@@ -623,11 +623,13 @@ Deploy first: `make deploy-cp-ptf-udf-timer-driven`
     String eventType = input.getFieldAs("event_type");
     ```
 
-    Or, to debug the timer callback, set a breakpoint at the first line of `onTimer()`:
+    Or, to debug the unnamed timer UDF, open [`PerEventFollowUp.java`](examples/ptf_udf_timer_driven/java/app/src/main/java/ptf/PerEventFollowUp.java) and set a breakpoint at:
 
     ```java
-    collect(Row.of(
+    String eventType = input.getFieldAs("event_type");
     ```
+
+    Or, to debug a timer callback, set a breakpoint in `onTimer()` of either UDF.
 
 2. **Attach the debugger** — select the **"Attach to Flink TaskManager (Timer-Driven)"** configuration.
 
@@ -642,9 +644,9 @@ Deploy first: `make deploy-cp-ptf-udf-timer-driven`
 
 4. **Debug** — your IDE will pause at your breakpoint. Inspect `input`, `state`, and local variables, step through the timer registration logic, and watch `state.eventCount` and `state.lastEventType` update as you step over lines.
 
-> **Timer debugging tip:** Timers fire when the watermark advances past the timer's registered time. While paused at a breakpoint, watermarks don't advance, so `onTimer()` won't fire until you resume execution and let the watermark progress.
+> **Timer debugging tip:** Timers fire when the watermark advances past the timer's registered time. While paused at a breakpoint, watermarks don't advance, so `onTimer()` won't fire until you resume execution and let the watermark progress. For the unnamed timer UDF (`PerEventFollowUp`), note that `onTimer()` fires once per event — not once per partition key.
 
-> For the full deep-dive, see [Remote Debugging a Timer-Driven Flink PTF UDF](examples/ptf_udf_timer_driven/java/remote-debugging-flink-ptf_udf_timer_driven.md).
+> For the full deep-dive, see [Remote Debugging Timer-Driven Flink PTF UDFs](examples/ptf_udf_timer_driven/java/remote-debugging-flink-ptf_udf_timer_driven.md).
 
 ---
 
