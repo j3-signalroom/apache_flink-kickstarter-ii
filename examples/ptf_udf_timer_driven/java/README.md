@@ -58,6 +58,13 @@ public void onTimer(OnTimerContext onTimerCtx, SessionState state) {
 
 ### **1.3 Named timers and the inactivity pattern**
 
+**Inactivity patterns** _are design strategies for detecting and responding to the absence of expected events within a specific time frame._ In other words, "instead of reacting when something occurs, you react when it doesn’t."  For example:
+
+- *Session timeout*: flag a user session as idle after no clicks or actions for 5 minutes (this example)
+- *Abandoned cart*: trigger a reminder when a shopping cart has no activity for 24 hours
+- *Device heartbeat monitoring*: alert when a sensor or server stops sending pings
+- *Fraud detection*: flag an account that suddenly goes silent after a burst of transactions
+
 Timers can be **named** or **unnamed**:
 
 | Type | Registration | Behaviour on re-register |
@@ -65,7 +72,7 @@ Timers can be **named** or **unnamed**:
 | Named | `registerOnTime("name", time)` | **Replaces** the existing timer with the same name |
 | Unnamed | `registerOnTime(time)` | **Adds** a new timer (previous ones still fire) |
 
-Named timers are essential for the **inactivity pattern**: on every event, re-register a timer with the same name. Each new event replaces the previous timer, effectively resetting the inactivity clock. If no new event arrives, the timer fires.
+Named timers are crucial for the **inactivity pattern**: on each event, re-register a timer with the same name. Every new event overrides the previous timer, effectively resetting the inactivity period. If no new event occurs, the timer triggers.
 
 ### **1.4 The role of `on_time`, `TimeContext`, and `OnTimerContext`**
 
