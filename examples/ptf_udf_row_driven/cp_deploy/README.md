@@ -24,7 +24,7 @@
 
 | Aspect | **Confluent Platform SQL Client** (this example) | Confluent Cloud Terraform |
 |---|---|---|
-| Where it runs | Confluent Platform + Minikube | Confluent Cloud |
+| Where it runs | Confluent Platform on Minikube | Confluent Cloud |
 | How SQL is submitted | `sql-client.sh -f` on the JobManager pod | `confluent_flink_statement` Terraform resources |
 | UDF JAR delivery | `kubectl exec` to Flink pods | `confluent_flink_artifact` (uploaded to CC) |
 | Entry point | `make deploy-cp-ptf-udf-row-driven` | `make deploy-cc-ptf-udf-row-driven` |

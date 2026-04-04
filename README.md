@@ -4,7 +4,7 @@
 
 **Apache Flink Kickstarter II** is the 2026 evolution of my original Kickstarter project ─ rebuilt to showcase the cutting edge of **Apache Flink 2.1.x**.
 
-Designed as a hands-on, production-minded accelerator, it brings Flink to life _locally_ on **Confluent Platform + Minikube**, while drawing direct comparisons to **Confluent Cloud for Apache Flink** ─ so you can clearly see what’s possible across environments.
+Designed as a hands-on, production-minded accelerator, it brings Flink to life _locally_ on **Confluent Platform on Minikube**, while drawing direct comparisons to **Confluent Cloud for Apache Flink** ─ so you can clearly see what’s possible across environments.
 
 Every **example** is delivered end-to-end ─ from schema design to fully operational streaming pipelines ─ with implementations in **both Java and Python (when possible)** where it matters, bridging real-world developer workflows with modern streaming architecture.
 
@@ -571,7 +571,7 @@ Once the platform is up, head to the examples:
 
 #### **2.1.1 Process Table Functions (PTF)**
 
-| Example Type | Example Description | Confluent Platform + Minikube | Confluent Cloud |
+| Example Type | Example Description | Confluent Platform on Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
 | PTF UDF-type (row-driven) | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
 | PTF UDF-type (timer-driven) | Walks through building, deploying, and testing a timer-driven **ProcessTableFunction** that detects user session timeouts using event-time timers. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
