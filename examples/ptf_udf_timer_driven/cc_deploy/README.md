@@ -1,6 +1,6 @@
-# Confluent Cloud Terraform Deployment ─ Session Timeout Detector PTF UDF (early access example)
+# Confluent Cloud Terraform Deployment ─ Timer-Driven PTF UDFs (early access example)
 
-> This example deploys the **Session Timeout Detector** PTF UDF (source in [examples/ptf_udf_timer_driven/java/](../java/)) to **Confluent Cloud** using Terraform. All infrastructure (environment, Kafka cluster, Flink compute pool, service accounts, API keys) and Flink SQL statements are declared as Terraform resources.
+> This example deploys the **Session Timeout Detector** and **Per-Event Follow-Up** PTF UDFs (source in [examples/ptf_udf_timer_driven/java/](../java/)) to **Confluent Cloud** using Terraform. Both UDFs are packaged in a single JAR. All infrastructure (environment, Kafka cluster, Flink compute pool, service accounts, API keys) and Flink SQL statements are declared as Terraform resources.
 
 **Table of Contents**
 <!-- toc -->
@@ -53,7 +53,7 @@ Terraform declares the full Confluent Cloud stack:
 
 ### **2.2 JAR delivery**
 
-On Confluent Cloud, UDF JARs are uploaded as **Flink artifacts** via the `confluent_flink_artifact` resource. The JAR is built from [examples/ptf_udf_timer_driven/java/](../java/) and uploaded directly from the local build output. The `CREATE FUNCTION ... USING JAR` statement references the artifact using a `confluent-artifact://` URI.
+On Confluent Cloud, UDF JARs are uploaded as **Flink artifacts** via the `confluent_flink_artifact` resource. The JAR is built from [examples/ptf_udf_timer_driven/java/](../java/) and uploaded directly from the local build output. Both `CREATE FUNCTION ... USING JAR` statements reference the same artifact using a `confluent-artifact://` URI, registering `session_timeout_detector` and `per_event_follow_up` from the single JAR.
 
 ### **2.3 Statement flow**
 
@@ -61,21 +61,30 @@ Terraform manages the SQL statements as `confluent_flink_statement` resources wi
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
+│  ── Named timer pipeline (SessionTimeoutDetector) ──                 │
 │  Step 1:  DROP TABLE IF EXISTS user_activity            → OK         │
 │  Step 2:  CREATE TABLE user_activity (...)              → OK         │
-│           (includes event_time with watermark)                       │
 │  Step 3:  INSERT INTO user_activity VALUES (sample data) → submitted │
 │  Step 4:  DROP TABLE IF EXISTS timeout_events           → OK         │
 │  Step 5:  CREATE TABLE timeout_events (...)             → OK         │
-│  Step 6:  Upload UDF JAR as confluent_flink_artifact    → OK         │
-│  Step 7:  CREATE FUNCTION session_timeout_detector      → OK         │
-│           USING JAR 'confluent-artifact://...'                       │
-│  Step 8:  INSERT INTO timeout_events                    → submitted  │
-│           SELECT ... FROM TABLE(session_timeout_detector())          │
+│                                                                      │
+│  ── Unnamed timer pipeline (PerEventFollowUp) ──                     │
+│  Step 6:  DROP TABLE IF EXISTS user_actions             → OK         │
+│  Step 7:  CREATE TABLE user_actions (...)               → OK         │
+│  Step 8:  INSERT INTO user_actions VALUES (sample data) → submitted  │
+│  Step 9:  DROP TABLE IF EXISTS follow_up_events         → OK         │
+│  Step 10: CREATE TABLE follow_up_events (...)           → OK         │
+│                                                                      │
+│  ── Shared JAR upload and function registration ──                   │
+│  Step 11: Upload UDF JAR as confluent_flink_artifact    → OK         │
+│  Step 12: CREATE FUNCTION session_timeout_detector      → OK         │
+│  Step 13: INSERT INTO timeout_events                    → submitted  │
+│  Step 14: CREATE FUNCTION per_event_follow_up           → OK         │
+│  Step 15: INSERT INTO follow_up_events                  → submitted  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-Step 8 is a **long-running streaming job**. It runs continuously, reading from `user_activity` and writing timeout detection output to `timeout_events`.
+Steps 13 and 15 are **long-running streaming jobs**. They run continuously, reading from their respective source topics and writing output to sink topics.
 
 Once deployment completes, Terraform generates a visual **resource graph** at `examples/ptf_udf_timer_driven/cc_deploy/terraform.png`, providing an at-a-glance view of the infrastructure and resource dependencies: 
 ![terraform-visualization](terraform.png)
@@ -123,7 +132,7 @@ Monitor the running Flink statements in the Confluent Cloud Console:
 
 1. Navigate to your **ptf-udf-timer-driven** environment
 2. Open the **Flink** tab to see compute pools and running statements
-3. Open the **Topics** tab to inspect `user_activity` and `timeout_events`
+3. Open the **Topics** tab to inspect `user_activity`, `timeout_events`, `user_actions`, and `follow_up_events`
 
 ### **4.3 Tear down**
 

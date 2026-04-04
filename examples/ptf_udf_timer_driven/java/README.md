@@ -1,8 +1,11 @@
-# Java Process Table Function (PTF) User-Defined Function (UDF) type ─ Session Timeout Detector, a timer-driven PTF example
+# Java Process Table Function (PTF) User-Defined Function (UDF) type ─ Timer-driven PTF examples
 
-> The Session Timeout Detector is driven by **event-time timers** that fire when a user becomes inactive.
+> This package contains **two timer-driven PTF UDFs** bundled into a single JAR:
 >
-> Unlike the companion [User Event Enricher](../../ptf_udf_row_driven/java/) (which is purely row-driven — state transitions triggered only by incoming rows), this PTF uses Flink's timer service to schedule future actions and react when those timers fire.
+> 1. **Session Timeout Detector** ─ uses **named timers** to implement the inactivity pattern (only the latest timer survives)
+> 2. **Per-Event Follow-Up** ─ uses **unnamed timers** to schedule independent follow-ups for every event (all timers fire)
+>
+> Unlike the companion [User Event Enricher](../../ptf_udf_row_driven/java/) (which is purely row-driven — state transitions triggered only by incoming rows), these PTFs use Flink's timer service to schedule future actions and react when those timers fire.
 >
 > This example demonstrates how the Process Table Function (PTF) API in Flink 2.1+ enables building fully stateful, **timer-driven** operators in Java that are directly callable from SQL.
 
@@ -14,13 +17,19 @@
     + [**1.1 What are timers?**](#11-what-are-timers)
     + [**1.2 How timers work in a PTF**](#12-how-timers-work-in-a-ptf)
     + [**1.3 Named timers and the inactivity pattern**](#13-named-timers-and-the-inactivity-pattern)
-    + [**1.4 The role of `on_time`, `TimeContext`, and `OnTimerContext`**](#14-the-role-of-on_time-timecontext-and-ontimercontext)
-+ [**2.0 What does this example do?**](#20-what-does-this-example-do)
+    + [**1.4 Unnamed timers and the scheduling pattern**](#14-unnamed-timers-and-the-scheduling-pattern)
+    + [**1.5 The role of `on_time`, `TimeContext`, and `OnTimerContext`**](#15-the-role-of-on_time-timecontext-and-ontimercontext)
++ [**2.0 UDF 1: Session Timeout Detector (named timers)**](#20-udf-1-session-timeout-detector-named-timers)
     + [**2.1 Detection logic**](#21-detection-logic)
     + [**2.2 How it works end-to-end**](#22-how-it-works-end-to-end)
     + [**2.3 Key concepts illustrated**](#23-key-concepts-illustrated)
-+ [**3.0 Row-driven vs timer-driven ─ comparing the two PTF examples**](#30-row-driven-vs-timer-driven--comparing-the-two-ptf-examples)
-+ [**4.0 Resources**](#40-resources)
++ [**3.0 UDF 2: Per-Event Follow-Up (unnamed timers)**](#30-udf-2-per-event-follow-up-unnamed-timers)
+    + [**3.1 Follow-up logic**](#31-follow-up-logic)
+    + [**3.2 How it works end-to-end**](#32-how-it-works-end-to-end)
+    + [**3.3 Key concepts illustrated**](#33-key-concepts-illustrated)
++ [**4.0 Comparing the UDFs in this package**](#40-comparing-the-udfs-in-this-package)
++ [**5.0 Row-driven vs timer-driven ─ comparing with the row-driven PTF example**](#50-row-driven-vs-timer-driven--comparing-with-the-row-driven-ptf-example)
++ [**6.0 Resources**](#60-resources)
 <!-- tocstop -->
 
 ## **1.0 Timers and timer-driven processing in a Process Table Function**
@@ -72,9 +81,34 @@ Timers can be **named** or **unnamed**:
 | Named | `registerOnTime("name", time)` | **Replaces** the existing timer with the same name |
 | Unnamed | `registerOnTime(time)` | **Adds** a new timer (previous ones still fire) |
 
-Named timers are crucial for the **inactivity pattern**: on each event, re-register a timer with the same name. Every new event overrides the previous timer, effectively resetting the inactivity period. If no new event occurs, the timer triggers.
+**Named timers** are crucial for the **inactivity pattern**: on each event, re-register a timer with the same name. Every new event overrides the previous timer, effectively resetting the inactivity period. If no new event occurs, the timer triggers.
 
-### **1.4 The role of `on_time`, `TimeContext`, and `OnTimerContext`**
+### **1.4 Unnamed timers and the scheduling pattern**
+
+**Scheduling patterns** _are design strategies for triggering a future action in response to each incoming event._ In other words, "every event independently schedules its own deferred callback."  For example:
+
+- *Per-event follow-up*: schedule a reminder or notification for each user action (this example)
+- *SLA monitoring*: each request gets its own SLA deadline timer ─ when it fires, check if the request was completed
+- *Delayed side-effects*: trigger a downstream action (email, webhook, audit log entry) a fixed time after each event
+
+**Unnamed timers** implement the scheduling pattern. Each call to `registerOnTime(time)` (without a name) **adds** a new independent timer ─ previous timers are not replaced:
+
+```java
+TimeContext<Instant> timeCtx = ctx.timeContext(Instant.class);
+
+// Each call adds a new timer — no replacement
+timeCtx.registerOnTime(timeCtx.time().plus(Duration.ofMinutes(2)));
+```
+
+If three events arrive within the follow-up window, all three timers fire independently:
+
+```
+Event 1 at T+0s   → timer scheduled for T+2m     → fires at T+2m
+Event 2 at T+30s  → timer scheduled for T+2m30s  → fires at T+2m30s
+Event 3 at T+1m   → timer scheduled for T+3m     → fires at T+3m
+```
+
+### **1.5 The role of `on_time`, `TimeContext`, and `OnTimerContext`**
 
 Three pieces connect timers to the PTF:
 
@@ -85,9 +119,9 @@ Three pieces connect timers to the PTF:
 
 ---
 
-## **2.0 What does this example do?**
+## **2.0 UDF 1: Session Timeout Detector (named timers)**
 
-This example puts the above concepts into practice. The `SessionTimeoutDetector` PTF reads user activity events from a Kafka topic (`user_activity`), monitors per-user inactivity, and writes enriched output (including timeout alerts) to a second Kafka topic (`timeout_events`).
+The `SessionTimeoutDetector` PTF reads user activity events from a Kafka topic (`user_activity`), monitors per-user inactivity using **named timers**, and writes enriched output (including timeout alerts) to a second Kafka topic (`timeout_events`).
 
 ### **2.1 Detection logic**
 
@@ -155,21 +189,108 @@ Kafka (user_activity)
 
 ---
 
-## **3.0 Row-driven vs timer-driven ─ comparing the two PTF examples**
+## **3.0 UDF 2: Per-Event Follow-Up (unnamed timers)**
 
-| Aspect | [User Event Enricher](../../ptf_udf_row_driven/java/) (row-driven) | **Session Timeout Detector** (timer-driven) |
+The `PerEventFollowUp` PTF reads user action events from a Kafka topic (`user_actions`), schedules an independent follow-up for each event using **unnamed timers**, and writes enriched output (including follow-up events) to a second Kafka topic (`follow_up_events`).
+
+### **3.1 Follow-up logic**
+
+For every incoming event the function maintains four pieces of **per-user state** (one state instance per `PARTITION BY user_id` key):
+
+| State field | Purpose |
+|-|-|
+| `eventCount` | Running count of events received. Never reset ─ grows monotonically. |
+| `followUpCount` | Running count of follow-up events emitted. Grows as timers fire. |
+| `lastEventType` | The `event_type` of the most recent event. Carried forward in follow-up rows. |
+| `lastPayload` | The `payload` of the most recent event. Carried forward in follow-up rows. |
+
+The output schema is:
+
+```
+user_id          STRING    ─ passed through automatically via PARTITION BY
+event_type       STRING    ─ original type, or "follow_up" when timer fires
+payload          STRING    ─ original payload, or last-seen payload on follow-up
+event_count      BIGINT    ─ total events seen before this output
+follow_up_count  BIGINT    ─ total follow-ups emitted before this output
+is_follow_up     BOOLEAN   ─ false for regular events, true for follow-up events
+```
+
+### **3.2 How it works end-to-end**
+
+```
+Kafka (user_actions)
+        │
+        ▼
+  ┌──────────────┐
+  │ user_actions │   Flink SQL source table (JSON / event-time watermark)
+  └──────┬───────┘
+         │
+         ▼
+  PerEventFollowUp(
+      input   => TABLE user_actions PARTITION BY user_id,
+      on_time => DESCRIPTOR(event_time)
+  )
+         │
+         │  Per-user unnamed-timer processing:
+         │    • every event → update state, register unnamed timer, emit enriched row
+         │    • each timer fires independently → emit "follow_up" row
+         │
+         ▼
+  ┌──────────────────┐
+  │ follow_up_events │   Flink SQL sink table → Kafka (follow_up_events)
+  └──────────────────┘
+```
+
+**Example timeline for user `alice`:**
+
+| Time | Event | What happens | Output |
+|---|---|---|---|
+| T+0s | `login` | State: count=1. Unnamed timer set for T+2m. | `(login, web, 1, 0, false)` |
+| T+30s | `click` | State: count=2. New unnamed timer set for T+2m30s. | `(click, button-home, 2, 0, false)` |
+| T+1m | `purchase` | State: count=3. New unnamed timer set for T+3m. | `(purchase, order-42, 3, 0, false)` |
+| T+2m | *(timer 1 fires)* | Follow-up for login event. | `(follow_up, order-42, 3, 1, true)` |
+| T+2m30s | *(timer 2 fires)* | Follow-up for click event. | `(follow_up, order-42, 3, 2, true)` |
+| T+3m | *(timer 3 fires)* | Follow-up for purchase event. | `(follow_up, order-42, 3, 3, true)` |
+
+Notice that **all three timers fire** ─ unlike the Session Timeout Detector where only the last timer would have fired.
+
+### **3.3 Key concepts illustrated**
+
+- **Unnamed timers** ─ each `registerOnTime(time)` call (without a name) adds a new independent timer. No replacement, no deduplication by name.
+- **Additive state** ─ unlike the Session Timeout Detector which clears state on timeout, the Per-Event Follow-Up preserves state across follow-ups.
+- **Multiple timer fires per key** ─ demonstrates that unnamed timers accumulate, producing one `onTimer()` callback per registered timer.
+
+---
+
+## **4.0 Comparing the UDFs in this package**
+
+| Aspect | **Session Timeout Detector** (named timers) | **Per-Event Follow-Up** (unnamed timers) |
+|---|---|---|
+| Timer type | Named (`"inactivity"`) | Unnamed |
+| Re-register behaviour | **Replaces** the previous timer | **Adds** a new independent timer |
+| Timers pending per key | At most 1 | One per event (can accumulate) |
+| Output per timer fire | 1 timeout row (then clears state) | 1 follow-up row (state preserved) |
+| State on timer fire | Cleared (session ended) | Preserved (follow-ups are additive) |
+| Primary pattern | Inactivity / absence detection | Per-event delayed actions |
+| Use cases | Session timeout, abandoned cart, heartbeat | Reminders, SLA monitoring, delayed side-effects |
+
+---
+
+## **5.0 Row-driven vs timer-driven ─ comparing with the row-driven PTF example**
+
+| Aspect | [User Event Enricher](../../ptf_udf_row_driven/java/) (row-driven) | **Timer-driven UDFs** (this package) |
 |---|---|---|
 | Trigger | Every incoming row | Every incoming row **+ timer fire** |
 | Uses timers | No | Yes (`TimeContext`, `onTimer()`) |
 | `on_time` argument | Not required | **Required** (`DESCRIPTOR(event_time)`) |
 | `@ArgumentHint` traits | `SET_SEMANTIC_TABLE` | `SET_SEMANTIC_TABLE` + `REQUIRE_ON_TIME` |
-| State transitions | Row-driven only (login → new session) | Row-driven (update count, reset timer) + timer-driven (timeout → clear state) |
+| State transitions | Row-driven only (login → new session) | Row-driven (update count, reset/add timer) + timer-driven (timeout/follow-up) |
 | Output trigger | One output per input row | One output per input row **+ one output per timer fire** |
-| Use case | Enrichment, session tracking | Inactivity detection, deadlines, SLA monitoring |
+| Use case | Enrichment, session tracking | Inactivity detection, per-event follow-ups, SLA monitoring |
 
 ---
 
-## **4.0 Resources**
+## **6.0 Resources**
 - [Apache Flink User-defined Functions](https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/functions/udfs/)
 - [Create a User-Defined Function with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html)
 - [Process Table Functions in Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/concepts/process-table-functions.html)
