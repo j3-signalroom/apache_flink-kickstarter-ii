@@ -151,11 +151,14 @@ graph TD
         TEARDOWN_CP_PTF_SD["teardown-cp-ptf-udf-row-driven"]
         DEPLOY_CC_PTF_SD["deploy-cc-ptf-udf-row-driven\nJAR → Confluent Cloud"]
         TEARDOWN_CC_PTF_SD["teardown-cc-ptf-udf-row-driven"]
-        BUILD_PTF_TD["build-ptf-udf-timer-driven\n./gradlew clean shadowJar"]
-        DEPLOY_CP_PTF_TD["deploy-cp-ptf-udf-timer-driven\ncopy JAR → Flink SQL Client"]
+        PRODUCE_UE["produce-user-events-record\nkafka-console-producer → user_events"]
+        BUILD_PTF_TD["build-ptf-udf-timer-driven\n./gradlew clean shadowJar\n(SessionTimeoutDetector + PerEventFollowUp)"]
+        DEPLOY_CP_PTF_TD["deploy-cp-ptf-udf-timer-driven\ncopy JAR → Flink SQL Client\n(both named & unnamed timer pipelines)"]
         TEARDOWN_CP_PTF_TD["teardown-cp-ptf-udf-timer-driven"]
-        DEPLOY_CC_PTF_TD["deploy-cc-ptf-udf-timer-driven\nJAR → Confluent Cloud"]
+        DEPLOY_CC_PTF_TD["deploy-cc-ptf-udf-timer-driven\nJAR → Confluent Cloud\n(both named & unnamed timer pipelines)"]
         TEARDOWN_CC_PTF_TD["teardown-cc-ptf-udf-timer-driven"]
+        PRODUCE_UA["produce-user-activity-record\nkafka-console-producer → user_activity"]
+        PRODUCE_UAC["produce-user-actions-record\nkafka-console-producer → user_actions"]
     end
 
     %% ── Manifests / Templates ───────────────────────────────────────────
@@ -236,7 +239,7 @@ graph TD
 
     class CP_UP,FLINK_UP,CP_DOWN,FLINK_DOWN,TEARDOWN,NUKE entry
     class CP_CORE_UP,DEPLOY_CP_PTF_SD,DEPLOY_CC_PTF_SD,DEPLOY_CP_PTF_TD,DEPLOY_CC_PTF_TD composite
-    class INSTALL_PRE,CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF_SD,BUILD_PTF_TD install
+    class INSTALL_PRE,CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF_SD,BUILD_PTF_TD,PRODUCE_UE,PRODUCE_UA,PRODUCE_UAC install
     class MK_STOP,MK_DELETE,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN,UNINSTALL_PRE,TEARDOWN_CP_PTF_SD,TEARDOWN_CC_PTF_SD,TEARDOWN_CP_PTF_TD,TEARDOWN_CC_PTF_TD remove
     class C3,FL_UI,CMF_OPEN,KUI_OPEN ui
     class MANIFEST,RBAC_MANIFEST file
