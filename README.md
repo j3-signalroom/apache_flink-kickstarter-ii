@@ -571,7 +571,7 @@ Once the platform is up, head to the examples:
 
 #### **2.1.1 Process Table Functions (PTF)**
 
-| Type | Description | Confluent Platform on Minikube | Confluent Cloud |
+| Type | Purpose | Confluent Platform on Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
 | PTF UDF-type (row-driven) | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
 | PTF UDF-type (timer-driven) | Walks through building, deploying, and testing two timer-driven **ProcessTableFunction** UDFs bundled in one JAR: **Session Timeout Detector** (named timers) and **Per-Event Follow-Up** (unnamed timers). | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
