@@ -177,7 +177,7 @@ do_create() {
 
     # Step 1: Pre-create Kafka topics (CFK broker has auto.create.topics.enable=false)
     print_step "Creating Kafka topics..."
-    for topic in user_activity timeout_events user_actions follow_up_events; do
+    for topic in user_activity timeout_events user_actions follow_up_events service_requests sla_events cart_events abandoned_cart_events; do
         kubectl exec -n "$NAMESPACE" kafka-0 -- \
             kafka-topics --bootstrap-server kafka:9071 \
                          --create --if-not-exists \
@@ -328,6 +328,158 @@ FROM TABLE(
         on_time => DESCRIPTOR(event_time),
         uid     => 'follow-up-events-v1'
     )
+);
+
+-- ═══════════════════════════════════════════════════════════════════
+-- Unnamed timer-driven PTF: SlaMonitor (SLA deadline enforcement)
+-- ═══════════════════════════════════════════════════════════════════
+
+-- Source table with event-time watermark
+DROP TABLE IF EXISTS service_requests;
+
+CREATE TABLE service_requests (
+    request_id   STRING,
+    status       STRING,
+    service_name STRING,
+    event_time   TIMESTAMP_LTZ(3),
+    WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND
+) WITH (
+    'connector'                    = 'kafka',
+    'topic'                        = 'service_requests',
+    'properties.bootstrap.servers' = 'kafka:9071',
+    'format'                       = 'json',
+    'scan.startup.mode'            = 'earliest-offset'
+);
+
+-- Sample data with event timestamps
+INSERT INTO service_requests (request_id, status, service_name, event_time)
+VALUES
+    ('REQ-001', 'opened',      'billing',  TO_TIMESTAMP_LTZ(1000, 3)),
+    ('REQ-002', 'opened',      'payments', TO_TIMESTAMP_LTZ(2000, 3)),
+    ('REQ-001', 'in_progress', 'billing',  TO_TIMESTAMP_LTZ(120000, 3)),
+    ('REQ-003', 'opened',      'support',  TO_TIMESTAMP_LTZ(180000, 3)),
+    ('REQ-002', 'resolved',    'payments', TO_TIMESTAMP_LTZ(300000, 3));
+
+-- Sink table
+DROP TABLE IF EXISTS sla_events;
+
+CREATE TABLE sla_events (
+    request_id   STRING,
+    status       STRING,
+    service_name STRING,
+    update_count BIGINT,
+    is_resolved  BOOLEAN,
+    is_breach    BOOLEAN
+) WITH (
+    'connector'                    = 'kafka',
+    'topic'                        = 'sla_events',
+    'properties.bootstrap.servers' = 'kafka:9071',
+    'format'                       = 'json'
+);
+
+-- Register the SLA monitoring UDF (same JAR, different class)
+CREATE FUNCTION IF NOT EXISTS sla_monitor
+    AS 'ptf.SlaMonitor'
+    USING JAR 'file://${TIME_JAR_POD_PATH}';
+
+-- Start the SLA monitoring pipeline
+INSERT INTO sla_events
+SELECT
+    request_id,
+    status,
+    service_name,
+    update_count,
+    is_resolved,
+    is_breach
+FROM TABLE(
+    sla_monitor(
+        input   => TABLE service_requests PARTITION BY request_id,
+        on_time => DESCRIPTOR(event_time),
+        uid     => 'sla-events-v1'
+    )
+);
+
+-- ═══════════════════════════════════════════════════════════════════
+-- Named timer-driven PTF: AbandonedCartDetector (cart abandonment)
+-- ═══════════════════════════════════════════════════════════════════
+
+-- Source table with event-time watermark
+DROP TABLE IF EXISTS cart_events;
+
+CREATE TABLE cart_events (
+    cart_id    STRING,
+    action     STRING,
+    item       STRING,
+    item_value DOUBLE,
+    event_time TIMESTAMP_LTZ(3),
+    WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND
+) WITH (
+    'connector'                    = 'kafka',
+    'topic'                        = 'cart_events',
+    'properties.bootstrap.servers' = 'kafka:9071',
+    'format'                       = 'json',
+    'scan.startup.mode'            = 'earliest-offset'
+);
+
+-- Sample data with event timestamps
+-- Timestamps in milliseconds:
+--   T+0h    =          0   CART-001 adds shoes
+--   T+0h    =       1000   CART-002 adds laptop
+--   T+1h    =    3600000   CART-001 adds socks
+--   T+2h    =    7200000   CART-002 checks out
+--   T+3h    =   10800000   CART-003 adds book
+--   T+4h    =   14400000   CART-001 removes socks (resets 24h timer)
+--   T+30h   =  108000000   late event advances watermark past CART-003's 24h deadline (T+27h)
+--                           and past CART-001's deadline (T+28h)
+-- Expected abandoned carts: CART-003 (idle since T+3h), CART-001 (idle since T+4h)
+-- NOT abandoned: CART-002 (checked out at T+2h)
+INSERT INTO cart_events (cart_id, action, item, item_value, event_time)
+VALUES
+    ('CART-001', 'add',      'shoes',  89.99,  TO_TIMESTAMP_LTZ(0, 3)),
+    ('CART-002', 'add',      'laptop', 999.00, TO_TIMESTAMP_LTZ(1000, 3)),
+    ('CART-001', 'add',      'socks',  12.99,  TO_TIMESTAMP_LTZ(3600000, 3)),
+    ('CART-002', 'checkout', 'laptop', 999.00, TO_TIMESTAMP_LTZ(7200000, 3)),
+    ('CART-003', 'add',      'book',   24.99,  TO_TIMESTAMP_LTZ(10800000, 3)),
+    ('CART-001', 'remove',   'socks',  12.99,  TO_TIMESTAMP_LTZ(14400000, 3)),
+    ('CART-999', 'add',      'marker', 1.00,   TO_TIMESTAMP_LTZ(108000000, 3));
+
+-- Sink table
+DROP TABLE IF EXISTS abandoned_cart_events;
+
+CREATE TABLE abandoned_cart_events (
+    cart_id      STRING,
+    action       STRING,
+    item         STRING,
+    cart_value   DOUBLE,
+    item_count   BIGINT,
+    is_abandoned BOOLEAN
+) WITH (
+    'connector'                    = 'kafka',
+    'topic'                        = 'abandoned_cart_events',
+    'properties.bootstrap.servers' = 'kafka:9071',
+    'format'                       = 'json'
+);
+
+-- Register the abandoned cart UDF (same JAR, different class)
+CREATE FUNCTION IF NOT EXISTS abandoned_cart_detector
+    AS 'ptf.AbandonedCartDetector'
+    USING JAR 'file://${TIME_JAR_POD_PATH}';
+
+-- Start the abandoned cart detection pipeline
+INSERT INTO abandoned_cart_events
+SELECT
+    cart_id,
+    action,
+    item,
+    cart_value,
+    item_count,
+    is_abandoned
+FROM TABLE(
+    abandoned_cart_detector(
+        input   => TABLE cart_events PARTITION BY cart_id,
+        on_time => DESCRIPTOR(event_time),
+        uid     => 'abandoned-cart-events-v1'
+    )
 );"
 
     print_info "All statements executed successfully."
@@ -380,14 +532,20 @@ except:
     run_sql "Drop UDFs and tables" \
         "DROP FUNCTION IF EXISTS session_timeout_detector;
 DROP FUNCTION IF EXISTS per_event_follow_up;
+DROP FUNCTION IF EXISTS sla_monitor;
+DROP FUNCTION IF EXISTS abandoned_cart_detector;
 DROP TABLE IF EXISTS timeout_events;
 DROP TABLE IF EXISTS user_activity;
 DROP TABLE IF EXISTS follow_up_events;
-DROP TABLE IF EXISTS user_actions;"
+DROP TABLE IF EXISTS user_actions;
+DROP TABLE IF EXISTS sla_events;
+DROP TABLE IF EXISTS service_requests;
+DROP TABLE IF EXISTS abandoned_cart_events;
+DROP TABLE IF EXISTS cart_events;"
 
     # Delete the associated Kafka topics
     print_step "Deleting Kafka topics..."
-    for topic in timeout_events user_activity follow_up_events user_actions; do
+    for topic in timeout_events user_activity follow_up_events user_actions sla_events service_requests abandoned_cart_events cart_events; do
         kubectl exec -n "$NAMESPACE" kafka-0 -- \
             kafka-topics --bootstrap-server kafka:9071 \
                          --delete --if-exists \

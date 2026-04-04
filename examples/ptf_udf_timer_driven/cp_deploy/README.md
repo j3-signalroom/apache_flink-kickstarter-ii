@@ -1,6 +1,6 @@
 # Confluent Platform SQL Deployment via Flink SQL Client ─ Timer-Driven PTF UDFs
 
-> This example deploys the **Session Timeout Detector** and **Per-Event Follow-Up** PTF UDFs (source in [examples/ptf_udf_timer_driven/java/](../java/)) by submitting SQL statements through the **Flink SQL Client** running directly on the JobManager pod. Both UDFs are packaged in a single JAR.
+> This example deploys the **Session Timeout Detector**, **Abandoned Cart Detector**, **Per-Event Follow-Up**, and **SLA Monitor** PTF UDFs (source in [examples/ptf_udf_timer_driven/java/](../java/)) by submitting SQL statements through the **Flink SQL Client** running directly on the JobManager pod. All four UDFs are packaged in a single JAR.
 
 **Table of Contents**
 <!-- toc -->
@@ -40,7 +40,7 @@
 
 On Confluent Platform there is no artifact store ─ the JAR must be physically present on the Flink pods.
 
-The deploy script copies the fat JAR (built from [examples/ptf_udf_timer_driven/java/](../java/)) to `/opt/flink/usrlib/session-timeout-detector.jar` on every JobManager and TaskManager pod using `kubectl exec`. Both `CREATE FUNCTION ... USING JAR` statements reference this pod-local path, registering `session_timeout_detector` and `per_event_follow_up` from the same JAR.
+The deploy script copies the fat JAR (built from [examples/ptf_udf_timer_driven/java/](../java/)) to `/opt/flink/usrlib/session-timeout-detector.jar` on every JobManager and TaskManager pod using `kubectl exec`. All four `CREATE FUNCTION ... USING JAR` statements reference this pod-local path, registering `session_timeout_detector`, `abandoned_cart_detector`, `per_event_follow_up`, and `sla_monitor` from the same JAR.
 
 ### **2.2 Kafka connector**
 
@@ -57,7 +57,7 @@ The script pre-creates Kafka topics, then executes all SQL in a single `sql-clie
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
-│  Pre-step: kafka-topics --create (4 topics)                          │
+│  Pre-step: kafka-topics --create (8 topics)                          │
 │                                                                      │
 │  ── Named timer pipeline (SessionTimeoutDetector) ──                 │
 │  Step 1:  DROP TABLE IF EXISTS user_activity            → OK         │
@@ -76,10 +76,28 @@ The script pre-creates Kafka topics, then executes all SQL in a single `sql-clie
 │  Step 12: CREATE TABLE follow_up_events (... WITH kafka)→ OK         │
 │  Step 13: CREATE FUNCTION per_event_follow_up           → OK         │
 │  Step 14: INSERT INTO follow_up_events                  → submitted  │
+│                                                                      │
+│  ── SLA monitoring pipeline (SlaMonitor) ──                          │
+│  Step 15: DROP TABLE IF EXISTS service_requests         → OK         │
+│  Step 16: CREATE TABLE service_requests (... WITH kafka)→ OK         │
+│  Step 17: INSERT INTO service_requests VALUES (...)     → submitted  │
+│  Step 18: DROP TABLE IF EXISTS sla_events               → OK         │
+│  Step 19: CREATE TABLE sla_events (... WITH kafka)      → OK         │
+│  Step 20: CREATE FUNCTION sla_monitor                   → OK         │
+│  Step 21: INSERT INTO sla_events                        → submitted  │
+│                                                                      │
+│  ── Abandoned cart pipeline (AbandonedCartDetector) ──               │
+│  Step 22: DROP TABLE IF EXISTS cart_events              → OK         │
+│  Step 23: CREATE TABLE cart_events (... WITH kafka)     → OK         │
+│  Step 24: INSERT INTO cart_events VALUES (sample data)  → submitted  │
+│  Step 25: DROP TABLE IF EXISTS abandoned_cart_events    → OK         │
+│  Step 26: CREATE TABLE abandoned_cart_events (...)      → OK         │
+│  Step 27: CREATE FUNCTION abandoned_cart_detector       → OK         │
+│  Step 28: INSERT INTO abandoned_cart_events             → submitted  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-Steps 7 and 14 are **long-running streaming jobs**. They run continuously, reading from their respective source topics and writing output to sink topics.
+Steps 7, 14, 21, and 28 are **long-running streaming jobs**. They run continuously, reading from their respective source topics and writing output to sink topics.
 
 ---
 
@@ -117,8 +135,8 @@ Behind the scenes this runs:
 |---|---|
 | 1 | `./gradlew clean shadowJar` ─ builds the UDF fat JAR from `examples/ptf_udf_timer_driven/java/` |
 | 2 | `kubectl exec` ─ copies the JAR to all JobManager and TaskManager pods |
-| 3 | `kafka-topics --create` ─ pre-creates Kafka topics (`user_activity`, `timeout_events`, `user_actions`, `follow_up_events`) |
-| 4 | `sql-client.sh -f` ─ executes all SQL statements for both UDF pipelines in a single session on the JobManager pod |
+| 3 | `kafka-topics --create` ─ pre-creates Kafka topics (`user_activity`, `timeout_events`, `user_actions`, `follow_up_events`, `service_requests`, `sla_events`) |
+| 4 | `sql-client.sh -f` ─ executes all SQL statements for all four UDF pipelines in a single session on the JobManager pod |
 
 ### **4.2 Monitor**
 
@@ -136,7 +154,7 @@ To stop the running jobs and drop all tables and functions:
 make teardown-cp-ptf-udf-timer-driven
 ```
 
-This cancels any running Flink jobs via the Flink REST API, then submits `DROP FUNCTION` and `DROP TABLE` statements for both UDFs.
+This cancels any running Flink jobs via the Flink REST API, then submits `DROP FUNCTION` and `DROP TABLE` statements for all four UDFs.
 
 ---
 
