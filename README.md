@@ -32,7 +32,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
     - [**3.1 Apache Flink UDF Debugging with Java Debug Wire Protocol (JDWP)**](#31-apache-flink-udf-debugging-with-java-debug-wire-protocol-jdwp)
         - [**3.1.1 Process Table Functions (PTF)**](#311-process-table-functions-ptf)
             - [**3.1.1.1 Debugging the row-driven PTF (`UserEventEnricher`)**](#3111-debugging-the-row-driven-ptf-usereventenricher)
-            - [**3.1.1.2 Debugging the timer-driven PTF (`SessionTimeoutDetector`)**](#3112-debugging-the-timer-driven-ptf-sessiontimeoutdetector)
+            - [**3.1.1.2 Debugging the timer-driven PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**](#3112-debugging-the-timer-driven-ptfs-sessiontimeoutdetector-abandonedcartdetector-pereventfollowup-and-slamonitor)
 + [**4.0 Resources**](#40-resources)
     - [**4.1 Confluent for Kubernetes (CfK)**](#41-confluent-for-kubernetes-cfk)
     - [**4.2 Confluent Platform for Apache Flink**](#42-confluent-platform-for-apache-flink)
