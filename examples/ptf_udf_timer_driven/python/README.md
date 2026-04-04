@@ -63,9 +63,21 @@ t_env.execute_sql("""
       AS 'ptf.PerEventFollowUp'
       USING JAR '/path/to/timer-driven-ptf-udfs.jar'
 """)
+
+t_env.execute_sql("""
+    CREATE FUNCTION abandoned_cart_detector
+      AS 'ptf.AbandonedCartDetector'
+      USING JAR '/path/to/timer-driven-ptf-udfs.jar'
+""")
+
+t_env.execute_sql("""
+    CREATE FUNCTION sla_monitor
+      AS 'ptf.SlaMonitor'
+      USING JAR '/path/to/timer-driven-ptf-udfs.jar'
+""")
 ```
 
-Both PTFs run in the JVM from the same JAR; your PyFlink job just references them in SQL.
+All four PTFs run in the JVM from the same JAR; your PyFlink job just references them in SQL.
 
 ### **2.3 ─ Option 3: Approximate with PyFlink DataStream API**
 

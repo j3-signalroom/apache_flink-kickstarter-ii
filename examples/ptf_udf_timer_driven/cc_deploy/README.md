@@ -1,6 +1,6 @@
 # Confluent Cloud Terraform Deployment ─ Timer-Driven PTF UDFs (early access example)
 
-> This example deploys the **Session Timeout Detector** and **Per-Event Follow-Up** PTF UDFs (source in [examples/ptf_udf_timer_driven/java/](../java/)) to **Confluent Cloud** using Terraform. Both UDFs are packaged in a single JAR. All infrastructure (environment, Kafka cluster, Flink compute pool, service accounts, API keys) and Flink SQL statements are declared as Terraform resources.
+> This example deploys the **Session Timeout Detector**, **Abandoned Cart Detector**, **Per-Event Follow-Up**, and **SLA Monitor** PTF UDFs (source in [examples/ptf_udf_timer_driven/java/](../java/)) to **Confluent Cloud** using Terraform. All four UDFs are packaged in a single JAR. All infrastructure (environment, Kafka cluster, Flink compute pool, service accounts, API keys) and Flink SQL statements are declared as Terraform resources.
 
 **Table of Contents**
 <!-- toc -->
@@ -53,7 +53,7 @@ Terraform declares the full Confluent Cloud stack:
 
 ### **2.2 JAR delivery**
 
-On Confluent Cloud, UDF JARs are uploaded as **Flink artifacts** via the `confluent_flink_artifact` resource. The JAR is built from [examples/ptf_udf_timer_driven/java/](../java/) and uploaded directly from the local build output. Both `CREATE FUNCTION ... USING JAR` statements reference the same artifact using a `confluent-artifact://` URI, registering `session_timeout_detector` and `per_event_follow_up` from the single JAR.
+On Confluent Cloud, UDF JARs are uploaded as **Flink artifacts** via the `confluent_flink_artifact` resource. The JAR is built from [examples/ptf_udf_timer_driven/java/](../java/) and uploaded directly from the local build output. All four `CREATE FUNCTION ... USING JAR` statements reference the same artifact using a `confluent-artifact://` URI, registering `session_timeout_detector`, `abandoned_cart_detector`, `per_event_follow_up`, and `sla_monitor` from the single JAR.
 
 ### **2.3 Statement flow**
 
@@ -75,16 +75,34 @@ Terraform manages the SQL statements as `confluent_flink_statement` resources wi
 │  Step 9:  DROP TABLE IF EXISTS follow_up_events         → OK         │
 │  Step 10: CREATE TABLE follow_up_events (...)           → OK         │
 │                                                                      │
+│  ── SLA monitoring pipeline (SlaMonitor) ──                          │
+│  Step 6:  DROP TABLE IF EXISTS service_requests         → OK         │
+│  Step 7:  CREATE TABLE service_requests (...)           → OK         │
+│  Step 8:  INSERT INTO service_requests VALUES (...)     → submitted  │
+│  Step 9:  DROP TABLE IF EXISTS sla_events               → OK         │
+│  Step 10: CREATE TABLE sla_events (...)                 → OK         │
+│                                                                      │
 │  ── Shared JAR upload and function registration ──                   │
 │  Step 11: Upload UDF JAR as confluent_flink_artifact    → OK         │
 │  Step 12: CREATE FUNCTION session_timeout_detector      → OK         │
 │  Step 13: INSERT INTO timeout_events                    → submitted  │
 │  Step 14: CREATE FUNCTION per_event_follow_up           → OK         │
 │  Step 15: INSERT INTO follow_up_events                  → submitted  │
+│  Step 16: CREATE FUNCTION sla_monitor                   → OK         │
+│  Step 17: INSERT INTO sla_events                        → submitted  │
+│                                                                      │
+│  ── Abandoned cart pipeline (AbandonedCartDetector) ──               │
+│  Step 18: DROP TABLE IF EXISTS cart_events              → OK         │
+│  Step 19: CREATE TABLE cart_events (...)                → OK         │
+│  Step 20: INSERT INTO cart_events VALUES (sample data)  → submitted  │
+│  Step 21: DROP TABLE IF EXISTS abandoned_cart_events    → OK         │
+│  Step 22: CREATE TABLE abandoned_cart_events (...)      → OK         │
+│  Step 23: CREATE FUNCTION abandoned_cart_detector       → OK         │
+│  Step 24: INSERT INTO abandoned_cart_events             → submitted  │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
-Steps 13 and 15 are **long-running streaming jobs**. They run continuously, reading from their respective source topics and writing output to sink topics.
+Steps 13, 15, 17, and 24 are **long-running streaming jobs**. They run continuously, reading from their respective source topics and writing output to sink topics.
 
 Once deployment completes, Terraform generates a visual **resource graph** at `examples/ptf_udf_timer_driven/cc_deploy/terraform.png`, providing an at-a-glance view of the infrastructure and resource dependencies: 
 ![terraform-visualization](terraform.png)
@@ -132,7 +150,7 @@ Monitor the running Flink statements in the Confluent Cloud Console:
 
 1. Navigate to your **ptf-udf-timer-driven** environment
 2. Open the **Flink** tab to see compute pools and running statements
-3. Open the **Topics** tab to inspect `user_activity`, `timeout_events`, `user_actions`, and `follow_up_events`
+3. Open the **Topics** tab to inspect `user_activity`, `timeout_events`, `user_actions`, `follow_up_events`, `service_requests`, `sla_events`, `cart_events`, and `abandoned_cart_events`
 
 ### **4.3 Tear down**
 

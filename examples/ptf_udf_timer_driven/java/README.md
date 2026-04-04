@@ -1,9 +1,11 @@
 # Java Process Table Function (PTF) User-Defined Function (UDF) type ─ Timer-driven PTF examples
 
-> This package contains **two timer-driven PTF UDFs** bundled into a single JAR:
+> This package contains **four timer-driven PTF UDFs** bundled into a single JAR:
 >
 > 1. **Session Timeout Detector** ─ uses **named timers** to implement the inactivity pattern (only the latest timer survives)
-> 2. **Per-Event Follow-Up** ─ uses **unnamed timers** to schedule independent follow-ups for every event (all timers fire)
+> 2. **Abandoned Cart Detector** ─ uses **named timers** to detect idle shopping carts (inactivity pattern applied to e-commerce)
+> 3. **Per-Event Follow-Up** ─ uses **unnamed timers** to schedule independent follow-ups for every event (all timers fire)
+> 4. **SLA Monitor** ─ uses **unnamed timers** to enforce per-request SLA deadlines and detect breaches
 >
 > Unlike the companion [User Event Enricher](../../ptf_udf_row_driven/java/) (which is purely row-driven — state transitions triggered only by incoming rows), these PTFs use Flink's timer service to schedule future actions and react when those timers fire.
 >
@@ -23,13 +25,21 @@
     + [**2.1 Detection logic**](#21-detection-logic)
     + [**2.2 How it works end-to-end**](#22-how-it-works-end-to-end)
     + [**2.3 Key concepts illustrated**](#23-key-concepts-illustrated)
-+ [**3.0 UDF 2: Per-Event Follow-Up (unnamed timers)**](#30-udf-2-per-event-follow-up-unnamed-timers)
-    + [**3.1 Follow-up logic**](#31-follow-up-logic)
++ [**3.0 UDF 2: Abandoned Cart Detector (named timers)**](#30-udf-2-abandoned-cart-detector-named-timers)
+    + [**3.1 Detection logic**](#31-detection-logic)
     + [**3.2 How it works end-to-end**](#32-how-it-works-end-to-end)
     + [**3.3 Key concepts illustrated**](#33-key-concepts-illustrated)
-+ [**4.0 Comparing the UDFs in this package**](#40-comparing-the-udfs-in-this-package)
-+ [**5.0 Row-driven vs timer-driven ─ comparing with the row-driven PTF example**](#50-row-driven-vs-timer-driven--comparing-with-the-row-driven-ptf-example)
-+ [**6.0 Resources**](#60-resources)
++ [**4.0 UDF 3: Per-Event Follow-Up (unnamed timers)**](#40-udf-3-per-event-follow-up-unnamed-timers)
+    + [**4.1 Follow-up logic**](#41-follow-up-logic)
+    + [**4.2 How it works end-to-end**](#42-how-it-works-end-to-end)
+    + [**4.3 Key concepts illustrated**](#43-key-concepts-illustrated)
++ [**5.0 UDF 4: SLA Monitor (unnamed timers)**](#50-udf-4-sla-monitor-unnamed-timers)
+    + [**5.1 Monitoring logic**](#51-monitoring-logic)
+    + [**5.2 How it works end-to-end**](#52-how-it-works-end-to-end)
+    + [**5.3 Key concepts illustrated**](#53-key-concepts-illustrated)
++ [**6.0 Comparing the UDFs in this package**](#60-comparing-the-udfs-in-this-package)
++ [**7.0 Row-driven vs timer-driven ─ comparing with the row-driven PTF example**](#70-row-driven-vs-timer-driven--comparing-with-the-row-driven-ptf-example)
++ [**8.0 Resources**](#80-resources)
 <!-- tocstop -->
 
 ## **1.0 Timers and timer-driven processing in a Process Table Function**
@@ -72,7 +82,6 @@ public void onTimer(OnTimerContext onTimerCtx, SessionState state) {
 - *Session timeout*: flag a user session as idle after no clicks or actions for 5 minutes (this example)
 - *Abandoned cart*: trigger a reminder when a shopping cart has no activity for 24 hours
 - *Device heartbeat monitoring*: alert when a sensor or server stops sending pings
-- *Fraud detection*: flag an account that suddenly goes silent after a burst of transactions
 
 Timers can be **named** or **unnamed**:
 
@@ -189,11 +198,91 @@ Kafka (user_activity)
 
 ---
 
-## **3.0 UDF 2: Per-Event Follow-Up (unnamed timers)**
+## **3.0 UDF 2: Abandoned Cart Detector (named timers)**
+
+The `AbandonedCartDetector` PTF reads shopping cart events from a Kafka topic (`cart_events`), monitors per-cart inactivity using **named timers**, and writes enriched output (including abandonment alerts) to a second Kafka topic (`abandoned_cart_events`).
+
+This is a second example of the **inactivity pattern** (like the Session Timeout Detector), applied to the e-commerce domain. It demonstrates that the same named-timer technique generalizes across use cases and adds **conditional output on timer fire**: if the cart was checked out, no abandonment event is emitted.
+
+### **3.1 Detection logic**
+
+For every incoming cart event the function maintains four pieces of **per-cart state** (one state instance per `PARTITION BY cart_id` key):
+
+| State field | Purpose |
+|-|-|
+| `itemCount` | Number of cart actions received. Reset to zero on abandonment. |
+| `cartValue` | Running total value of the cart. Adjusted on `"add"` and `"remove"` actions. |
+| `lastItem` | The most recently added or modified item. Carried forward in abandonment rows. |
+| `checkedOut` | Whether the cart has been checked out. If `true`, no abandonment event is emitted. |
+
+The output schema is:
+
+```
+cart_id        STRING    ─ passed through automatically via PARTITION BY
+action         STRING    ─ original action, or "abandoned_cart" when timer fires
+item           STRING    ─ last item added/modified, or last-known item on abandonment
+cart_value     DOUBLE    ─ running total cart value
+item_count     BIGINT    ─ total cart actions before this output
+is_abandoned   BOOLEAN   ─ false for regular events, true for abandonment events
+```
+
+### **3.2 How it works end-to-end**
+
+```
+Kafka (cart_events)
+        │
+        ▼
+  ┌──────────────┐
+  │ cart_events  │   Flink SQL source table (JSON / event-time watermark)
+  └──────┬───────┘
+         │
+         ▼
+  AbandonedCartDetector(
+      input   => TABLE cart_events PARTITION BY cart_id,
+      on_time => DESCRIPTOR(event_time)
+  )
+         │
+         │  Per-cart named-timer processing:
+         │    • every event → update state, reset 24h timer, emit enriched row
+         │    • "checkout" event → mark checked out in state
+         │    • timer fires → if not checked out, emit "abandoned_cart" row, clear state
+         │
+         ▼
+  ┌────────────────────────┐
+  │ abandoned_cart_events  │   Flink SQL sink table → Kafka (abandoned_cart_events)
+  └────────────────────────┘
+```
+
+**Example timeline for cart `CART-001` (abandoned):**
+
+| Time | Event | What happens | Output |
+|---|---|---|---|
+| T+0s | `add` (shoes, $89.99) | State: count=1, value=$89.99. Timer set for T+24h. | `(add, shoes, 89.99, 1, false)` |
+| T+10m | `add` (socks, $12.99) | State: count=2, value=$102.98. Timer reset to T+24h10m. | `(add, socks, 102.98, 2, false)` |
+| T+24h10m | *(timer fires)* | Not checked out → emit abandonment. Clear state. | `(abandoned_cart, socks, 102.98, 2, true)` |
+
+**Example timeline for cart `CART-002` (checked out):**
+
+| Time | Event | What happens | Output |
+|---|---|---|---|
+| T+0s | `add` (laptop, $999.00) | State: count=1, value=$999.00. Timer set for T+24h. | `(add, laptop, 999.00, 1, false)` |
+| T+15m | `checkout` ($999.00) | State: checkedOut=true. Timer reset. | `(checkout, laptop, 999.00, 2, false)` |
+| T+24h15m | *(timer fires)* | Already checked out → **no output**. Clear state. | *(nothing emitted)* |
+
+### **3.3 Key concepts illustrated**
+
+- **Inactivity pattern in e-commerce** ─ the same named-timer technique from the Session Timeout Detector, applied to cart abandonment detection.
+- **Conditional output on timer fire** ─ unlike the Session Timeout Detector which always emits on timeout, the Abandoned Cart Detector skips output for checked-out carts.
+- **Domain-specific state** ─ tracks cart value and items, showing how the POJO state model adapts to different business domains.
+- **State cleared on timer fire** ─ like the Session Timeout Detector, state is reset after abandonment to prevent stale accumulation.
+
+---
+
+## **4.0 UDF 3: Per-Event Follow-Up (unnamed timers)**
 
 The `PerEventFollowUp` PTF reads user action events from a Kafka topic (`user_actions`), schedules an independent follow-up for each event using **unnamed timers**, and writes enriched output (including follow-up events) to a second Kafka topic (`follow_up_events`).
 
-### **3.1 Follow-up logic**
+### **4.1 Follow-up logic**
 
 For every incoming event the function maintains four pieces of **per-user state** (one state instance per `PARTITION BY user_id` key):
 
@@ -215,7 +304,7 @@ follow_up_count  BIGINT    ─ total follow-ups emitted before this output
 is_follow_up     BOOLEAN   ─ false for regular events, true for follow-up events
 ```
 
-### **3.2 How it works end-to-end**
+### **4.2 How it works end-to-end**
 
 ```
 Kafka (user_actions)
@@ -254,7 +343,7 @@ Kafka (user_actions)
 
 Notice that **all three timers fire** ─ unlike the Session Timeout Detector where only the last timer would have fired.
 
-### **3.3 Key concepts illustrated**
+### **4.3 Key concepts illustrated**
 
 - **Unnamed timers** ─ each `registerOnTime(time)` call (without a name) adds a new independent timer. No replacement, no deduplication by name.
 - **Additive state** ─ unlike the Session Timeout Detector which clears state on timeout, the Per-Event Follow-Up preserves state across follow-ups.
@@ -262,21 +351,98 @@ Notice that **all three timers fire** ─ unlike the Session Timeout Detector wh
 
 ---
 
-## **4.0 Comparing the UDFs in this package**
+## **5.0 UDF 4: SLA Monitor (unnamed timers)**
 
-| Aspect | **Session Timeout Detector** (named timers) | **Per-Event Follow-Up** (unnamed timers) |
-|---|---|---|
-| Timer type | Named (`"inactivity"`) | Unnamed |
-| Re-register behaviour | **Replaces** the previous timer | **Adds** a new independent timer |
-| Timers pending per key | At most 1 | One per event (can accumulate) |
-| Output per timer fire | 1 timeout row (then clears state) | 1 follow-up row (state preserved) |
-| State on timer fire | Cleared (session ended) | Preserved (follow-ups are additive) |
-| Primary pattern | Inactivity / absence detection | Per-event delayed actions |
-| Use cases | Session timeout, abandoned cart, heartbeat | Reminders, SLA monitoring, delayed side-effects |
+The `SlaMonitor` PTF reads service request events from a Kafka topic (`service_requests`), enforces per-request SLA deadlines using **unnamed timers**, and writes enriched output (including breach alerts) to a second Kafka topic (`sla_events`).
+
+### **5.1 Monitoring logic**
+
+For every incoming request the function maintains four pieces of **per-request state** (one state instance per `PARTITION BY request_id` key):
+
+| State field | Purpose |
+|-|-|
+| `updateCount` | Running count of status updates received for this request. |
+| `resolved` | Whether the request has been resolved. Set to `true` on `"resolved"` status. |
+| `serviceName` | The service that owns this request. Carried forward in breach rows. |
+| `lastStatus` | The most recent status of the request. |
+
+The output schema is:
+
+```
+request_id       STRING    ─ passed through automatically via PARTITION BY
+status           STRING    ─ original status, or "sla_breach" when timer fires
+service_name     STRING    ─ the service that owns this request
+update_count     BIGINT    ─ total status updates received
+is_resolved      BOOLEAN   ─ whether the request has been resolved
+is_breach        BOOLEAN   ─ false for regular events, true for SLA breach events
+```
+
+### **5.2 How it works end-to-end**
+
+```
+Kafka (service_requests)
+        │
+        ▼
+  ┌────────────────────┐
+  │ service_requests   │   Flink SQL source table (JSON / event-time watermark)
+  └──────┬─────────────┘
+         │
+         ▼
+  SlaMonitor(
+      input   => TABLE service_requests PARTITION BY request_id,
+      on_time => DESCRIPTOR(event_time)
+  )
+         │
+         │  Per-request unnamed-timer processing:
+         │    • "opened" event → update state, register SLA deadline timer, emit row
+         │    • "resolved" event → mark resolved in state, emit row
+         │    • timer fires → if not resolved, emit "sla_breach" row
+         │
+         ▼
+  ┌──────────────┐
+  │  sla_events  │   Flink SQL sink table → Kafka (sla_events)
+  └──────────────┘
+```
+
+**Example timeline for request `REQ-001`:**
+
+| Time | Event | What happens | Output |
+|---|---|---|---|
+| T+0s | `opened` | State: count=1, resolved=false. Timer set for T+10m. | `(opened, billing, 1, false, false)` |
+| T+2m | `in_progress` | State: count=2, resolved=false. | `(in_progress, billing, 2, false, false)` |
+| T+10m | *(timer fires)* | Not resolved → emit SLA breach. | `(sla_breach, billing, 2, false, true)` |
+
+**Example timeline for request `REQ-002` (resolved in time):**
+
+| Time | Event | What happens | Output |
+|---|---|---|---|
+| T+0s | `opened` | State: count=1, resolved=false. Timer set for T+10m. | `(opened, payments, 1, false, false)` |
+| T+5m | `resolved` | State: count=2, resolved=true. | `(resolved, payments, 2, true, false)` |
+| T+10m | *(timer fires)* | Already resolved → **no output**. | *(nothing emitted)* |
+
+### **5.3 Key concepts illustrated**
+
+- **Scheduling pattern for SLA enforcement** ─ each request independently schedules its own deadline timer. The timer fires regardless of state changes; `onTimer()` checks whether the deadline was met.
+- **Conditional output on timer fire** ─ unlike the other two UDFs that always emit on timer fire, the SLA Monitor only emits when the request is still unresolved. This demonstrates that `onTimer()` can inspect state and decide whether to produce output.
+- **Unnamed timers with real-world semantics** ─ each `"opened"` request gets its own timer. Multiple requests under the same key (if partitioned differently) would each track independently.
 
 ---
 
-## **5.0 Row-driven vs timer-driven ─ comparing with the row-driven PTF example**
+## **6.0 Comparing the UDFs in this package**
+
+| Aspect | **Session Timeout Detector** (named) | **Abandoned Cart Detector** (named) | **Per-Event Follow-Up** (unnamed) | **SLA Monitor** (unnamed) |
+|---|---|---|---|---|
+| Timer type | Named (`"inactivity"`) | Named (`"cart_idle"`) | Unnamed | Unnamed |
+| Re-register behaviour | **Replaces** | **Replaces** | **Adds** new timer | **Adds** new timer |
+| Timers pending per key | At most 1 | At most 1 | One per event | One per `"opened"` request |
+| Output per timer fire | Always (timeout row) | **Only if not checked out** | Always (follow-up row) | **Only if not resolved** |
+| State on timer fire | Cleared | Cleared | Preserved | Preserved |
+| Primary pattern | Inactivity detection | Inactivity detection (e-commerce) | Per-event delayed actions | SLA deadline enforcement |
+| Use cases | Session timeout, heartbeat | Cart abandonment, wishlist reminders | Reminders, delayed side-effects | SLA monitoring, deadline compliance |
+
+---
+
+## **7.0 Row-driven vs timer-driven ─ comparing with the row-driven PTF example**
 
 | Aspect | [User Event Enricher](../../ptf_udf_row_driven/java/) (row-driven) | **Timer-driven UDFs** (this package) |
 |---|---|---|
@@ -284,13 +450,13 @@ Notice that **all three timers fire** ─ unlike the Session Timeout Detector wh
 | Uses timers | No | Yes (`TimeContext`, `onTimer()`) |
 | `on_time` argument | Not required | **Required** (`DESCRIPTOR(event_time)`) |
 | `@ArgumentHint` traits | `SET_SEMANTIC_TABLE` | `SET_SEMANTIC_TABLE` + `REQUIRE_ON_TIME` |
-| State transitions | Row-driven only (login → new session) | Row-driven (update count, reset/add timer) + timer-driven (timeout/follow-up) |
-| Output trigger | One output per input row | One output per input row **+ one output per timer fire** |
-| Use case | Enrichment, session tracking | Inactivity detection, per-event follow-ups, SLA monitoring |
+| State transitions | Row-driven only (login → new session) | Row-driven (update count, reset/add timer) + timer-driven (timeout/follow-up/breach) |
+| Output trigger | One output per input row | One output per input row **+ zero or one output per timer fire** |
+| Use case | Enrichment, session tracking | Inactivity detection, cart abandonment, per-event follow-ups, SLA monitoring |
 
 ---
 
-## **6.0 Resources**
+## **8.0 Resources**
 - [Apache Flink User-defined Functions](https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/functions/udfs/)
 - [Create a User-Defined Function with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html)
 - [Process Table Functions in Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/concepts/process-table-functions.html)
