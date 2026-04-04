@@ -338,6 +338,10 @@ resource "confluent_flink_artifact" "ptf_udf_timer_driven" {
     confluent_flink_statement.timeout_events_sink,
     confluent_flink_statement.insert_user_actions,
     confluent_flink_statement.follow_up_events_sink,
+    confluent_flink_statement.insert_service_requests,
+    confluent_flink_statement.sla_events_sink,
+    confluent_flink_statement.insert_cart_events,
+    confluent_flink_statement.abandoned_cart_events_sink,
   ]
 
   lifecycle {
@@ -482,6 +486,10 @@ resource "confluent_flink_statement" "drop_user_actions" {
     id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
   }
 
+  depends_on = [
+    confluent_kafka_topic.user_actions
+  ]
+
   lifecycle {
     ignore_changes = [statement, compute_pool]
   }
@@ -612,6 +620,10 @@ resource "confluent_flink_statement" "drop_follow_up_events" {
   compute_pool {
     id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
   }
+
+  depends_on = [
+    confluent_kafka_topic.follow_up_events
+  ]
 
   lifecycle {
     ignore_changes = [statement, compute_pool]
@@ -765,5 +777,662 @@ resource "confluent_flink_statement" "insert_follow_up_events" {
 
   depends_on = [
     confluent_flink_statement.create_per_event_follow_up
+  ]
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Unnamed timer-driven PTF: SlaMonitor (SLA deadline enforcement)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+resource "confluent_flink_statement" "drop_service_requests" {
+  statement = "DROP TABLE IF EXISTS service_requests;"
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  depends_on = [
+    confluent_kafka_topic.service_requests
+  ]
+
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+}
+
+resource "confluent_flink_statement" "service_requests_source" {
+  statement = <<-EOT
+    CREATE TABLE service_requests (
+                request_id   STRING,
+                status       STRING,
+                service_name STRING,
+                event_time   TIMESTAMP_LTZ(3),
+                WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND
+            );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.drop_service_requests,
+    confluent_kafka_topic.service_requests
+  ]
+}
+
+resource "confluent_flink_statement" "insert_service_requests" {
+  statement = <<-EOT
+    INSERT INTO service_requests (request_id, status, service_name, event_time)
+    VALUES
+      ('REQ-001', 'opened',      'billing',  TO_TIMESTAMP_LTZ(1000, 3)),
+      ('REQ-002', 'opened',      'payments', TO_TIMESTAMP_LTZ(2000, 3)),
+      ('REQ-001', 'in_progress', 'billing',  TO_TIMESTAMP_LTZ(120000, 3)),
+      ('REQ-003', 'opened',      'support',  TO_TIMESTAMP_LTZ(180000, 3)),
+      ('REQ-002', 'resolved',    'payments', TO_TIMESTAMP_LTZ(300000, 3));
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.service_requests_source
+  ]
+}
+
+resource "confluent_flink_statement" "drop_sla_events" {
+  statement = "DROP TABLE IF EXISTS sla_events;"
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  depends_on = [
+    confluent_kafka_topic.sla_events
+  ]
+
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+}
+
+resource "confluent_flink_statement" "sla_events_sink" {
+  statement = <<-EOT
+    CREATE TABLE sla_events (
+                request_id   STRING,
+                status       STRING,
+                service_name STRING,
+                update_count BIGINT,
+                is_resolved  BOOLEAN,
+                is_breach    BOOLEAN
+            );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.insert_service_requests,
+    confluent_flink_statement.drop_sla_events,
+    confluent_kafka_topic.sla_events
+  ]
+}
+
+# ── SLA monitoring UDF registration and pipeline ────────────────────────────
+
+resource "confluent_flink_statement" "create_sla_monitor" {
+  statement = <<-EOT
+    CREATE FUNCTION IF NOT EXISTS sla_monitor
+      AS 'ptf.SlaMonitor'
+      USING JAR 'confluent-artifact://${confluent_flink_artifact.ptf_udf_timer_driven.id}';
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_artifact.ptf_udf_timer_driven
+  ]
+}
+
+resource "confluent_flink_statement" "insert_sla_events" {
+  statement = <<-EOT
+    INSERT INTO sla_events
+      SELECT
+        request_id,
+        status,
+        service_name,
+        update_count,
+        is_resolved,
+        is_breach
+      FROM TABLE(
+        sla_monitor(
+          input   => TABLE service_requests PARTITION BY request_id,
+          on_time => DESCRIPTOR(event_time),
+          uid     => 'sla-events-v1'
+        )
+      );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.create_sla_monitor
+  ]
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Named timer-driven PTF: AbandonedCartDetector (cart abandonment)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+resource "confluent_flink_statement" "drop_cart_events" {
+  statement = "DROP TABLE IF EXISTS cart_events;"
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  depends_on = [
+    confluent_kafka_topic.cart_events
+  ]
+
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+}
+
+resource "confluent_flink_statement" "cart_events_source" {
+  statement = <<-EOT
+    CREATE TABLE cart_events (
+                cart_id    STRING,
+                action     STRING,
+                item       STRING,
+                item_value DOUBLE,
+                event_time TIMESTAMP_LTZ(3),
+                WATERMARK FOR event_time AS event_time - INTERVAL '5' SECOND
+            );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.drop_cart_events,
+    confluent_kafka_topic.cart_events
+  ]
+}
+
+resource "confluent_flink_statement" "insert_cart_events" {
+  statement = <<-EOT
+    INSERT INTO cart_events (cart_id, action, item, item_value, event_time)
+    VALUES
+      ('CART-001', 'add',      'shoes',  89.99,  TO_TIMESTAMP_LTZ(0, 3)),
+      ('CART-002', 'add',      'laptop', 999.00, TO_TIMESTAMP_LTZ(1000, 3)),
+      ('CART-001', 'add',      'socks',  12.99,  TO_TIMESTAMP_LTZ(3600000, 3)),
+      ('CART-002', 'checkout', 'laptop', 999.00, TO_TIMESTAMP_LTZ(7200000, 3)),
+      ('CART-003', 'add',      'book',   24.99,  TO_TIMESTAMP_LTZ(10800000, 3)),
+      ('CART-001', 'remove',   'socks',  12.99,  TO_TIMESTAMP_LTZ(14400000, 3)),
+      ('CART-999', 'add',      'marker', 1.00,   TO_TIMESTAMP_LTZ(108000000, 3));
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.cart_events_source
+  ]
+}
+
+resource "confluent_flink_statement" "drop_abandoned_cart_events" {
+  statement = "DROP TABLE IF EXISTS abandoned_cart_events;"
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  depends_on = [
+    confluent_kafka_topic.abandoned_cart_events
+  ]
+
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+}
+
+resource "confluent_flink_statement" "abandoned_cart_events_sink" {
+  statement = <<-EOT
+    CREATE TABLE abandoned_cart_events (
+                cart_id      STRING,
+                action       STRING,
+                item         STRING,
+                cart_value   DOUBLE,
+                item_count   BIGINT,
+                is_abandoned BOOLEAN
+            );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.insert_cart_events,
+    confluent_flink_statement.drop_abandoned_cart_events,
+    confluent_kafka_topic.abandoned_cart_events
+  ]
+}
+
+# ── Abandoned cart UDF registration and pipeline ────────────────────────────
+
+resource "confluent_flink_statement" "create_abandoned_cart_detector" {
+  statement = <<-EOT
+    CREATE FUNCTION IF NOT EXISTS abandoned_cart_detector
+      AS 'ptf.AbandonedCartDetector'
+      USING JAR 'confluent-artifact://${confluent_flink_artifact.ptf_udf_timer_driven.id}';
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_artifact.ptf_udf_timer_driven
+  ]
+}
+
+resource "confluent_flink_statement" "insert_abandoned_cart_events" {
+  statement = <<-EOT
+    INSERT INTO abandoned_cart_events
+      SELECT
+        cart_id,
+        action,
+        item,
+        cart_value,
+        item_count,
+        is_abandoned
+      FROM TABLE(
+        abandoned_cart_detector(
+          input   => TABLE cart_events PARTITION BY cart_id,
+          on_time => DESCRIPTOR(event_time),
+          uid     => 'abandoned-cart-events-v1'
+        )
+      );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_timer_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_timer_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_timer_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_timer_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_timer_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.create_abandoned_cart_detector
   ]
 }

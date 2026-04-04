@@ -152,13 +152,15 @@ graph TD
         DEPLOY_CC_PTF_SD["deploy-cc-ptf-udf-row-driven\nJAR → Confluent Cloud"]
         TEARDOWN_CC_PTF_SD["teardown-cc-ptf-udf-row-driven"]
         PRODUCE_UE["produce-user-events-record\nkafka-console-producer → user_events"]
-        BUILD_PTF_TD["build-ptf-udf-timer-driven\n./gradlew clean shadowJar\n(SessionTimeoutDetector + PerEventFollowUp)"]
-        DEPLOY_CP_PTF_TD["deploy-cp-ptf-udf-timer-driven\ncopy JAR → Flink SQL Client\n(both named & unnamed timer pipelines)"]
+        BUILD_PTF_TD["build-ptf-udf-timer-driven\n./gradlew clean shadowJar\n(4 UDFs in one JAR)"]
+        DEPLOY_CP_PTF_TD["deploy-cp-ptf-udf-timer-driven\ncopy JAR → Flink SQL Client\n(4 timer-driven pipelines)"]
         TEARDOWN_CP_PTF_TD["teardown-cp-ptf-udf-timer-driven"]
-        DEPLOY_CC_PTF_TD["deploy-cc-ptf-udf-timer-driven\nJAR → Confluent Cloud\n(both named & unnamed timer pipelines)"]
+        DEPLOY_CC_PTF_TD["deploy-cc-ptf-udf-timer-driven\nJAR → Confluent Cloud\n(4 timer-driven pipelines)"]
         TEARDOWN_CC_PTF_TD["teardown-cc-ptf-udf-timer-driven"]
         PRODUCE_UA["produce-user-activity-record\nkafka-console-producer → user_activity"]
         PRODUCE_UAC["produce-user-actions-record\nkafka-console-producer → user_actions"]
+        PRODUCE_SR["produce-service-requests-record\nkafka-console-producer → service_requests"]
+        PRODUCE_CE["produce-cart-events-record\nkafka-console-producer → cart_events"]
     end
 
     %% ── Manifests / Templates ───────────────────────────────────────────
@@ -239,7 +241,7 @@ graph TD
 
     class CP_UP,FLINK_UP,CP_DOWN,FLINK_DOWN,TEARDOWN,NUKE entry
     class CP_CORE_UP,DEPLOY_CP_PTF_SD,DEPLOY_CC_PTF_SD,DEPLOY_CP_PTF_TD,DEPLOY_CC_PTF_TD composite
-    class INSTALL_PRE,CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF_SD,BUILD_PTF_TD,PRODUCE_UE,PRODUCE_UA,PRODUCE_UAC install
+    class INSTALL_PRE,CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF_SD,BUILD_PTF_TD,PRODUCE_UE,PRODUCE_UA,PRODUCE_UAC,PRODUCE_SR,PRODUCE_CE install
     class MK_STOP,MK_DELETE,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN,UNINSTALL_PRE,TEARDOWN_CP_PTF_SD,TEARDOWN_CC_PTF_SD,TEARDOWN_CP_PTF_TD,TEARDOWN_CC_PTF_TD remove
     class C3,FL_UI,CMF_OPEN,KUI_OPEN ui
     class MANIFEST,RBAC_MANIFEST file
@@ -576,8 +578,8 @@ Once the platform is up, head to the examples:
 
 | Type | Purpose | Confluent Platform on Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
-| PTF UDF-type (row-driven) | Walks through building, deploying, and testing a stateful **ProcessTableFunction** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
-| PTF UDF-type (timer-driven) | Walks through building, deploying, and testing two timer-driven **ProcessTableFunction** UDFs bundled in one JAR: **Session Timeout Detector** (named timers) and **Per-Event Follow-Up** (unnamed timers). | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
+| PTF UDF-type (row-driven) | Walks through building, deploying, and testing a stateful **PTF** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
+| PTF UDF-type (timer-driven) | Walks through building, deploying, and testing four timer-driven **PTF** UDFs bundled in one JAR: **Session Timeout Detector** (named timers / inactivity pattern), **Abandoned Cart Detector** (named timers / inactivity pattern for e-commerce), **Per-Event Follow-Up** (unnamed timers / scheduling pattern), and **SLA Monitor** (unnamed timers / deadline enforcement). | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
 
 ---
 
@@ -616,7 +618,7 @@ Deploy first: `make deploy-cp-ptf-udf-row-driven`
 
 > For the full deep-dive, see [Remote Debugging a Row-Driven Flink PTF UDF](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md).
 
-##### **3.1.1.2 Debugging the timer-driven PTFs (`SessionTimeoutDetector` and `PerEventFollowUp`)**
+##### **3.1.1.2 Debugging the timer-driven PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**
 
 Deploy first: `make deploy-cp-ptf-udf-timer-driven`
 
@@ -632,7 +634,19 @@ Deploy first: `make deploy-cp-ptf-udf-timer-driven`
     String eventType = input.getFieldAs("event_type");
     ```
 
-    Or, to debug a timer callback, set a breakpoint in `onTimer()` of either UDF.
+    Or, to debug the Abandoned Cart Detector, open [`AbandonedCartDetector.java`](examples/ptf_udf_timer_driven/java/app/src/main/java/ptf/AbandonedCartDetector.java) and set a breakpoint at:
+
+    ```java
+    String action = input.getFieldAs("action");
+    ```
+
+    Or, to debug the SLA Monitor, open [`SlaMonitor.java`](examples/ptf_udf_timer_driven/java/app/src/main/java/ptf/SlaMonitor.java) and set a breakpoint at:
+
+    ```java
+    String status = input.getFieldAs("status");
+    ```
+
+    Or, to debug a timer callback, set a breakpoint in `onTimer()` of any UDF.
 
 2. **Attach the debugger** — select the **"Attach to Flink TaskManager (Timer-Driven)"** configuration.
 
@@ -647,7 +661,7 @@ Deploy first: `make deploy-cp-ptf-udf-timer-driven`
 
 4. **Debug** — your IDE will pause at your breakpoint. Inspect `input`, `state`, and local variables, step through the timer registration logic, and watch `state.eventCount` and `state.lastEventType` update as you step over lines.
 
-> **Timer debugging tip:** Timers fire when the watermark advances past the timer's registered time. While paused at a breakpoint, watermarks don't advance, so `onTimer()` won't fire until you resume execution and let the watermark progress. For the unnamed timer UDF (`PerEventFollowUp`), note that `onTimer()` fires once per event — not once per partition key.
+> **Timer debugging tip:** Timers fire when the watermark advances past the timer's registered time. While paused at a breakpoint, watermarks don't advance, so `onTimer()` won't fire until you resume execution and let the watermark progress. For the unnamed timer UDFs (`PerEventFollowUp` and `SlaMonitor`), note that `onTimer()` fires once per event — not once per partition key. Both the `AbandonedCartDetector` and `SlaMonitor` demonstrate conditional output: `onTimer()` only emits if the cart wasn't checked out or the request wasn't resolved, respectively.
 
 > For the full deep-dive, see [Remote Debugging Timer-Driven Flink PTF UDFs](examples/ptf_udf_timer_driven/java/remote-debugging-flink-ptf_udf_timer_driven.md).
 

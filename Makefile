@@ -692,6 +692,20 @@ produce-user-actions-record: ## Produce one sample user action event to the 'use
 		| kafka-console-producer --bootstrap-server localhost:9071 --topic user_actions"
 	@echo "→ Produced one sample user action event to the 'user_actions' topic"
 
+.PHONY: produce-service-requests-record
+produce-service-requests-record: ## Produce one sample service request to the 'service_requests' topic using kafka-console-producer
+	@kubectl exec -it kafka-0 -n confluent -- bash -c \
+		"echo '{\"request_id\":\"REQ-100\",\"status\":\"opened\",\"service_name\":\"billing\",\"event_time\":\"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\"}' \
+		| kafka-console-producer --bootstrap-server localhost:9071 --topic service_requests"
+	@echo "→ Produced one sample service request to the 'service_requests' topic"
+
+.PHONY: produce-cart-events-record
+produce-cart-events-record: ## Produce one sample cart event to the 'cart_events' topic using kafka-console-producer
+	@kubectl exec -it kafka-0 -n confluent -- bash -c \
+		"echo '{\"cart_id\":\"CART-100\",\"action\":\"add\",\"item\":\"shoes\",\"item_value\":89.99,\"event_time\":\"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)\"}' \
+		| kafka-console-producer --bootstrap-server localhost:9071 --topic cart_events"
+	@echo "→ Produced one sample cart event to the 'cart_events' topic"
+
 
 # ------------------------------------------------------------------------------
 # Composite workflows
