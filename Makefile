@@ -8,7 +8,7 @@
 # Orchestrates the full lifecycle of a local Confluent Platform environment
 # running on Minikube, from prerequisite installation through Flink job
 # deployment.  Phases include:
-#   1. Prerequisite tooling (Docker, kubectl, Minikube, Helm, Gradle)
+#   1. Prerequisite tooling (Docker, kubectl, Minikube, Helm, Gradle, OpenJDK 21)
 #   2. Minikube cluster management (start, stop, delete)
 #   3. Confluent for Kubernetes (CFK) operator
 #   4. Confluent Platform components in KRaft mode (Kafka, Schema Registry,
