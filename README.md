@@ -570,7 +570,7 @@ Make sure the following tools are installed on your local machine:
 
 ## **2.0 The Examples**
 
-Once the platform is up, head to the examples:
+Once you’ve set up [**Confluent Platform on Minikube**](#11-confluent-platform-local-setup) or created your [**Confluent Cloud**](#12-confluent-cloud-setup) account, you’re ready to try the examples.
 
 ### **2.1 Apache Flink User-Defined Functions (UDF)**
 
