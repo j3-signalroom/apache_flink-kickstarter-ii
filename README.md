@@ -466,7 +466,7 @@ make flink-deploy FLINK_IMAGE=confluentinc/cp-flink:2.1.1-cp1-java21-arm64 FLINK
 
 #### **1.1.6 Remote Server Setup (SSH Tunneling)**
 
-If the full stack is running on a remote server (e.g., a Vultr VPS), you need two things: a terminal on the remote to run `make` targets, and an SSH tunnel to reach the UIs from your local browser.
+If the full stack is running on a remote server (e.g., a [Vultr VPS](https://www.vultr.com/)), you need two things: a terminal on the remote to run `make` targets, and an SSH tunnel to reach the UIs from your local browser.
 
 <details>
 <summary>Step 0 — Authorize your local machine's SSH public key on the remote server</summary>
