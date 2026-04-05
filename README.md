@@ -15,7 +15,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 + [**1.0 Prerequisites**](#10-prerequisites)
     - [**1.1 Confluent Platform Local Setup**](#11-confluent-platform-local-setup)
         - [**1.1.1 Requirements**](#111-requirements)
-        - [**1.1.2 Using the Makefile to Deploy Infrastructure Locally**](#112-using-the-makefile-to-deploy-infrastructure-locally)
+        - [****1.1.2 Local Infrastructure Deployment Made Simple with a `Makefile`**](#112-local-infrastructure-deployment-made-simple-with-a-makefile)
             - [**1.1.2.1 Install the Tooling (One Command Setup)**](#1121-install-the-tooling-one-command-setup)
             - [**1.1.2.2 Full stack (CP + Kafka UI)**](#1122-full-stack-cp--kafka-ui)
             - [**1.1.2.3 Add Apache Flink + CMF (run separately after `make cp-up`)**](#1123-add-apache-flink--cmf-run-separately-after-make-cp-up)
@@ -71,7 +71,7 @@ The full stack — **Minikube + Confluent Platform + Flink + CMF + Kafka UI** �
 
 > These settings ensure stable performance across all components. You can tune them if needed, but lower resources may lead to pod restarts or degraded performance.
 
-#### **1.1.2 Using the Makefile to Deploy Infrastructure Locally**
+#### **1.1.2 Local Infrastructure Deployment Made Simple with a `Makefile`**
 
 **`Makefile` Architecture**
 ```mermaid
