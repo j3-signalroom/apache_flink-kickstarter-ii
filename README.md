@@ -1,4 +1,4 @@
-# ![apache-flink-logo](apache_flink.png) Apache Flink Kickstarter II **[UNDER CONSTRUCTION]**
+# ![apache-flink-logo](docs/images/apache_flink.png) Apache Flink Kickstarter II **[UNDER CONSTRUCTION]**
 
 > **_On GitHub, Watch → Custom → Releases is the most useful setting if you want to stay updated on when something important is released for this project._**
 
