@@ -627,26 +627,46 @@ You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink
 
 ##### **3.1.1.1 Debugging the row-driven PTF (`UserEventEnricher`)**
 
-Deploy first: `make deploy-cp-ptf-udf-row-driven`
+Deploy first: `make deploy-cp-ptf-udf-row-driven`, and then:
 
-1. **Set a breakpoint** — open [`UserEventEnricher.java`](examples/ptf_udf_row_driven/java/app/src/main/java/ptf/UserEventEnricher.java) and click in the gutter at the first line of the `eval()` method:
+<details>
+<summary><strong>1. Set a breakpoint</strong></summary>
 
-    ```java
-    String eventType = input.getFieldAs("event_type");
-    ```
+Open [`UserEventEnricher.java`](examples/ptf_udf_row_driven/java/app/src/main/java/ptf/UserEventEnricher.java) and click in the gutter at the first line of the `eval()` method:
 
-2. **Attach the debugger** — select the **"Attach to Flink TaskManager (Row-Driven)"** configuration and start debugging. The IDE will [automatically port-forward](scripts/port-forward-taskmanager.sh) to the TaskManager pod and attach to the JDWP agent on port `5005`.
+```java
+String eventType = input.getFieldAs("event_type");
+```
 
-    - **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select the configuration from the dropdown, and press **F5**
-    - **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select the configuration, and click **Debug** (⌃D / Shift+F9)
+</details>
 
-3. **Send a test event** — produce a single JSON message to the `user_events` topic to trigger the breakpoint:
+<details>
+<summary><strong>2. Attach the debugger</strong></summary>
 
-    ```bash
-    make produce-user-events-record
-    ```
+Select the **"Attach to Flink TaskManager (Row-Driven)"** configuration and start debugging. The IDE will [automatically port-forward](scripts/port-forward-taskmanager.sh) to the TaskManager pod and attach to the JDWP agent on port `5005`.
 
-4. **Debug** — your IDE will pause at your breakpoint. You can inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
+- **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select the configuration from the dropdown, and press **F5**
+- **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select the configuration, and click **Debug** (⌃D / Shift+F9)
+
+</details>
+
+<details>
+<summary><strong>3. Send a test event</strong></summary>
+
+Produce a single JSON message to the `user_events` topic to trigger the breakpoint:
+
+```bash
+make produce-user-events-record
+```
+
+</details>
+
+<details>
+<summary><strong>4. Debug</strong></summary>
+
+Your IDE will pause at your breakpoint. You can inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
+
+</details>
 
 > For the full deep-dive, see [Remote Debugging a Row-Driven Flink PTF UDF](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md).
 
