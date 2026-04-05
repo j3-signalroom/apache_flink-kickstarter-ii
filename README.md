@@ -627,6 +627,8 @@ You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink
 
 ##### **3.1.1.1 Debugging the row-driven PTF (`UserEventEnricher`)**
 
+> For the full deep-dive, see [Remote Debugging a Row-Driven Flink PTF UDF](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md).
+
 Deploy first: `make deploy-cp-ptf-udf-row-driven`, and then:
 
 <details>
@@ -668,9 +670,9 @@ Your IDE will pause at your breakpoint. You can inspect `input`, `state`, and lo
 
 </details>
 
-> For the full deep-dive, see [Remote Debugging a Row-Driven Flink PTF UDF](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md).
-
 ##### **3.1.1.2 Debugging the timer-driven PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**
+
+> For the full deep-dive, see [Remote Debugging Timer-Driven Flink PTF UDFs](examples/ptf_udf_timer_driven/java/remote-debugging-flink-ptf_udf_timer_driven.md).
 
 Deploy first: `make deploy-cp-ptf-udf-timer-driven`, and then:
 
@@ -734,8 +736,6 @@ Your IDE will pause at your breakpoint. Inspect `input`, `state`, and local vari
 > **Timer debugging tip:** Timers fire when the watermark advances past the timer's registered time. While paused at a breakpoint, watermarks don't advance, so `onTimer()` won't fire until you resume execution and let the watermark progress. For the unnamed timer UDFs (`PerEventFollowUp` and `SlaMonitor`), note that `onTimer()` fires once per event — not once per partition key. Both the `AbandonedCartDetector` and `SlaMonitor` demonstrate conditional output: `onTimer()` only emits if the cart wasn't checked out or the request wasn't resolved, respectively.
 
 </details>
-
-> For the full deep-dive, see [Remote Debugging Timer-Driven Flink PTF UDFs](examples/ptf_udf_timer_driven/java/remote-debugging-flink-ptf_udf_timer_driven.md).
 
 ---
 
