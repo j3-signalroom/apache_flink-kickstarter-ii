@@ -632,7 +632,7 @@ You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink
 Deploy first: `make deploy-cp-ptf-udf-row-driven`, and then:
 
 <details>
-<summary><strong>1. Set a breakpoint</strong></summary>
+<summary>1. Set a breakpoint</summary>
 
 Open [`UserEventEnricher.java`](examples/ptf_udf_row_driven/java/app/src/main/java/ptf/UserEventEnricher.java) and click in the gutter at the first line of the `eval()` method:
 
@@ -643,7 +643,7 @@ String eventType = input.getFieldAs("event_type");
 </details>
 
 <details>
-<summary><strong>2. Attach the debugger</strong></summary>
+<summary>2. Attach the debugger</summary>
 
 Select the **"Attach to Flink TaskManager (Row-Driven)"** configuration and start debugging. The IDE will [automatically port-forward](scripts/port-forward-taskmanager.sh) to the TaskManager pod and attach to the JDWP agent on port `5005`.
 
@@ -653,7 +653,7 @@ Select the **"Attach to Flink TaskManager (Row-Driven)"** configuration and star
 </details>
 
 <details>
-<summary><strong>3. Send a test event</strong></summary>
+<summary>3. Send a test event</summary>
 
 Produce a single JSON message to the `user_events` topic to trigger the breakpoint:
 
@@ -664,7 +664,7 @@ make produce-user-events-record
 </details>
 
 <details>
-<summary><strong>4. Debug</strong></summary>
+<summary>4. Debug</summary>
 
 Your IDE will pause at your breakpoint. You can inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
 
@@ -677,7 +677,7 @@ Your IDE will pause at your breakpoint. You can inspect `input`, `state`, and lo
 Deploy first: `make deploy-cp-ptf-udf-timer-driven`, and then:
 
 <details>
-<summary><strong>1. Set a breakpoint</strong></summary>
+<summary>1. Set a breakpoint</summary>
 
 Open [`SessionTimeoutDetector.java`](examples/ptf_udf_timer_driven/java/app/src/main/java/ptf/SessionTimeoutDetector.java) and click in the gutter at the first line of the `eval()` method:
 
@@ -708,7 +708,7 @@ Or, to debug a timer callback, set a breakpoint in `onTimer()` of any UDF.
 </details>
 
 <details>
-<summary><strong>2. Attach the debugger</strong></summary>
+<summary>2. Attach the debugger</summary>
 
 Select the **"Attach to Flink TaskManager (Timer-Driven)"** configuration.
 
@@ -718,7 +718,7 @@ Select the **"Attach to Flink TaskManager (Timer-Driven)"** configuration.
 </details>
 
 <details>
-<summary><strong>3. Send a test event</strong></summary>
+<summary>3. Send a test event</summary>
 
 Produce a single JSON message to the `user_activity` topic to trigger the breakpoint:
 
@@ -729,7 +729,7 @@ make produce-user-activity-record
 </details>
 
 <details>
-<summary><strong>4. Debug</strong></summary>
+<summary>4. Debug</summary>
 
 Your IDE will pause at your breakpoint. Inspect `input`, `state`, and local variables, step through the timer registration logic, and watch `state.eventCount` and `state.lastEventType` update as you step over lines.
 
