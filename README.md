@@ -13,7 +13,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 **Table of Contents**
 <!-- toc -->
 + [**1.0 Prerequisites**](#10-prerequisites)
-    - [**1.1 Confluent Platform Local Setup**](#11-confluent-platform-local-setup)
+    - [**1.1 Confluent Platform on Minikube — Production-Like Streaming, Running Locally**](#11-confluent-platform-on-minikube--production-like-streaming-running-locally)
         - [**1.1.1 Requirements**](#111-requirements)
         - [**1.1.2 Local Infrastructure Deployment Made Simple with a `Makefile`**](#112-local-infrastructure-deployment-made-simple-with-a-makefile)
             - [**1.1.2.1 Install the Tooling (One Command Setup)**](#1121-install-the-tooling-one-command-setup)
@@ -43,7 +43,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 
 ## **1.0 Prerequisites**
 
-### **1.1 Confluent Platform Local Setup**
+### **1.1 Confluent Platform on Minikube — Production-Like Streaming, Running Locally**
 To **_run_**, **_test_**, and **_debug_** Apache Flink like a production engineer, this project provides a full Confluent Platform stack running locally on [Minikube](https://minikube.sigs.k8s.io/docs/) — no cloud required.
 
 You get a production-like environment on your laptop:
