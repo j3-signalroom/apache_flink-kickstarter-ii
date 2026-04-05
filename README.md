@@ -575,11 +575,42 @@ Once you’ve set up [**Confluent Platform on Minikube**](#11-confluent-platform
 ### **2.1 Apache Flink User-Defined Functions (UDF)**
 
 #### **2.1.1 Process Table Functions (PTF)**
+<details>
+<summary><strong><em>What are PTFs?</em></strong></summary>
+
+PTFs are a special type of Apache Flink UDF that offers stateful, timer-aware processing capabilities directly within Flink SQL. PTFs can be either **row-driven** (invoked for each input row) or **timer-driven** (triggered based on timers you set in your code).
+
+</details>
+
+<details>
+<summary><strong><em>Why use PTFs?</em></strong></summary>
+
+PTF UDFs are ideal when you need memory across rows, respond to time passing — not just on arriving data, or you want to implement complex event processing (CEP) patterns that are difficult to express in pure Flink SQL.
+
+</details>
+
+<details>
+<summary><strong><em>When do you use PTFs?</em></strong></summary>
+
+PTFs are used when your use case requires state and/or timers that go beyond what standard Flink SQL can handle. For example: **Stateful Enrichment with or without External Lookups**, **Per-Row Stateful Transformation**, **Complex Conditional Routing and/or Filtering**, **Session timeout**, **Abandoned cart**, **Device heartbeat monitoring**, **Per-event follow-up**, **SLA monitoring**, **Delayed side-effects**, and more.
+
+</details>
+
+<details>
+<summary><strong><em>Where do you use PTFs?</em></strong></summary>
+
+You write PTF UDFs as Java classes, deploy them as JAR files, and run them within your Flink SQL queries.
+
+</details>
+
+**_How are examples of PTFs put into practice?_**
 
 | Type | Purpose | Confluent Platform on Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
 | [PTF UDF-type (row-driven)](examples/ptf_udf_row_driven/java/README.md) | Walks through *building*, *deploying*, and *testing* a **`row-driven`** **PTF UDF** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
 | [PTF UDF-type (timer-driven)](examples/ptf_udf_timer_driven/java/README.md) | Walks through *building*, *deploying*, and *testing* four **`timer-driven`** **PTF UDFs** bundled in one JAR: **Session Timeout Detector** (named timers using the inactivity pattern), **Abandoned Cart Detector** (named timers using the inactivity pattern for e-commerce), **Per-Event Follow-Up** (unnamed timers using the scheduling pattern), and **SLA Monitor** (unnamed timers using the scheduling pattern). | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
+
+</details>
 
 ---
 
