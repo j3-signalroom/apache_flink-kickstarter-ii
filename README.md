@@ -603,7 +603,8 @@ You write PTF UDFs as Java classes, deploy them as JAR files, and run them withi
 
 </details>
 
-**_How are examples of PTFs put into practice?_**
+<details open>
+<summary><strong><em>How are examples of PTFs put into practice?</em></strong></summary>
 
 | Type | Purpose | Confluent Platform on Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
