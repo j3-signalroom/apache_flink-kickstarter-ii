@@ -112,7 +112,7 @@ Once deployment completes, Terraform generates a visual **resource graph** at `e
 ## **3.0 Prerequisites**
 
 - macOS with Homebrew or Linux with apt-get
-- Java 21 and Gradle installed (for building the UDFs JAR)
+- Java 21 and Gradle installed (for building the UDF JAR)
 - Terraform installed
 - A Confluent Cloud account with a **Cloud API key** and **secret** ([create one here](https://confluent.cloud/settings/api-keys))
 - The UDF JAR must be built before deploying:

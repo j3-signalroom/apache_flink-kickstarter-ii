@@ -78,8 +78,8 @@ Step 7 is a **long-running streaming job**. It runs continuously, reading from `
 ## **3.0 Prerequisites**
 
 - macOS with Homebrew or Linux with apt-get, and Docker Desktop running
-- Java 21 and Gradle installed (for building the UDFs JAR)
-- Confluent Platform and Flink stack already deployed via::
+- Java 21 and Gradle installed (for building the UDF JAR)
+- Confluent Platform and Flink stack already deployed via:
 
 ```bash
 make install-prereqs       # installs tooling (docker, kubectl, minikube, helm, gradle)
