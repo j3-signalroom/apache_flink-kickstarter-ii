@@ -557,14 +557,14 @@ Connecting activates the `LocalForward` rules. No extra flags needed.
 
 Before you begin, ensure you have access to the following cloud accounts:
 
-* **[Confluent Cloud Account](https://confluent.cloud/)** — for Kafka and Schema Registry resources
+* **[Confluent Cloud Account](https://confluent.cloud/)** — for Kafka, Schema Registry, and Flink resources
 * **[Terraform Cloud Account](https://app.terraform.io/)** — for automated infrastructure provisioning
 
 Make sure the following tools are installed on your local machine:
 
-* **[Java JDK 21](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)**
-* **[Gradle 9.4.1 or higher](https://gradle.org/install/)**
-* **[Terraform CLI version 1.13.0 or higher](https://developer.hashicorp.com/terraform/install)**
+* **[Java JDK 21](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)** — for building Flink UDFs
+* **[Gradle 9.4.1 or higher](https://gradle.org/install/)** — for building Flink UDFs
+* **[Terraform CLI version 1.13.0 or higher](https://developer.hashicorp.com/terraform/install)** — for deploying infrastructure to Confluent Cloud
 
 ---
 
@@ -608,8 +608,8 @@ You write PTF UDFs as Java classes, deploy them as JAR files, and run them withi
 
 | Type | Purpose | Confluent Platform on Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
-| [PTF UDF-type (row-driven)](examples/ptf_udf_row_driven/java/README.md) | Walks through *building*, *deploying*, and *testing* a **`row-driven`** **PTF UDF** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
-| [PTF UDF-type (timer-driven)](examples/ptf_udf_timer_driven/java/README.md) | Walks through *building*, *deploying*, and *testing* four **`timer-driven`** **PTF UDFs** bundled in one JAR: **Session Timeout Detector** (named timers using the inactivity pattern), **Abandoned Cart Detector** (named timers using the inactivity pattern for e-commerce), **Per-Event Follow-Up** (unnamed timers using the scheduling pattern), and **SLA Monitor** (unnamed timers using the scheduling pattern). | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
+| [PTF UDF-type (row-driven)](examples/ptf_udf_row_driven/java/README.md) | Walks through both **local** and cloud environments *building*, *deploying*, and *testing* a **`row-driven`** **PTF UDF** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
+| [PTF UDF-type (timer-driven)](examples/ptf_udf_timer_driven/java/README.md) | Walks through both **local** and cloud environments *building*, *deploying*, and *testing* four **`timer-driven`** **PTF UDFs** bundled in one JAR: **Session Timeout Detector** (named timers using the inactivity pattern), **Abandoned Cart Detector** (named timers using the inactivity pattern for e-commerce), **Per-Event Follow-Up** (unnamed timers using the scheduling pattern), and **SLA Monitor** (unnamed timers using the scheduling pattern). | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
 
 </details>
 
