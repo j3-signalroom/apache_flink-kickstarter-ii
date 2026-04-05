@@ -557,14 +557,14 @@ Connecting activates the `LocalForward` rules. No extra flags needed.
 
 Before you begin, ensure you have access to the following cloud accounts:
 
-* **[Confluent Cloud Account](https://confluent.cloud/)** — for Kafka and Schema Registry resources
+* **[Confluent Cloud Account](https://confluent.cloud/)** — for Kafka, Schema Registry, and Flink resources
 * **[Terraform Cloud Account](https://app.terraform.io/)** — for automated infrastructure provisioning
 
 Make sure the following tools are installed on your local machine:
 
-* **[Java JDK 21](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)**
-* **[Gradle 9.4.1 or higher](https://gradle.org/install/)**
-* **[Terraform CLI version 1.13.0 or higher](https://developer.hashicorp.com/terraform/install)**
+* **[Java JDK 21](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)** — for building Flink UDFs
+* **[Gradle 9.4.1 or higher](https://gradle.org/install/)** — for building Flink UDFs
+* **[Terraform CLI version 1.13.0 or higher](https://developer.hashicorp.com/terraform/install)** — for deploying infrastructure to Confluent Cloud
 
 ---
 
