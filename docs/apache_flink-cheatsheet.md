@@ -552,7 +552,7 @@ If late event handling is a genuine business requirement (not just an occasional
 | **Batch reconciliation** | Periodically reprocess a time window from the raw Kafka topic or Iceberg table to correct results |
 | **Lambda/Kappa architecture** | Separate speed layer (streaming) + accuracy layer (batch reprocessing from source of truth) |
 
-For signalRoom's platform, **batch reconciliation from Iceberg** is probably the most defensible pattern — your raw events are already durably stored, so a scheduled Flink batch job or Flink SQL query over Iceberg can recompute any window correctly without the complexity of live side output reprocessing.
+**Batch reconciliation from Iceberg** is probably the most defensible pattern — the raw events are already durably stored, so a scheduled Flink batch job or Flink SQL query over Iceberg can recompute any window correctly without the complexity of live side output reprocessing.
 
 ---
 
@@ -625,4 +625,4 @@ Each **Subtask requires one slot** on a TaskManager. Flink's slot sharing allows
 
 ## Relevance to Confluent Cloud for Apache Flink
 
-When you size a Confluent Cloud for Apache Flink compute pool, the Confluent Flink Unit (CFUs) you allocate determine how many parallel subtasks can run concurrently. If your job has high parallelism (many subtasks), you need enough CFUs to schedule them all — which is why understanding this hierarchy matters when tuning CFU allocation and Autopilot behavior for your signalRoom pipelines.
+When you size a Confluent Cloud for Apache Flink compute pool, the Confluent Flink Unit (CFUs) you allocate determine how many parallel subtasks can run concurrently. If your job has high parallelism (many subtasks), you need enough CFUs to schedule them all — which is why understanding this hierarchy matters when tuning CFU allocation and Autopilot behavior for pipelines.
