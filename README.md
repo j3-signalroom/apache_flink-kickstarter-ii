@@ -627,75 +627,115 @@ You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink
 
 ##### **3.1.1.1 Debugging the row-driven PTF (`UserEventEnricher`)**
 
-Deploy first: `make deploy-cp-ptf-udf-row-driven`
-
-1. **Set a breakpoint** — open [`UserEventEnricher.java`](examples/ptf_udf_row_driven/java/app/src/main/java/ptf/UserEventEnricher.java) and click in the gutter at the first line of the `eval()` method:
-
-    ```java
-    String eventType = input.getFieldAs("event_type");
-    ```
-
-2. **Attach the debugger** — select the **"Attach to Flink TaskManager (Row-Driven)"** configuration and start debugging. The IDE will [automatically port-forward](scripts/port-forward-taskmanager.sh) to the TaskManager pod and attach to the JDWP agent on port `5005`.
-
-    - **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select the configuration from the dropdown, and press **F5**
-    - **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select the configuration, and click **Debug** (⌃D / Shift+F9)
-
-3. **Send a test event** — produce a single JSON message to the `user_events` topic to trigger the breakpoint:
-
-    ```bash
-    make produce-user-events-record
-    ```
-
-4. **Debug** — your IDE will pause at your breakpoint. You can inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
-
 > For the full deep-dive, see [Remote Debugging a Row-Driven Flink PTF UDF](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md).
+
+Deploy first: `make deploy-cp-ptf-udf-row-driven`, and then:
+
+<details>
+<summary><strong>1. Set a breakpoint</strong></summary>
+
+Open [`UserEventEnricher.java`](examples/ptf_udf_row_driven/java/app/src/main/java/ptf/UserEventEnricher.java) and click in the gutter at the first line of the `eval()` method:
+
+```java
+String eventType = input.getFieldAs("event_type");
+```
+
+</details>
+
+<details>
+<summary><strong>2. Attach the debugger</strong></summary>
+
+Select the **"Attach to Flink TaskManager (Row-Driven)"** configuration and start debugging. The IDE will [automatically port-forward](scripts/port-forward-taskmanager.sh) to the TaskManager pod and attach to the JDWP agent on port `5005`.
+
+- **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select the configuration from the dropdown, and press **F5**
+- **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select the configuration, and click **Debug** (⌃D / Shift+F9)
+
+</details>
+
+<details>
+<summary><strong>3. Send a test event</strong></summary>
+
+Produce a single JSON message to the `user_events` topic to trigger the breakpoint:
+
+```bash
+make produce-user-events-record
+```
+
+</details>
+
+<details>
+<summary><strong>4. Debug</strong></summary>
+
+Your IDE will pause at your breakpoint. You can inspect `input`, `state`, and local variables, step through the session logic, and watch `state.sessionId` and `state.eventCount` update as you step over lines.
+
+</details>
 
 ##### **3.1.1.2 Debugging the timer-driven PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**
 
-Deploy first: `make deploy-cp-ptf-udf-timer-driven`
+> For the full deep-dive, see [Remote Debugging Timer-Driven Flink PTF UDFs](examples/ptf_udf_timer_driven/java/remote-debugging-flink-ptf_udf_timer_driven.md).
 
-1. **Set a breakpoint** — open [`SessionTimeoutDetector.java`](examples/ptf_udf_timer_driven/java/app/src/main/java/ptf/SessionTimeoutDetector.java) and click in the gutter at the first line of the `eval()` method:
+Deploy first: `make deploy-cp-ptf-udf-timer-driven`, and then:
 
-    ```java
-    String eventType = input.getFieldAs("event_type");
-    ```
+<details>
+<summary><strong>1. Set a breakpoint</strong></summary>
 
-    Or, to debug the unnamed timer UDF, open [`PerEventFollowUp.java`](examples/ptf_udf_timer_driven/java/app/src/main/java/ptf/PerEventFollowUp.java) and set a breakpoint at:
+Open [`SessionTimeoutDetector.java`](examples/ptf_udf_timer_driven/java/app/src/main/java/ptf/SessionTimeoutDetector.java) and click in the gutter at the first line of the `eval()` method:
 
-    ```java
-    String eventType = input.getFieldAs("event_type");
-    ```
+```java
+String eventType = input.getFieldAs("event_type");
+```
 
-    Or, to debug the Abandoned Cart Detector, open [`AbandonedCartDetector.java`](examples/ptf_udf_timer_driven/java/app/src/main/java/ptf/AbandonedCartDetector.java) and set a breakpoint at:
+Or, to debug the unnamed timer UDF, open [`PerEventFollowUp.java`](examples/ptf_udf_timer_driven/java/app/src/main/java/ptf/PerEventFollowUp.java) and set a breakpoint at:
 
-    ```java
-    String action = input.getFieldAs("action");
-    ```
+```java
+String eventType = input.getFieldAs("event_type");
+```
 
-    Or, to debug the SLA Monitor, open [`SlaMonitor.java`](examples/ptf_udf_timer_driven/java/app/src/main/java/ptf/SlaMonitor.java) and set a breakpoint at:
+Or, to debug the Abandoned Cart Detector, open [`AbandonedCartDetector.java`](examples/ptf_udf_timer_driven/java/app/src/main/java/ptf/AbandonedCartDetector.java) and set a breakpoint at:
 
-    ```java
-    String status = input.getFieldAs("status");
-    ```
+```java
+String action = input.getFieldAs("action");
+```
 
-    Or, to debug a timer callback, set a breakpoint in `onTimer()` of any UDF.
+Or, to debug the SLA Monitor, open [`SlaMonitor.java`](examples/ptf_udf_timer_driven/java/app/src/main/java/ptf/SlaMonitor.java) and set a breakpoint at:
 
-2. **Attach the debugger** — select the **"Attach to Flink TaskManager (Timer-Driven)"** configuration.
+```java
+String status = input.getFieldAs("status");
+```
 
-    - **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select the configuration from the dropdown, and press **F5**
-    - **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select the configuration, and click **Debug** (⌃D / Shift+F9)
+Or, to debug a timer callback, set a breakpoint in `onTimer()` of any UDF.
 
-3. **Send a test event** — produce a single JSON message to the `user_activity` topic to trigger the breakpoint:
+</details>
 
-    ```bash
-    make produce-user-activity-record
-    ```
+<details>
+<summary><strong>2. Attach the debugger</strong></summary>
 
-4. **Debug** — your IDE will pause at your breakpoint. Inspect `input`, `state`, and local variables, step through the timer registration logic, and watch `state.eventCount` and `state.lastEventType` update as you step over lines.
+Select the **"Attach to Flink TaskManager (Timer-Driven)"** configuration.
+
+- **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select the configuration from the dropdown, and press **F5**
+- **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select the configuration, and click **Debug** (⌃D / Shift+F9)
+
+</details>
+
+<details>
+<summary><strong>3. Send a test event</strong></summary>
+
+Produce a single JSON message to the `user_activity` topic to trigger the breakpoint:
+
+```bash
+make produce-user-activity-record
+```
+
+</details>
+
+<details>
+<summary><strong>4. Debug</strong></summary>
+
+Your IDE will pause at your breakpoint. Inspect `input`, `state`, and local variables, step through the timer registration logic, and watch `state.eventCount` and `state.lastEventType` update as you step over lines.
 
 > **Timer debugging tip:** Timers fire when the watermark advances past the timer's registered time. While paused at a breakpoint, watermarks don't advance, so `onTimer()` won't fire until you resume execution and let the watermark progress. For the unnamed timer UDFs (`PerEventFollowUp` and `SlaMonitor`), note that `onTimer()` fires once per event — not once per partition key. Both the `AbandonedCartDetector` and `SlaMonitor` demonstrate conditional output: `onTimer()` only emits if the cart wasn't checked out or the request wasn't resolved, respectively.
 
-> For the full deep-dive, see [Remote Debugging Timer-Driven Flink PTF UDFs](examples/ptf_udf_timer_driven/java/remote-debugging-flink-ptf_udf_timer_driven.md).
+</details>
 
 ---
 
