@@ -104,7 +104,7 @@ Steps 7, 14, 21, and 28 are **long-running streaming jobs**. They run continuous
 ## **3.0 Prerequisites**
 
 - macOS with Homebrew or Linux with apt-get, and Docker Desktop running
-- Java 21 and Gradle installed (for building the UDFs JAR)
+- Java 21 and Gradle installed (for building the UDF JAR)
 - Confluent Platform and Flink stack already deployed via:
 
 ```bash
