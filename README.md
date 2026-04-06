@@ -32,7 +32,8 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
     - [**3.1 Apache Flink UDF Debugging with Java Debug Wire Protocol (JDWP)**](#31-apache-flink-udf-debugging-with-java-debug-wire-protocol-jdwp)
         - [**3.1.1 Process Table Functions (PTF)**](#311-process-table-functions-ptf)
             - [**3.1.1.1 Debugging the row-driven PTF (`UserEventEnricher`)**](#3111-debugging-the-row-driven-ptf-usereventenricher)
-            - [**3.1.1.2 Debugging the timer-driven PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**](#3112-debugging-the-timer-driven-ptfs-sessiontimeoutdetector-abandonedcartdetector-pereventfollowup-and-slamonitor)
+            - [**3.1.1.2 Debugging the row-semantic PTF (`OrderLineExpander`)**](#3112-debugging-the-row-semantic-ptf-orderlineexpander)
+            - [**3.1.1.3 Debugging the timer-driven PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**](#3113-debugging-the-timer-driven-ptfs-sessiontimeoutdetector-abandonedcartdetector-pereventfollowup-and-slamonitor)
 + [**4.0 Resources**](#40-resources)
     - [**4.1 Confluent for Kubernetes (CfK)**](#41-confluent-for-kubernetes-cfk)
     - [**4.2 Confluent Platform for Apache Flink**](#42-confluent-platform-for-apache-flink)
@@ -608,7 +609,7 @@ You write PTF UDFs as Java classes, deploy them as JAR files, and run them withi
 
 | Type | Purpose | Confluent Platform on Minikube | Confluent Cloud |
 | --- | --- | --- | --- |
-| [PTF UDF-type (row-driven)](examples/ptf_udf_row_driven/java/README.md) | Walks through both **local** and cloud environments *building*, *deploying*, and *testing* a **`row-driven`** **PTF UDF** that enriches Kafka user events with per-user session tracking. | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
+| [PTF UDF-type (row-driven)](examples/ptf_udf_row_driven/java/README.md) | Walks through both **local** and cloud environments *building*, *deploying*, and *testing* two **PTF UDFs** bundled in one JAR that illustrate both `ArgumentTrait` modes: **User Event Enricher** (`SET_SEMANTIC_TABLE`, row-driven — enriches Kafka user events with per-user session tracking using keyed state) and **Order Line Expander** (`ROW_SEMANTIC_TABLE` — stateless one-to-many expansion of an order row into individual line items). | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_row_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_row_driven/cc_deploy/README.md)</p> |
 | [PTF UDF-type (timer-driven)](examples/ptf_udf_timer_driven/java/README.md) | Walks through both **local** and cloud environments *building*, *deploying*, and *testing* four **`timer-driven`** **PTF UDFs** bundled in one JAR: **Session Timeout Detector** (named timers using the inactivity pattern), **Abandoned Cart Detector** (named timers using the inactivity pattern for e-commerce), **Per-Event Follow-Up** (unnamed timers using the scheduling pattern), and **SLA Monitor** (unnamed timers using the scheduling pattern). | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
 
 </details>
@@ -670,7 +671,62 @@ Your IDE will pause at your breakpoint. You can inspect `input`, `state`, and lo
 
 </details>
 
-##### **3.1.1.2 Debugging the timer-driven PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**
+##### **3.1.1.2 Debugging the row-semantic PTF (`OrderLineExpander`)**
+
+> The `OrderLineExpander` ships in the **same fat JAR** as `UserEventEnricher`, so the same `make deploy-cp-ptf-udf-row-driven` command and the same **"Attach to Flink TaskManager (Row-Driven)"** debug configuration are used. The deploy script registers both PTFs as separate Flink SQL functions and starts an `INSERT INTO orders_expanded SELECT ... FROM TABLE(order_line_expander(input => TABLE orders))` pipeline alongside the user-event enrichment job.
+
+Deploy first: `make deploy-cp-ptf-udf-row-driven`, and then:
+
+<details>
+<summary>1. Set a breakpoint</summary>
+
+Open [`OrderLineExpander.java`](examples/ptf_udf_row_driven/java/app/src/main/java/ptf/OrderLineExpander.java) and click in the gutter at the first line of the `eval()` method:
+
+```java
+String orderId  = input.getFieldAs("order_id");
+```
+
+Or, to inspect the per-item emission, set a breakpoint inside the expansion `for` loop on the `collect(Row.of(...))` call.
+
+</details>
+
+<details>
+<summary>2. Attach the debugger</summary>
+
+Use the **same** **"Attach to Flink TaskManager (Row-Driven)"** configuration as `UserEventEnricher` — both PTFs run in the same TaskManager pod from the same JAR. The IDE will [automatically port-forward](scripts/port-forward-taskmanager.sh) to the TaskManager pod and attach to the JDWP agent on port `5005`.
+
+- **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select the configuration from the dropdown, and press **F5**
+- **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select the configuration, and click **Debug** (⌃D / Shift+F9)
+
+</details>
+
+<details>
+<summary>3. Send a test order</summary>
+
+Produce a single JSON order to the `orders` topic to trigger the breakpoint:
+
+```bash
+make produce-orders-record
+```
+
+The sample record has three items in its comma-separated list, so `eval()` will fire once and the `for` loop inside it will emit three rows.
+
+</details>
+
+<details>
+<summary>4. Debug</summary>
+
+Your IDE will pause at your breakpoint. Inspect `input`, the parsed `itemParts` and `quantityParts` arrays, and step through the `for` loop watching `i`, `itemName`, `qty`, and the `collect()` call. Notice that:
+
+- There is **no `state` parameter** — row semantics forbids `@StateHint`, so nothing is preserved between rows.
+- There is **no `Context` parameter** — no timers or keyed-state services are accessible.
+- A single `eval()` call emits **multiple output rows** via repeated `collect()` calls — this is the canonical one-to-many pattern that distinguishes row-semantic PTFs from scalar UDFs.
+
+> **Row-semantic debugging tip:** Because `OrderLineExpander` is stateless, every input row hits `eval()` independently and the framework is free to distribute rows across virtual processors. If you produce multiple orders in quick succession your breakpoint may fire on any TaskManager slot — and rows from different orders may interleave in arbitrary order. Use the `order_id` field in the watch panel to keep track of which row you're inspecting.
+
+</details>
+
+##### **3.1.1.3 Debugging the timer-driven PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**
 
 > For the full deep-dive, see [Remote Debugging Timer-Driven Flink PTF UDFs](examples/ptf_udf_timer_driven/java/remote-debugging-flink-ptf_udf_timer_driven.md).
 

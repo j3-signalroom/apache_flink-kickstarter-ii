@@ -177,7 +177,7 @@ do_create() {
 
     # Step 1: Pre-create Kafka topics (CFK broker has auto.create.topics.enable=false)
     print_step "Creating Kafka topics..."
-    for topic in user_events enriched_events; do
+    for topic in user_events enriched_events orders orders_expanded; do
         kubectl exec -n "$NAMESPACE" kafka-0 -- \
             kafka-topics --bootstrap-server kafka:9071 \
                          --create --if-not-exists \
@@ -253,6 +253,68 @@ FROM TABLE(
         input => TABLE user_events PARTITION BY user_id,
         uid   => 'enriched-events-v1'
     )
+);
+
+-- ============================================================================
+-- UDF 2: OrderLineExpander (row semantics)
+-- ============================================================================
+
+-- Source table for orders
+DROP TABLE IF EXISTS orders;
+
+CREATE TABLE orders (
+    order_id   STRING,
+    customer   STRING,
+    items      STRING,
+    quantities STRING
+) WITH (
+    'connector'                    = 'kafka',
+    'topic'                        = 'orders',
+    'properties.bootstrap.servers' = 'kafka:9071',
+    'format'                       = 'json',
+    'scan.startup.mode'            = 'earliest-offset'
+);
+
+-- Sample data
+INSERT INTO orders (order_id, customer, items, quantities)
+VALUES
+    ('O-100', 'alice',   'widget,gadget,gizmo', '2,1,5'),
+    ('O-101', 'bob',     'widget',              '3'),
+    ('O-102', 'charlie', 'gizmo,gadget',        '1,4');
+
+-- Sink table for expanded order lines
+DROP TABLE IF EXISTS orders_expanded;
+
+CREATE TABLE orders_expanded (
+    order_id    STRING,
+    customer    STRING,
+    item_name   STRING,
+    quantity    INT,
+    line_number INT
+) WITH (
+    'connector'                    = 'kafka',
+    'topic'                        = 'orders_expanded',
+    'properties.bootstrap.servers' = 'kafka:9071',
+    'format'                       = 'json'
+);
+
+-- Register the row-semantic UDF
+CREATE FUNCTION IF NOT EXISTS order_line_expander
+    AS 'ptf.OrderLineExpander'
+    USING JAR 'file://${JAR_POD_PATH}';
+
+-- Start the expansion pipeline (no PARTITION BY — row semantics forbids it)
+INSERT INTO orders_expanded
+SELECT
+    order_id,
+    customer,
+    item_name,
+    quantity,
+    line_number
+FROM TABLE(
+    order_line_expander(
+        input => TABLE orders
+    )
 );"
 
     print_info "All statements executed successfully."
@@ -301,15 +363,18 @@ except:
         fi
     fi
 
-    # Drop function and tables in a single session
-    run_sql "Drop UDF, tables" \
+    # Drop functions and tables in a single session
+    run_sql "Drop UDFs, tables" \
         "DROP FUNCTION IF EXISTS user_event_enricher;
+DROP FUNCTION IF EXISTS order_line_expander;
 DROP TABLE IF EXISTS enriched_events;
-DROP TABLE IF EXISTS user_events;"
+DROP TABLE IF EXISTS user_events;
+DROP TABLE IF EXISTS orders_expanded;
+DROP TABLE IF EXISTS orders;"
 
     # Delete the associated Kafka topics
     print_step "Deleting Kafka topics..."
-    for topic in user_events enriched_events; do
+    for topic in user_events enriched_events orders orders_expanded; do
         kubectl exec -n "$NAMESPACE" kafka-0 -- \
             kafka-topics --bootstrap-server kafka:9071 \
                          --delete --if-exists \
