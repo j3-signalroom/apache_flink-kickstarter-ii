@@ -1,10 +1,11 @@
-# Java Process Table Function (PTF) User-Defined Function (UDF) type ─ User Event Enricher, a row-driven PTF example
+# Java Process Table Function (PTF) User-Defined Function (UDF) examples ─ row-driven (set semantics) and row-semantic
 
-> The User Event Enricher is driven entirely by state transitions triggered by incoming rows.
-> 
-> Rather than a row-at-a-time transformation, it behaves as a stateful operator that maintains and evolves per-user state across events.
-> 
-> This example demonstrates how the Process Table Function (PTF) API in Flink 2.1+ enables building fully stateful operators in Java that are directly callable from SQL.
+> This package contains **two** Process Table Function examples that together illustrate the two `ArgumentTrait` modes Flink offers for table arguments:
+>
+> - **`UserEventEnricher`** (set semantics, row-driven) ─ a stateful operator that maintains per-user state across events. Driven entirely by state transitions triggered by incoming rows.
+> - **`OrderLineExpander`** (row semantics) ─ a stateless one-to-many transformation that explodes a single order row into multiple line-item rows.
+>
+> Both PTFs ship in the same fat JAR and are registered as separate functions from the same artifact. Together they demonstrate how the Process Table Function (PTF) API in Flink 2.1+ enables building both fully stateful operators and stateless table-valued transformations in Java that are directly callable from SQL.
 
 **Table of Contents**
 <!-- toc -->
@@ -13,11 +14,16 @@
     + [**1.2 How operators use state**](#12-how-operators-use-state)
     + [**1.3 How `PARTITION BY` connects SQL to state**](#13-how-partition-by-connects-sql-to-state)
     + [**1.4 The role of `@StateHint` and `@ArgumentHint`**](#14-the-role-of-statehint-and-argumenthint)
-+ [**2.0 What does this example do?**](#20-what-does-this-example-do)
++ [**2.0 UDF 1: User Event Enricher (set semantics, row-driven)**](#20-udf-1-user-event-enricher-set-semantics-row-driven)
     + [**2.1 Enrichment logic**](#21-enrichment-logic)
     + [**2.2 How it works end-to-end**](#22-how-it-works-end-to-end)
     + [**2.3 Key concepts illustrated**](#23-key-concepts-illustrated)
-+ [**3.0 Resources**](#30-resources)
++ [**3.0 UDF 2: Order Line Expander (row semantics)**](#30-udf-2-order-line-expander-row-semantics)
+    + [**3.1 What is row semantics?**](#31-what-is-row-semantics)
+    + [**3.2 Expansion logic**](#32-expansion-logic)
+    + [**3.3 When to choose row semantics**](#33-when-to-choose-row-semantics)
++ [**4.0 Comparing the UDFs in this package**](#40-comparing-the-udfs-in-this-package)
++ [**5.0 Resources**](#50-resources)
 <!-- tocstop -->
 
 ## **1.0 State and operators in a Process Table Function**
@@ -75,7 +81,7 @@ Together, these annotations let you write what *looks* like a plain method but *
 
 ---
 
-## **2.0 What does this example do?**
+## **2.0 UDF 1: User Event Enricher (set semantics, row-driven)**
 
 This example puts the above concepts into practice. The `UserEventEnricher` PTF reads raw user-interaction events from a Kafka topic (`user_events`), enriches each event with session and counting information, and writes the result to a second Kafka topic (`enriched_events`).
 
@@ -130,7 +136,113 @@ Kafka (user_events)
 - **`@ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)`** ─ tells Flink the input is a keyed, stateful virtual processor (set semantics), not a simple row-at-a-time scalar function.
 - **`PARTITION BY`** ─ the SQL-side mechanism that keys the input table so each `user_id` gets its own isolated state instance.
 
-## **3.0 Resources**
+---
+
+## **3.0 UDF 2: Order Line Expander (row semantics)**
+
+The second PTF in this package, `OrderLineExpander`, sits at the *opposite* end of the PTF design space from `UserEventEnricher`. Where the enricher is a fully stateful keyed operator, the expander is a stateless one-to-many transformation that processes every row in complete isolation.
+
+### **3.1 What is row semantics?**
+
+When you mark a table argument with `@ArgumentHint(ArgumentTrait.ROW_SEMANTIC_TABLE)`, you are telling Flink:
+
+> "Each row in this table can be processed in complete isolation. There is no correlation between rows, no shared state, and no required ordering."
+
+This gives the Flink runtime maximum freedom:
+
+1. **Free distribution** ─ rows can be routed to any virtual processor in any order; the framework parallelizes without constraints.
+2. **No state backend involvement** ─ no checkpointing of operator state, no key groups, no rebalancing on rescale.
+3. **No `PARTITION BY` clause** ─ the SQL caller passes the table directly with no keying.
+4. **`eval()` sees only the current row** ─ there is no `@StateHint` parameter, no `Context` reference to keyed state, and no timers.
+
+The PTF behaves like an enhanced table-valued function: it can emit zero, one, or many output rows per input row, but cannot remember anything from prior rows. Flink's planner will reject any attempt to add `@StateHint` to a row-semantic PTF.
+
+### **3.2 Expansion logic**
+
+The `OrderLineExpander` accepts a table of orders where each row contains a comma-separated list of items and a positionally aligned comma-separated list of quantities. For every input row, it emits **one output row per item**, expanding the order into individual line items.
+
+**Input schema** (the `orders` table):
+
+```
+order_id    STRING    ─ unique order identifier
+customer    STRING    ─ customer name
+items       STRING    ─ comma-separated item names ("widget,gadget,gizmo")
+quantities  STRING    ─ comma-separated quantities  ("2,1,5")
+```
+
+**Output schema** (one row per item):
+
+```
+order_id     STRING
+customer     STRING
+item_name    STRING    ─ a single item from the items list
+quantity     INT       ─ the corresponding quantity (defaults to 1 if missing)
+line_number  INT       ─ 1-based position of this item in the order
+```
+
+**Example** ─ a single input row:
+
+| order_id | customer | items                  | quantities |
+|----------|----------|------------------------|------------|
+| `O-100`  | `Alice`  | `widget,gadget,gizmo`  | `2,1,5`    |
+
+produces three output rows:
+
+| order_id | customer | item_name | quantity | line_number |
+|----------|----------|-----------|----------|-------------|
+| `O-100`  | `Alice`  | `widget`  | 2        | 1           |
+| `O-100`  | `Alice`  | `gadget`  | 1        | 2           |
+| `O-100`  | `Alice`  | `gizmo`   | 5        | 3           |
+
+The function tolerates malformed input gracefully: empty or null `items` produce no output, and missing/non-numeric `quantities` default to `1`.
+
+**SQL invocation:**
+
+```sql
+SELECT *
+FROM TABLE(
+    OrderLineExpander(
+        input => TABLE orders
+    )
+);
+```
+
+Notice there is **no `PARTITION BY`** clause ─ row semantics forbid partitioning.
+
+Source: [`OrderLineExpander.java`](app/src/main/java/ptf/OrderLineExpander.java)
+
+### **3.3 When to choose row semantics**
+
+Use `ROW_SEMANTIC_TABLE` when:
+
+- You need to **explode** one row into many (this example).
+- You are performing a **stateless transformation** more complex than a scalar UDF can express (e.g. multi-column derivation, conditional emission).
+- You want to **filter** rows with logic too complex for a `WHERE` clause.
+- You are **enriching** rows from a self-contained computation that needs no memory of prior rows.
+
+Use `SET_SEMANTIC_TABLE` instead when you need to count, deduplicate, detect sequences, maintain sessions, or otherwise correlate information across rows ─ as `UserEventEnricher` does.
+
+---
+
+## **4.0 Comparing the UDFs in this package**
+
+| Aspect | `UserEventEnricher` (set semantics) | `OrderLineExpander` (row semantics) |
+|---|---|---|
+| `@ArgumentHint` trait | `SET_SEMANTIC_TABLE` | `ROW_SEMANTIC_TABLE` |
+| `PARTITION BY` in SQL | **Required** | **Forbidden** |
+| State (`@StateHint`) | Allowed and central to the design | **Not allowed** |
+| Per-key isolation | One state instance per partition key | N/A ─ rows are independent |
+| Checkpointing | Full state snapshot per checkpoint | Nothing to checkpoint |
+| `eval()` parameters | `Context` + `@StateHint` POJO + input row | Just the input row |
+| Output cardinality | Typically one per input | Zero, one, or many per input |
+| Parallelism model | Hash-partitioned by key | Free row distribution |
+| Use cases | Sessionization, counting, deduplication, sequence detection | Exploding rows, complex stateless transforms, content-based filtering |
+
+The two traits are not interchangeable: choosing the right one is a *design* decision, not a *tuning* decision. Row semantics give you stateless table-valued functions; set semantics give you fully fault-tolerant keyed operators. Both PTFs in this package compile into the same fat JAR and are registered as separate Flink functions via two `CREATE FUNCTION ... USING JAR` statements that point to the same artifact but reference different fully-qualified class names (`ptf.UserEventEnricher` and `ptf.OrderLineExpander`).
+
+---
+
+## **5.0 Resources**
 - [Apache Flink User-defined Functions](https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/functions/udfs/)
 - [Create a User-Defined Function with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html)
 - [Process Table Functions in Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/concepts/process-table-functions.html)

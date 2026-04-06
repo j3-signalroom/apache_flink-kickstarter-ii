@@ -640,6 +640,13 @@ produce-user-events-record: ## Produce one sample user events to the 'user_event
 		| kafka-console-producer --bootstrap-server localhost:9071 --topic user_events"
 	@echo "→ Produce one sample user events to the 'user_events' topic"
 
+.PHONY: produce-orders-record
+produce-orders-record: ## Produce one sample order to the 'orders' topic using kafka-console-producer
+	@kubectl exec -it kafka-0 -n confluent -- bash -c \
+		"echo '{\"order_id\":\"O-200\",\"customer\":\"alice\",\"items\":\"widget,gadget,gizmo\",\"quantities\":\"2,1,5\"}' \
+		| kafka-console-producer --bootstrap-server localhost:9071 --topic orders"
+	@echo "→ Produced one sample order to the 'orders' topic"
+
 .PHONY: build-ptf-udf-timer-driven
 build-ptf-udf-timer-driven: ## Build the ptf_udf_timer_driven fat JAR (requires Gradle)
 	@echo "→ Building ptf_udf_timer_driven JAR..."
