@@ -629,7 +629,7 @@ You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink
 
 ##### **3.1.1.1 Debugging the row-driven PTF using set semantics (`UserEventEnricher`)**
 
-> For the full deep-dive, see [Remote Debugging a Row-Driven Flink PTF UDF](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf-udf-row-driven.md).
+> For the full deep-dive, see [Remote Debugging Row-Driven Flink PTF UDFs](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md). The same guide also covers debugging `OrderLineExpander` (§1.3).
 
 Deploy first: `make deploy-cp-ptf-udf-row-driven`, and then:
 
@@ -674,6 +674,8 @@ Your IDE will pause at your breakpoint. You can inspect `input`, `state`, and lo
 
 ##### **3.1.1.2 Debugging the row-driven PTF using row semantics (`OrderLineExpander`)**
 
+> For the full deep-dive, see [Remote Debugging Row-Driven Flink PTF UDFs](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md) (§1.3).
+>
 > The `OrderLineExpander` ships in the **same fat JAR** as `UserEventEnricher`, so the same `make deploy-cp-ptf-udf-row-driven` command and the same **"Attach to Flink TaskManager (Row-Driven)"** debug configuration are used. The deploy script registers both PTFs as separate Flink SQL functions and starts an `INSERT INTO orders_expanded SELECT ... FROM TABLE(order_line_expander(input => TABLE orders))` pipeline alongside the user-event enrichment job.
 
 Deploy first: `make deploy-cp-ptf-udf-row-driven`, and then:
