@@ -31,8 +31,8 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 + [**3.0 Debugging the Examples**](#30-debugging-the-examples)
     - [**3.1 Apache Flink UDF Debugging with Java Debug Wire Protocol (JDWP)**](#31-apache-flink-udf-debugging-with-java-debug-wire-protocol-jdwp)
         - [**3.1.1 Process Table Functions (PTF)**](#311-process-table-functions-ptf)
-            - [**3.1.1.1 Debugging the row-driven PTF (`UserEventEnricher`)**](#3111-debugging-the-row-driven-ptf-usereventenricher)
-            - [**3.1.1.2 Debugging the row-semantic PTF (`OrderLineExpander`)**](#3112-debugging-the-row-semantic-ptf-orderlineexpander)
+            - [**3.1.1.1 Debugging the row-driven PTF using set semantics (`UserEventEnricher`)**](#3111-debugging-the-row-driven-ptf-using-set-semantics-usereventenricher)
+            - [**3.1.1.2 Debugging the row-driven PTF using row semantics (`OrderLineExpander`)**](#3112-debugging-the-row-driven-ptf-using-row-semantics-orderlineexpander)
             - [**3.1.1.3 Debugging the timer-driven PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**](#3113-debugging-the-timer-driven-ptfs-sessiontimeoutdetector-abandonedcartdetector-pereventfollowup-and-slamonitor)
 + [**4.0 Resources**](#40-resources)
     - [**4.1 Confluent for Kubernetes (CfK)**](#41-confluent-for-kubernetes-cfk)
@@ -147,12 +147,13 @@ graph TD
 
     %% ── Phase 9: Build & Deploy PTF UDFs ────────────────────────────────
     subgraph P9["Phase 9 — Build & Deploy PTF UDFs"]
-        BUILD_PTF_SD["build-ptf-udf-row-driven\n./gradlew clean shadowJar"]
-        DEPLOY_CP_PTF_SD["deploy-cp-ptf-udf-row-driven\ncopy JAR → Flink SQL Client"]
+        BUILD_PTF_SD["build-ptf-udf-row-driven\n./gradlew clean shadowJar\n(2 UDFs in one JAR)"]
+        DEPLOY_CP_PTF_SD["deploy-cp-ptf-udf-row-driven\ncopy JAR → Flink SQL Client\n(2 row-driven pipelines)"]
         TEARDOWN_CP_PTF_SD["teardown-cp-ptf-udf-row-driven"]
-        DEPLOY_CC_PTF_SD["deploy-cc-ptf-udf-row-driven\nJAR → Confluent Cloud"]
+        DEPLOY_CC_PTF_SD["deploy-cc-ptf-udf-row-driven\nJAR → Confluent Cloud\n(2 row-driven pipelines)"]
         TEARDOWN_CC_PTF_SD["teardown-cc-ptf-udf-row-driven"]
         PRODUCE_UE["produce-user-events-record\nkafka-console-producer → user_events"]
+        PRODUCE_OR["produce-orders-record\nkafka-console-producer → orders"]
         BUILD_PTF_TD["build-ptf-udf-timer-driven\n./gradlew clean shadowJar\n(4 UDFs in one JAR)"]
         DEPLOY_CP_PTF_TD["deploy-cp-ptf-udf-timer-driven\ncopy JAR → Flink SQL Client\n(4 timer-driven pipelines)"]
         TEARDOWN_CP_PTF_TD["teardown-cp-ptf-udf-timer-driven"]
@@ -242,7 +243,7 @@ graph TD
 
     class CP_UP,FLINK_UP,CP_DOWN,FLINK_DOWN,TEARDOWN,NUKE entry
     class CP_CORE_UP,DEPLOY_CP_PTF_SD,DEPLOY_CC_PTF_SD,DEPLOY_CP_PTF_TD,DEPLOY_CC_PTF_TD composite
-    class INSTALL_PRE,CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF_SD,BUILD_PTF_TD,PRODUCE_UE,PRODUCE_UA,PRODUCE_UAC,PRODUCE_SR,PRODUCE_CE install
+    class INSTALL_PRE,CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF_SD,BUILD_PTF_TD,PRODUCE_UE,PRODUCE_OR,PRODUCE_UA,PRODUCE_UAC,PRODUCE_SR,PRODUCE_CE install
     class MK_STOP,MK_DELETE,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN,UNINSTALL_PRE,TEARDOWN_CP_PTF_SD,TEARDOWN_CC_PTF_SD,TEARDOWN_CP_PTF_TD,TEARDOWN_CC_PTF_TD remove
     class C3,FL_UI,CMF_OPEN,KUI_OPEN ui
     class MANIFEST,RBAC_MANIFEST file
@@ -626,9 +627,9 @@ You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink
 
 #### **3.1.1 Process Table Functions (PTF)**
 
-##### **3.1.1.1 Debugging the row-driven PTF (`UserEventEnricher`)**
+##### **3.1.1.1 Debugging the row-driven PTF using set semantics (`UserEventEnricher`)**
 
-> For the full deep-dive, see [Remote Debugging a Row-Driven Flink PTF UDF](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md).
+> For the full deep-dive, see [Remote Debugging a Row-Driven Flink PTF UDF](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf-udf-row-driven.md).
 
 Deploy first: `make deploy-cp-ptf-udf-row-driven`, and then:
 
@@ -671,7 +672,7 @@ Your IDE will pause at your breakpoint. You can inspect `input`, `state`, and lo
 
 </details>
 
-##### **3.1.1.2 Debugging the row-semantic PTF (`OrderLineExpander`)**
+##### **3.1.1.2 Debugging the row-driven PTF using row semantics (`OrderLineExpander`)**
 
 > The `OrderLineExpander` ships in the **same fat JAR** as `UserEventEnricher`, so the same `make deploy-cp-ptf-udf-row-driven` command and the same **"Attach to Flink TaskManager (Row-Driven)"** debug configuration are used. The deploy script registers both PTFs as separate Flink SQL functions and starts an `INSERT INTO orders_expanded SELECT ... FROM TABLE(order_line_expander(input => TABLE orders))` pipeline alongside the user-event enrichment job.
 
