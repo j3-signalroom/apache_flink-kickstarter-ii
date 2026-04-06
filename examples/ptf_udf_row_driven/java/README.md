@@ -9,7 +9,7 @@
 >
 > Row-driven vs. timer-driven and set-semantic vs. row-semantic are **two orthogonal axes**. The directory name (`ptf_udf_row_driven`) refers to the first axis (no timers); the per-UDF qualifier in each section heading refers to the second (table-argument semantics).
 >
-> Both PTFs ship in the same fat JAR and are registered as separate functions from the same artifact. Together they demonstrate how the Process Table Function (PTF) API in Flink 2.1+ enables building both fully stateful operators and stateless table-valued transformations in Java that are directly callable from SQL.
+> Both PTFs ship in the same uber JAR and are registered as separate functions from the same artifact. Together they demonstrate how the Process Table Function (PTF) API in Flink 2.1+ enables building both fully stateful operators and stateless table-valued transformations in Java that are directly callable from SQL.
 
 **Table of Contents**
 <!-- toc -->
@@ -245,7 +245,7 @@ Both UDFs are **row-driven** (no timers); the table below compares them along th
 | Parallelism model | Hash-partitioned by key | Free row distribution |
 | Use cases | Sessionization, counting, deduplication, sequence detection | Exploding rows, complex stateless transforms, content-based filtering |
 
-The two traits are not interchangeable: choosing the right one is a *design* decision, not a *tuning* decision. Row semantics give you stateless table-valued functions; set semantics give you fully fault-tolerant keyed operators. Both PTFs in this package compile into the same fat JAR and are registered as separate Flink functions via two `CREATE FUNCTION ... USING JAR` statements that point to the same artifact but reference different fully-qualified class names (`ptf.UserEventEnricher` and `ptf.OrderLineExpander`).
+The two traits are not interchangeable: choosing the right one is a *design* decision, not a *tuning* decision. Row semantics give you stateless table-valued functions; set semantics give you fully fault-tolerant keyed operators. Both PTFs in this package compile into the same uber JAR and are registered as separate Flink functions via two `CREATE FUNCTION ... USING JAR` statements that point to the same artifact but reference different fully-qualified class names (`ptf.UserEventEnricher` and `ptf.OrderLineExpander`).
 
 ---
 

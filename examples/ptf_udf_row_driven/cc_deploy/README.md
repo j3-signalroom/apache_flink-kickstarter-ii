@@ -1,6 +1,6 @@
-# Confluent Cloud Terraform Deployment ─ User Event Enricher PTF UDF (early access example)
+# Confluent Cloud Terraform Deployment ─ Row-Driven PTF UDFs (early access example)
 
-> This example deploys the **User Event Enricher** PTF UDF (source in [examples/ptf_udf_row_driven/java/](../java/)) to **Confluent Cloud** using Terraform. All infrastructure (environment, Kafka cluster, Flink compute pool, service accounts, API keys) and Flink SQL statements are declared as Terraform resources.
+> This example deploys **two row-driven PTF UDFs** (source in [examples/ptf_udf_row_driven/java/](../java/)) to **Confluent Cloud** using Terraform: **`UserEventEnricher`** (set semantics, stateful per-user session tracking) and **`OrderLineExpander`** (row semantics, stateless one-to-many expansion). Both UDFs ship in the same uber JAR and run as two independent long-running Flink statements in the same compute pool. All infrastructure (environment, Kafka cluster, Flink compute pool, service accounts, API keys) and Flink SQL statements are declared as Terraform resources.
 
 **Table of Contents**
 <!-- toc -->
@@ -56,24 +56,50 @@ On Confluent Cloud, UDF JARs are uploaded as **Flink artifacts** via the `conflu
 
 ### **2.3 Statement flow**
 
-Terraform manages the SQL statements as `confluent_flink_statement` resources with explicit `depends_on` ordering:
+Terraform manages the SQL statements for **both** PTF UDFs (`UserEventEnricher` and `OrderLineExpander`) as `confluent_flink_statement` resources with explicit `depends_on` ordering. Both UDFs are bundled in the **same uber JAR**, so a single `confluent_flink_artifact` upload (Step 11) feeds both `CREATE FUNCTION` statements.
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│  Step 1:  DROP TABLE IF EXISTS user_events              → OK        │
-│  Step 2:  CREATE TABLE user_events (...)                → OK        │
-│  Step 3:  INSERT INTO user_events VALUES (sample data)  → submitted │
-│  Step 4:  DROP TABLE IF EXISTS enriched_events          → OK        │
-│  Step 5:  CREATE TABLE enriched_events (...)            → OK        │
-│  Step 6:  Upload UDF JAR as confluent_flink_artifact    → OK        │
-│  Step 7:  CREATE FUNCTION user_event_enricher           → OK        │
-│           USING JAR 'confluent-artifact://...'                      │
-│  Step 8:  INSERT INTO enriched_events                   → submitted │
-│           SELECT ... FROM TABLE(user_event_enricher())              │
-└─────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│  ── UDF 1: UserEventEnricher (set semantics) ──                          │
+│  Step  1:  DROP TABLE IF EXISTS user_events                  → OK        │
+│  Step  2:  CREATE TABLE user_events (...)                    → OK        │
+│  Step  3:  INSERT INTO user_events VALUES (sample data)      → submitted │
+│  Step  4:  DROP TABLE IF EXISTS enriched_events              → OK        │
+│  Step  5:  CREATE TABLE enriched_events (...)                → OK        │
+│                                                                          │
+│  ── UDF 2: OrderLineExpander (row semantics) ──                          │
+│  Step  6:  DROP TABLE IF EXISTS orders                       → OK        │
+│  Step  7:  CREATE TABLE orders (...)                         → OK        │
+│  Step  8:  INSERT INTO orders VALUES (sample data)           → submitted │
+│  Step  9:  DROP TABLE IF EXISTS orders_expanded              → OK        │
+│  Step 10:  CREATE TABLE orders_expanded (...)                → OK        │
+│                                                                          │
+│  ── Shared artifact + both pipelines ──                                  │
+│  Step 11:  Upload UDF JAR as confluent_flink_artifact        → OK        │
+│            (contains BOTH ptf.UserEventEnricher and                      │
+│             ptf.OrderLineExpander)                                       │
+│  Step 12:  CREATE FUNCTION user_event_enricher               → OK        │
+│            AS 'ptf.UserEventEnricher'                                    │
+│            USING JAR 'confluent-artifact://...'                          │
+│  Step 13:  CREATE FUNCTION order_line_expander               → OK        │
+│            AS 'ptf.OrderLineExpander'                                    │
+│            USING JAR 'confluent-artifact://...'                          │
+│  Step 14:  INSERT INTO enriched_events                       → submitted │
+│            SELECT ... FROM TABLE(                                        │
+│              user_event_enricher(                                        │
+│                input => TABLE user_events PARTITION BY user_id           │
+│              )                                                           │
+│            )                                                             │
+│  Step 15:  INSERT INTO orders_expanded                       → submitted │
+│            SELECT ... FROM TABLE(                                        │
+│              order_line_expander(                                        │
+│                input => TABLE orders                                     │
+│              )                                                           │
+│            )         -- note: NO PARTITION BY (row semantics)            │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-Step 8 is a **long-running streaming job**. It runs continuously, reading from `user_events` and writing enriched output to `enriched_events`.
+Steps 14 and 15 are **two long-running streaming jobs**, both running continuously side-by-side from the same Flink compute pool: Step 14 reads from `user_events` and writes per-user enriched output to `enriched_events`; Step 15 reads from `orders` and writes one expanded line-item row per order item to `orders_expanded`.
 
 Once deployment completes, Terraform generates a visual **resource graph** at `examples/ptf_udf_row_driven/cc_deploy/terraform.png`, providing an at-a-glance view of the infrastructure and resource dependencies: 
 ![terraform-visualization](terraform.png)
@@ -90,7 +116,7 @@ Once deployment completes, Terraform generates a visual **resource graph** at `e
 - The UDF JAR must be built before deploying:
 
 ```bash
-make build-ptf-udf-row-driven   # builds the UDF fat JAR from examples/ptf_udf_row_driven/java/
+make build-ptf-udf-row-driven   # builds the UDF uber JAR from examples/ptf_udf_row_driven/java/
 ```
 
 ---
@@ -111,7 +137,7 @@ Behind the scenes this runs:
 
 | Step | What it does |
 |---|---|
-| 1 | `./gradlew clean shadowJar` ─ builds the UDF fat JAR from `examples/ptf_udf_row_driven/java/` |
+| 1 | `./gradlew clean shadowJar` ─ builds the UDF uber JAR from `examples/ptf_udf_row_driven/java/` |
 | 2 | `terraform init` ─ initializes the Terraform working directory |
 | 3 | `terraform apply -auto-approve` ─ provisions all CC infrastructure and submits Flink SQL statements |
 | 4 | Generates a Terraform visualization at `docs/images/terraform-visualization.png` |
@@ -121,8 +147,8 @@ Behind the scenes this runs:
 Monitor the running Flink statements in the Confluent Cloud Console:
 
 1. Navigate to your **ptf-udf** environment
-2. Open the **Flink** tab to see compute pools and running statements
-3. Open the **Topics** tab to inspect `user_events` and `enriched_events`
+2. Open the **Flink** tab to see the compute pool and **two long-running statements** (the `INSERT INTO enriched_events ...` and the `INSERT INTO orders_expanded ...`)
+3. Open the **Topics** tab to inspect all four topics: `user_events`, `enriched_events`, `orders`, and `orders_expanded`
 
 ### **4.3 Tear down**
 
