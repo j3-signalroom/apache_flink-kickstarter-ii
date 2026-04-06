@@ -40,7 +40,7 @@
 
 On Confluent Platform there is no artifact store ─ the JAR must be physically present on the Flink pods.
 
-The deploy script copies the fat JAR (built from [examples/ptf_udf_timer_driven/java/](../java/)) to `/opt/flink/usrlib/session-timeout-detector.jar` on every JobManager and TaskManager pod using `kubectl exec`. All four `CREATE FUNCTION ... USING JAR` statements reference this pod-local path, registering `session_timeout_detector`, `abandoned_cart_detector`, `per_event_follow_up`, and `sla_monitor` from the same JAR.
+The deploy script copies the uber JAR (built from [examples/ptf_udf_timer_driven/java/](../java/)) to `/opt/flink/usrlib/session-timeout-detector.jar` on every JobManager and TaskManager pod using `kubectl exec`. All four `CREATE FUNCTION ... USING JAR` statements reference this pod-local path, registering `session_timeout_detector`, `abandoned_cart_detector`, `per_event_follow_up`, and `sla_monitor` from the same JAR.
 
 ### **2.2 Kafka connector**
 
@@ -133,7 +133,7 @@ Behind the scenes this runs:
 
 | Step | What it does |
 |---|---|
-| 1 | `./gradlew clean shadowJar` ─ builds the UDF fat JAR from `examples/ptf_udf_timer_driven/java/` |
+| 1 | `./gradlew clean shadowJar` ─ builds the UDF uber JAR from `examples/ptf_udf_timer_driven/java/` |
 | 2 | `kubectl exec` ─ copies the JAR to all JobManager and TaskManager pods |
 | 3 | `kafka-topics --create` ─ pre-creates Kafka topics (`user_activity`, `timeout_events`, `user_actions`, `follow_up_events`, `service_requests`, `sla_events`) |
 | 4 | `sql-client.sh -f` ─ executes all SQL statements for all four UDF pipelines in a single session on the JobManager pod |

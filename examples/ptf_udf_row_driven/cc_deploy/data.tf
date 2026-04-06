@@ -12,11 +12,11 @@ data "confluent_schema_registry_cluster" "ptf_udf_row_driven" {
 }
 
 data "confluent_flink_region" "ptf_udf_row_driven" {
-  cloud        = local.cloud
-  region       = local.aws_region
+  cloud  = local.cloud
+  region = local.aws_region
 }
 
 locals {
-    cloud = "AWS"
-    aws_region = "us-east-1"
+  cloud      = "AWS"
+  aws_region = "us-east-1"
 }

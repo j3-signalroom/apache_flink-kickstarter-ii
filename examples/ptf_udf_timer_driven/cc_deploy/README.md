@@ -118,7 +118,7 @@ Once deployment completes, Terraform generates a visual **resource graph** at `e
 - The UDF JAR must be built before deploying:
 
 ```bash
-make build-ptf-udf-timer-driven     # builds the UDF fat JAR from examples/ptf_udf_timer_driven/java/
+make build-ptf-udf-timer-driven     # builds the UDF uber JAR from examples/ptf_udf_timer_driven/java/
 ```
 
 ---
@@ -139,7 +139,7 @@ Behind the scenes this runs:
 
 | Step | What it does |
 |---|---|
-| 1 | `./gradlew clean shadowJar` ─ builds the UDF fat JAR from `examples/ptf_udf_timer_driven/java/` |
+| 1 | `./gradlew clean shadowJar` ─ builds the UDF uber JAR from `examples/ptf_udf_timer_driven/java/` |
 | 2 | `terraform init` ─ initializes the Terraform working directory |
 | 3 | `terraform apply -auto-approve` ─ provisions all CC infrastructure and submits Flink SQL statements |
 | 4 | Generates a Terraform visualization at `examples/ptf_udf_timer_driven/cc_deploy/terraform.png` |

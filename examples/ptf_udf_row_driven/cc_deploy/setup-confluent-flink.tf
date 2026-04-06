@@ -5,53 +5,53 @@ resource "confluent_service_account" "flink_sql_runner" {
 }
 
 resource "confluent_role_binding" "flink_sql_runner_as_flink_developer" {
-    principal   = "User:${confluent_service_account.flink_sql_runner.id}"
-    role_name   = "FlinkDeveloper"
-    crn_pattern = data.confluent_organization.signalroom.resource_name
+  principal   = "User:${confluent_service_account.flink_sql_runner.id}"
+  role_name   = "FlinkDeveloper"
+  crn_pattern = data.confluent_organization.signalroom.resource_name
 
-    depends_on = [ 
-        confluent_service_account.flink_sql_runner
-    ]
+  depends_on = [
+    confluent_service_account.flink_sql_runner
+  ]
 }
 
 resource "confluent_role_binding" "flink_sql_runner_as_resource_owner_topic_access" {
-    principal   = "User:${confluent_service_account.flink_sql_runner.id}"
-    role_name   = "ResourceOwner"
-    crn_pattern = "${confluent_kafka_cluster.ptf_udf_row_driven.rbac_crn}/kafka=${confluent_kafka_cluster.ptf_udf_row_driven.id}/topic=*"
+  principal   = "User:${confluent_service_account.flink_sql_runner.id}"
+  role_name   = "ResourceOwner"
+  crn_pattern = "${confluent_kafka_cluster.ptf_udf_row_driven.rbac_crn}/kafka=${confluent_kafka_cluster.ptf_udf_row_driven.id}/topic=*"
 
-    depends_on = [
-        confluent_role_binding.flink_sql_runner_as_flink_developer
-    ]
+  depends_on = [
+    confluent_role_binding.flink_sql_runner_as_flink_developer
+  ]
 }
 
 resource "confluent_role_binding" "flink_sql_runner_as_assigner" {
-    principal   = "User:${confluent_service_account.flink_sql_runner.id}"
-    role_name   = "Assigner"
-    crn_pattern = "${data.confluent_organization.signalroom.resource_name}/service-account=${confluent_service_account.flink_sql_runner.id}"
+  principal   = "User:${confluent_service_account.flink_sql_runner.id}"
+  role_name   = "Assigner"
+  crn_pattern = "${data.confluent_organization.signalroom.resource_name}/service-account=${confluent_service_account.flink_sql_runner.id}"
 
-    depends_on = [
-        confluent_role_binding.flink_sql_runner_as_resource_owner_topic_access
-    ]
+  depends_on = [
+    confluent_role_binding.flink_sql_runner_as_resource_owner_topic_access
+  ]
 }
 
 resource "confluent_role_binding" "flink_sql_runner_schema_registry_access" {
-    principal   = "User:${confluent_service_account.flink_sql_runner.id}"
-    role_name   = "ResourceOwner"
-    crn_pattern = "${data.confluent_schema_registry_cluster.ptf_udf_row_driven.resource_name}/subject=*"
-    
-    depends_on = [
-        confluent_role_binding.flink_sql_runner_as_assigner
-    ]
+  principal   = "User:${confluent_service_account.flink_sql_runner.id}"
+  role_name   = "ResourceOwner"
+  crn_pattern = "${data.confluent_schema_registry_cluster.ptf_udf_row_driven.resource_name}/subject=*"
+
+  depends_on = [
+    confluent_role_binding.flink_sql_runner_as_assigner
+  ]
 }
 
 resource "confluent_role_binding" "flink_sql_runner_as_resource_owner_transactional_access" {
-    principal   = "User:${confluent_service_account.flink_sql_runner.id}"
-    role_name   = "ResourceOwner"
-    crn_pattern = "${confluent_kafka_cluster.ptf_udf_row_driven.rbac_crn}/kafka=${confluent_kafka_cluster.ptf_udf_row_driven.id}/transactional-id=*"
+  principal   = "User:${confluent_service_account.flink_sql_runner.id}"
+  role_name   = "ResourceOwner"
+  crn_pattern = "${confluent_kafka_cluster.ptf_udf_row_driven.rbac_crn}/kafka=${confluent_kafka_cluster.ptf_udf_row_driven.id}/transactional-id=*"
 
-    depends_on = [
-        confluent_role_binding.flink_sql_runner_schema_registry_access
-    ]
+  depends_on = [
+    confluent_role_binding.flink_sql_runner_schema_registry_access
+  ]
 }
 
 resource "confluent_flink_compute_pool" "ptf_udf_row_driven" {
@@ -70,29 +70,29 @@ resource "confluent_flink_compute_pool" "ptf_udf_row_driven" {
 # Create the Environment API Key Pairs, rotate them in accordance to a time schedule, and provide the current
 # acitve API Key Pair to use
 module "flink_api_key_rotation" {
-    source  = "github.com/j3-signalroom/iac-confluent-api_key_rotation-tf_module"
+  source = "github.com/j3-signalroom/iac-confluent-api_key_rotation-tf_module"
 
-    # Required Input(s)
-    owner = {
-        id          = confluent_service_account.flink_sql_runner.id
-        api_version = confluent_service_account.flink_sql_runner.api_version
-        kind        = confluent_service_account.flink_sql_runner.kind
+  # Required Input(s)
+  owner = {
+    id          = confluent_service_account.flink_sql_runner.id
+    api_version = confluent_service_account.flink_sql_runner.api_version
+    kind        = confluent_service_account.flink_sql_runner.kind
+  }
+
+  resource = {
+    id          = data.confluent_flink_region.ptf_udf_row_driven.id
+    api_version = data.confluent_flink_region.ptf_udf_row_driven.api_version
+    kind        = data.confluent_flink_region.ptf_udf_row_driven.kind
+
+    environment = {
+      id = confluent_environment.ptf_udf_row_driven.id
     }
+  }
 
-    resource = {
-        id          = data.confluent_flink_region.ptf_udf_row_driven.id
-        api_version = data.confluent_flink_region.ptf_udf_row_driven.api_version
-        kind        = data.confluent_flink_region.ptf_udf_row_driven.kind
-
-        environment = {
-            id = confluent_environment.ptf_udf_row_driven.id
-        }
-    }
-
-    # Optional Input(s)
-    key_display_name = "Flink Service Account API Key - {date} - Managed by Terraform Cloud"
-    number_of_api_keys_to_retain = var.number_of_api_keys_to_retain
-    day_count = var.day_count
+  # Optional Input(s)
+  key_display_name             = "Flink Service Account API Key - {date} - Managed by Terraform Cloud"
+  number_of_api_keys_to_retain = var.number_of_api_keys_to_retain
+  day_count                    = var.day_count
 }
 
 resource "confluent_flink_statement" "drop_user_events" {
@@ -309,13 +309,228 @@ resource "confluent_flink_statement" "enriched_events_sink" {
   ]
 }
 
+# ============================================================================
+# UDF 2: OrderLineExpander (row semantics) — source/sample data/sink tables
+# ============================================================================
+
+resource "confluent_flink_statement" "drop_orders" {
+  statement = "DROP TABLE IF EXISTS orders;"
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_row_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_row_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_row_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_row_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_row_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+}
+
+resource "confluent_flink_statement" "orders_source" {
+  statement = <<-EOT
+    CREATE TABLE orders (
+                order_id   STRING,
+                customer   STRING,
+                items      STRING,
+                quantities STRING
+            );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_row_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_row_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_row_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_row_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_row_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.drop_orders,
+    confluent_kafka_topic.orders
+  ]
+}
+
+resource "confluent_flink_statement" "insert_orders" {
+  statement = <<-EOT
+    INSERT INTO orders (order_id, customer, items, quantities)
+    VALUES
+      ('O-100', 'alice',   'widget,gadget,gizmo', '2,1,5'),
+      ('O-101', 'bob',     'widget',              '3'),
+      ('O-102', 'charlie', 'gizmo,gadget',        '1,4');
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_row_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_row_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_row_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_row_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_row_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.orders_source
+  ]
+}
+
+resource "confluent_flink_statement" "drop_orders_expanded" {
+  statement = "DROP TABLE IF EXISTS orders_expanded;"
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_row_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_row_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_row_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_row_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_row_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+}
+
+resource "confluent_flink_statement" "orders_expanded_sink" {
+  statement = <<-EOT
+    CREATE TABLE orders_expanded (
+                order_id    STRING,
+                customer    STRING,
+                item_name   STRING,
+                quantity    INT,
+                line_number INT
+            );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_row_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_row_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_row_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_row_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_row_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.insert_orders,
+    confluent_flink_statement.drop_orders_expanded,
+    confluent_kafka_topic.orders_expanded
+  ]
+}
+
 # Upload the JAR as a Flink artifact
 resource "confluent_flink_artifact" "ptf_udf_row_driven" {
-  display_name     = "ptf-udf"
-  content_format   = "JAR"
-  cloud            = local.cloud
-  region           = local.aws_region
-  artifact_file    = "${path.module}/../java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
+  display_name   = "ptf-udf"
+  content_format = "JAR"
+  cloud          = local.cloud
+  region         = local.aws_region
+  artifact_file  = "${path.module}/../java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
 
   environment {
     id = confluent_environment.ptf_udf_row_driven.id
@@ -324,6 +539,8 @@ resource "confluent_flink_artifact" "ptf_udf_row_driven" {
   depends_on = [
     confluent_flink_statement.insert_user_events,
     confluent_flink_statement.enriched_events_sink,
+    confluent_flink_statement.insert_orders,
+    confluent_flink_statement.orders_expanded_sink,
   ]
 }
 
@@ -422,5 +639,101 @@ resource "confluent_flink_statement" "insert_enriched_events" {
 
   depends_on = [
     confluent_flink_statement.create_udf
+  ]
+}
+
+resource "confluent_flink_statement" "create_order_line_expander_udf" {
+  statement = <<-EOT
+    CREATE FUNCTION IF NOT EXISTS order_line_expander
+      AS 'ptf.OrderLineExpander'
+      USING JAR 'confluent-artifact://${confluent_flink_artifact.ptf_udf_row_driven.id}';
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_row_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_row_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_row_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_row_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_row_driven.id
+  }
+
+  # Prevent recreation on every apply — CREATE FUNCTION IF NOT EXISTS handles idempotency
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_artifact.ptf_udf_row_driven
+  ]
+}
+
+resource "confluent_flink_statement" "insert_orders_expanded" {
+  statement = <<-EOT
+    INSERT INTO orders_expanded
+      SELECT
+        order_id,
+        customer,
+        item_name,
+        quantity,
+        line_number
+      FROM TABLE(
+        order_line_expander(
+          input => TABLE orders
+        )
+      );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.ptf_udf_row_driven.display_name
+    "sql.current-database" = confluent_kafka_cluster.ptf_udf_row_driven.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.ptf_udf_row_driven.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.ptf_udf_row_driven.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.ptf_udf_row_driven.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.create_order_line_expander_udf
   ]
 }

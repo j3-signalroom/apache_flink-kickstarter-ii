@@ -1,6 +1,6 @@
-# Confluent Platform SQL Deployment via Flink SQL Client ─ User Event Enricher PTF UDF
+# Confluent Platform SQL Deployment via Flink SQL Client ─ Row-Driven PTF UDFs
 
-> This example deploys the **User Event Enricher** PTF UDF (source in [examples/ptf_udf_row_driven/java/](../java/)) by submitting SQL statements through the **Flink SQL Client** running directly on the JobManager pod.
+> This example deploys **two row-driven PTF UDFs** (source in [examples/ptf_udf_row_driven/java/](../java/)) by submitting SQL statements through the **Flink SQL Client** running directly on the JobManager pod: **`UserEventEnricher`** (set semantics, stateful per-user session tracking) and **`OrderLineExpander`** (row semantics, stateless one-to-many expansion). Both UDFs ship in the same uber JAR and run as two independent long-running Flink jobs in the same session cluster.
 
 **Table of Contents**
 <!-- toc -->
@@ -40,7 +40,7 @@
 
 On Confluent Platform there is no artifact store ─ the JAR must be physically present on the Flink pods.
 
-The deploy script copies the fat JAR (built from [examples/ptf_udf_row_driven/java/](../java/)) to `/opt/flink/usrlib/user-event-enricher.jar` on every JobManager and TaskManager pod using `kubectl exec`. The `CREATE FUNCTION ... USING JAR` statement then references this pod-local path.
+The deploy script copies the uber JAR (built from [examples/ptf_udf_row_driven/java/](../java/)) to `/opt/flink/usrlib/user-event-enricher.jar` on every JobManager and TaskManager pod using `kubectl exec`. Both `CREATE FUNCTION ... USING JAR` statements (`user_event_enricher` and `order_line_expander`) reference this same pod-local path, since both PTFs are bundled in the same uber JAR.
 
 ### **2.2 Kafka connector**
 
@@ -53,25 +53,49 @@ The main Flink container then mounts this volume at `/opt/flink/lib/`, so the Ka
 
 ### **2.3 Statement flow**
 
-The script pre-creates Kafka topics, then executes all SQL in a single `sql-client.sh -f` session on the JobManager pod:
+The script pre-creates **all four Kafka topics**, then executes all SQL for **both** PTF UDFs in a single `sql-client.sh -f` session on the JobManager pod. Both UDFs are bundled in the same uber JAR, so a single pod-local JAR path feeds both `CREATE FUNCTION` statements.
 
 ```
-┌──────────────────────────────────────────────────────────────────────┐
-│  Pre-step: kafka-topics --create user_events, enriched_events        │
-│                                                                      │
-│  Step 1:  DROP TABLE IF EXISTS user_events              → OK         │
-│  Step 2:  CREATE TABLE user_events (... WITH kafka ...) → OK         │
-│  Step 3:  INSERT INTO user_events VALUES (sample data)  → submitted  │
-│  Step 4:  DROP TABLE IF EXISTS enriched_events          → OK         │
-│  Step 5:  CREATE TABLE enriched_events (... WITH kafka) → OK         │
-│  Step 6:  CREATE FUNCTION user_event_enricher           → OK         │
-│           USING JAR '/opt/flink/usrlib/...'                          │
-│  Step 7:  INSERT INTO enriched_events                   → submitted  │
-│           SELECT ... FROM TABLE(user_event_enricher())               │
-└──────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────┐
+│  Pre-step: kafka-topics --create user_events, enriched_events,             │
+│                                  orders, orders_expanded                   │
+│                                                                            │
+│  ── UDF 1: UserEventEnricher (set semantics) ──                            │
+│  Step  1:  DROP TABLE IF EXISTS user_events                    → OK        │
+│  Step  2:  CREATE TABLE user_events (... WITH kafka ...)       → OK        │
+│  Step  3:  INSERT INTO user_events VALUES (sample data)        → submitted │
+│  Step  4:  DROP TABLE IF EXISTS enriched_events                → OK        │
+│  Step  5:  CREATE TABLE enriched_events (... WITH kafka)       → OK        │
+│  Step  6:  CREATE FUNCTION user_event_enricher                 → OK        │
+│            AS 'ptf.UserEventEnricher'                                      │
+│            USING JAR '/opt/flink/usrlib/user-event-enricher.jar'           │
+│  Step  7:  INSERT INTO enriched_events                         → submitted │
+│            SELECT ... FROM TABLE(                                          │
+│              user_event_enricher(                                          │
+│                input => TABLE user_events PARTITION BY user_id             │
+│              )                                                             │
+│            )                                                               │
+│                                                                            │
+│  ── UDF 2: OrderLineExpander (row semantics) ──                            │
+│  Step  8:  DROP TABLE IF EXISTS orders                         → OK        │
+│  Step  9:  CREATE TABLE orders (... WITH kafka ...)            → OK        │
+│  Step 10:  INSERT INTO orders VALUES (sample data)             → submitted │
+│  Step 11:  DROP TABLE IF EXISTS orders_expanded                → OK        │
+│  Step 12:  CREATE TABLE orders_expanded (... WITH kafka)       → OK        │
+│  Step 13:  CREATE FUNCTION order_line_expander                 → OK        │
+│            AS 'ptf.OrderLineExpander'                                      │
+│            USING JAR '/opt/flink/usrlib/user-event-enricher.jar'           │
+│            -- same JAR path as Step 6, two functions, one artifact         │
+│  Step 14:  INSERT INTO orders_expanded                         → submitted │
+│            SELECT ... FROM TABLE(                                          │
+│              order_line_expander(                                          │
+│                input => TABLE orders                                       │
+│              )                                                             │
+│            )           -- note: NO PARTITION BY (row semantics)            │
+└────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Step 7 is a **long-running streaming job**. It runs continuously, reading from `user_events` and writing enriched output to `enriched_events`.
+Steps 7 and 14 are **two long-running streaming jobs** running side-by-side in the same Flink session cluster: Step 7 reads from `user_events` and writes per-user enriched output to `enriched_events`; Step 14 reads from `orders` and writes one expanded line-item row per order item to `orders_expanded`.
 
 ---
 
@@ -107,14 +131,14 @@ Behind the scenes this runs:
 
 | Step | What it does |
 |---|---|
-| 1 | `./gradlew clean shadowJar` ─ builds the UDF fat JAR from `examples/ptf_udf_row_driven/java/` |
+| 1 | `./gradlew clean shadowJar` ─ builds the UDF uber JAR from `examples/ptf_udf_row_driven/java/` |
 | 2 | `kubectl exec` ─ copies the JAR to all JobManager and TaskManager pods |
-| 3 | `kafka-topics --create` ─ pre-creates Kafka topics (`user_events`, `enriched_events`) |
-| 4 | `sql-client.sh -f` ─ executes all SQL statements in a single session on the JobManager pod |
+| 3 | `kafka-topics --create` ─ pre-creates Kafka topics (`user_events`, `enriched_events`, `orders`, `orders_expanded`) |
+| 4 | `sql-client.sh -f` ─ executes all SQL statements for **both** UDFs in a single session on the JobManager pod |
 
 ### **4.2 Monitor**
 
-Open the Flink Dashboard to see the running enrichment job:
+Open the Flink Dashboard to see the **two running streaming jobs** (the user-event enrichment job and the order line expansion job):
 
 ```bash
 make flink-ui              # opens http://localhost:8081
@@ -122,13 +146,13 @@ make flink-ui              # opens http://localhost:8081
 
 ### **4.3 Tear down**
 
-To stop the running enrichment job and drop all tables and functions:
+To stop the running streaming jobs and drop all tables and functions:
 
 ```bash
 make teardown-cp-ptf-udf-row-driven
 ```
 
-This cancels any running Flink jobs via the Flink REST API, then submits `DROP FUNCTION` and `DROP TABLE` statements.
+This cancels any running Flink jobs via the Flink REST API, then submits `DROP FUNCTION` and `DROP TABLE` statements for **both** UDFs (`user_event_enricher`, `order_line_expander`) and all four tables (`user_events`, `enriched_events`, `orders`, `orders_expanded`).
 
 ---
 
