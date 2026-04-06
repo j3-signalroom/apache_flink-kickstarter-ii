@@ -1,9 +1,13 @@
-# Java Process Table Function (PTF) User-Defined Function (UDF) examples ─ row-driven (set semantics) and row-semantic
+# Java Process Table Function (PTF) User-Defined Function (UDF) examples ─ row-driven PTFs (set semantics and row semantics)
 
-> This package contains **two** Process Table Function examples that together illustrate the two `ArgumentTrait` modes Flink offers for table arguments:
+> This package contains **two row-driven** Process Table Function examples that together illustrate the two `ArgumentTrait` modes Flink offers for table arguments. **Both PTFs are row-driven**: every state transition or output emission is triggered exclusively by an incoming row. Neither uses timers, neither has an `onTimer()` callback, and neither reacts to the passage of time. (For the timer-driven counterparts, see [`ptf_udf_timer_driven`](../../ptf_udf_timer_driven/java/).)
 >
-> - **`UserEventEnricher`** (set semantics, row-driven) ─ a stateful operator that maintains per-user state across events. Driven entirely by state transitions triggered by incoming rows.
-> - **`OrderLineExpander`** (row semantics) ─ a stateless one-to-many transformation that explodes a single order row into multiple line-item rows.
+> Where the two UDFs differ is the **argument semantics** of their input table:
+>
+> - **`UserEventEnricher`** (set semantics, row-driven) ─ a stateful keyed operator that maintains per-user state across events. Uses `@ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)` and requires `PARTITION BY` in the SQL invocation.
+> - **`OrderLineExpander`** (row semantics, row-driven) ─ a stateless one-to-many transformation that explodes a single order row into multiple line-item rows. Uses `@ArgumentHint(ArgumentTrait.ROW_SEMANTIC_TABLE)` and forbids `PARTITION BY`.
+>
+> Row-driven vs. timer-driven and set-semantic vs. row-semantic are **two orthogonal axes**. The directory name (`ptf_udf_row_driven`) refers to the first axis (no timers); the per-UDF qualifier in each section heading refers to the second (table-argument semantics).
 >
 > Both PTFs ship in the same fat JAR and are registered as separate functions from the same artifact. Together they demonstrate how the Process Table Function (PTF) API in Flink 2.1+ enables building both fully stateful operators and stateless table-valued transformations in Java that are directly callable from SQL.
 
@@ -18,7 +22,7 @@
     + [**2.1 Enrichment logic**](#21-enrichment-logic)
     + [**2.2 How it works end-to-end**](#22-how-it-works-end-to-end)
     + [**2.3 Key concepts illustrated**](#23-key-concepts-illustrated)
-+ [**3.0 UDF 2: Order Line Expander (row semantics)**](#30-udf-2-order-line-expander-row-semantics)
++ [**3.0 UDF 2: Order Line Expander (row semantics, row-driven)**](#30-udf-2-order-line-expander-row-semantics-row-driven)
     + [**3.1 What is row semantics?**](#31-what-is-row-semantics)
     + [**3.2 Expansion logic**](#32-expansion-logic)
     + [**3.3 When to choose row semantics**](#33-when-to-choose-row-semantics)
@@ -138,9 +142,9 @@ Kafka (user_events)
 
 ---
 
-## **3.0 UDF 2: Order Line Expander (row semantics)**
+## **3.0 UDF 2: Order Line Expander (row semantics, row-driven)**
 
-The second PTF in this package, `OrderLineExpander`, sits at the *opposite* end of the PTF design space from `UserEventEnricher`. Where the enricher is a fully stateful keyed operator, the expander is a stateless one-to-many transformation that processes every row in complete isolation.
+The second PTF in this package, `OrderLineExpander`, is also row-driven ─ every output is triggered exclusively by an incoming row, with no timers involved. Where it differs from `UserEventEnricher` is the **table-argument semantics**: the enricher uses set semantics and is a fully stateful keyed operator, while the expander uses row semantics and is a stateless one-to-many transformation that processes every row in complete isolation.
 
 ### **3.1 What is row semantics?**
 
@@ -226,9 +230,12 @@ Use `SET_SEMANTIC_TABLE` instead when you need to count, deduplicate, detect seq
 
 ## **4.0 Comparing the UDFs in this package**
 
-| Aspect | `UserEventEnricher` (set semantics) | `OrderLineExpander` (row semantics) |
+Both UDFs are **row-driven** (no timers); the table below compares them along the *other* axis ─ table-argument semantics.
+
+| Aspect | `UserEventEnricher` (set semantics, row-driven) | `OrderLineExpander` (row semantics, row-driven) |
 |---|---|---|
 | `@ArgumentHint` trait | `SET_SEMANTIC_TABLE` | `ROW_SEMANTIC_TABLE` |
+| Trigger for `eval()` | Incoming row (no timers) | Incoming row (no timers) |
 | `PARTITION BY` in SQL | **Required** | **Forbidden** |
 | State (`@StateHint`) | Allowed and central to the design | **Not allowed** |
 | Per-key isolation | One state instance per partition key | N/A ─ rows are independent |
