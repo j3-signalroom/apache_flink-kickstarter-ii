@@ -2,7 +2,7 @@
 
 Flink TaskManagers are JVM processes, so you can enable **Java remote debugging (JDWP)** and attach your IDE (VS Code or IntelliJ IDEA) to them.
 
-This guide covers both row-driven PTFs in this package: **`UserEventEnricher`** (set semantics, stateful) and **`OrderLineExpander`** (row semantics, stateless). Because both UDFs ship in the same fat JAR, run inside the same TaskManager pod, and live in the same Gradle subproject (`app`), they share **one** debug configuration: **"Attach to Flink TaskManager (Row-Driven)"**. The only thing that differs between debugging the two is *where* you set the breakpoint and *which* `make produce-...-record` target you run to trigger it.
+This guide covers both row-driven PTFs in this package: **`UserEventEnricher`** (set semantics, stateful) and **`OrderLineExpander`** (row semantics, stateless). Because both UDFs ship in the same uber JAR, run inside the same TaskManager pod, and live in the same Gradle subproject (`app`), they share **one** debug configuration: **"Attach to Flink TaskManager (Row-Driven)"**. The only thing that differs between debugging the two is *where* you set the breakpoint and *which* `make produce-...-record` target you run to trigger it.
 
 **Table of Contents**
 <!-- toc -->
@@ -34,7 +34,7 @@ This guide covers both row-driven PTFs in this package: **`UserEventEnricher`** 
 
 ### **1.1 Common setup (do this once)**
 
-These steps are identical for both UDFs — `make deploy-cp-ptf-udf-row-driven` builds the fat JAR and registers **both** functions (`user_event_enricher` and `order_line_expander`) in the same Flink SQL session, then starts both `INSERT INTO ...` pipelines.
+These steps are identical for both UDFs — `make deploy-cp-ptf-udf-row-driven` builds the uber JAR and registers **both** functions (`user_event_enricher` and `order_line_expander`) in the same Flink SQL session, then starts both `INSERT INTO ...` pipelines.
 
 1. **Deploy** the full stack and the UDFs:
 

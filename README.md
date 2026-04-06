@@ -417,12 +417,12 @@ make cmf-proxy-inject
 
 | Target | Description |
 |--------|-------------|
-| `build-ptf-udf-row-driven` | Build the row-driven PTF UDF fat JAR (requires Gradle) |
+| `build-ptf-udf-row-driven` | Build the row-driven PTF UDF uber JAR (requires Gradle) |
 | `deploy-cp-ptf-udf-row-driven` | Build row-driven UDF JAR, copy to Flink pods, and submit SQL via Flink SQL Client |
 | `teardown-cp-ptf-udf-row-driven` | Tear down the row-driven PTF UDF deployment |
 | `deploy-cc-ptf-udf-row-driven` | Build and deploy the row-driven UDF JAR to Confluent Cloud via Terraform |
 | `teardown-cc-ptf-udf-row-driven` | Tear down the row-driven PTF UDF deployment from Confluent Cloud |
-| `build-ptf-udf-timer-driven` | Build the timer-driven PTF UDF fat JAR (requires Gradle) |
+| `build-ptf-udf-timer-driven` | Build the timer-driven PTF UDF uber JAR (requires Gradle) |
 | `deploy-cp-ptf-udf-timer-driven` | Build timer-driven UDF JAR, copy to Flink pods, and submit SQL via Flink SQL Client |
 | `teardown-cp-ptf-udf-timer-driven` | Tear down the timer-driven PTF UDF deployment |
 | `deploy-cc-ptf-udf-timer-driven` | Build and deploy the timer-driven UDF JAR to Confluent Cloud via Terraform |
@@ -676,7 +676,7 @@ Your IDE will pause at your breakpoint. You can inspect `input`, `state`, and lo
 
 > For the full deep-dive, see [Remote Debugging Row-Driven Flink PTF UDFs](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md) (§1.3).
 >
-> The `OrderLineExpander` ships in the **same fat JAR** as `UserEventEnricher`, so the same `make deploy-cp-ptf-udf-row-driven` command and the same **"Attach to Flink TaskManager (Row-Driven)"** debug configuration are used. The deploy script registers both PTFs as separate Flink SQL functions and starts an `INSERT INTO orders_expanded SELECT ... FROM TABLE(order_line_expander(input => TABLE orders))` pipeline alongside the user-event enrichment job.
+> The `OrderLineExpander` ships in the **same uber JAR** as `UserEventEnricher`, so the same `make deploy-cp-ptf-udf-row-driven` command and the same **"Attach to Flink TaskManager (Row-Driven)"** debug configuration are used. The deploy script registers both PTFs as separate Flink SQL functions and starts an `INSERT INTO orders_expanded SELECT ... FROM TABLE(order_line_expander(input => TABLE orders))` pipeline alongside the user-event enrichment job.
 
 Deploy first: `make deploy-cp-ptf-udf-row-driven`, and then:
 
