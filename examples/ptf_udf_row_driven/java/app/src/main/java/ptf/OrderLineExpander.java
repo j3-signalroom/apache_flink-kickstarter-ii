@@ -76,9 +76,9 @@ public class OrderLineExpander extends ProcessTableFunction<Row> {
             @ArgumentHint(ArgumentTrait.ROW_SEMANTIC_TABLE)
             Row input
     ) {
-        String orderId  = input.getFieldAs("order_id");
-        String customer = input.getFieldAs("customer");
-        String items    = input.getFieldAs("items");
+        String orderId    = input.getFieldAs("order_id");
+        String customer   = input.getFieldAs("customer");
+        String items      = input.getFieldAs("items");
         String quantities = input.getFieldAs("quantities");
 
         // ── Guard: nothing to expand ──────────────────────────────────────────
@@ -92,12 +92,12 @@ public class OrderLineExpander extends ProcessTableFunction<Row> {
                 : new String[0];
 
         // ── Expand each item into its own row ─────────────────────────────────
-        for (int i = 0; i < itemParts.length; i++) {
-            String itemName = itemParts[i].trim();
-            int qty = 1; // default quantity when not specified
-            if (i < quantityParts.length) {
+        for (int lineNumber = 0; lineNumber < itemParts.length; lineNumber++) {
+            String itemName = itemParts[lineNumber].trim();
+            int quantity = 1; // default quantity when not specified
+            if (lineNumber < quantityParts.length) {
                 try {
-                    qty = Integer.parseInt(quantityParts[i].trim());
+                    quantity = Integer.parseInt(quantityParts[lineNumber].trim());
                 } catch (NumberFormatException ignored) {
                     // keep default of 1
                 }
@@ -107,8 +107,8 @@ public class OrderLineExpander extends ProcessTableFunction<Row> {
                     orderId,
                     customer,
                     itemName,
-                    qty,
-                    i + 1   // 1-based line number
+                    quantity,
+                    lineNumber + 1   // 1-based line number
             ));
         }
     }
