@@ -596,7 +596,7 @@ kafka-ui-uninstall: ## Uninstall Kafka UI (safe to run even if not installed)
 # Phase 9: Build & Deploy Flink JARs
 # ------------------------------------------------------------------------------
 .PHONY: build-ptf-udf-row-driven
-build-ptf-udf-row-driven: ## Build the ptf_udf_row_driven fat JAR (requires Gradle)
+build-ptf-udf-row-driven: ## Build the ptf_udf_row_driven uber JAR (requires Gradle)
 	@echo "→ Building ptf_udf_row_driven JAR..."
 	@if [ ! -f examples/ptf_udf_row_driven/java/gradle/wrapper/gradle-wrapper.jar ]; then \
 		echo "→ gradle-wrapper.jar missing — regenerating..."; \
@@ -640,8 +640,15 @@ produce-user-events-record: ## Produce one sample user events to the 'user_event
 		| kafka-console-producer --bootstrap-server localhost:9071 --topic user_events"
 	@echo "→ Produce one sample user events to the 'user_events' topic"
 
+.PHONY: produce-orders-record
+produce-orders-record: ## Produce one sample order to the 'orders' topic using kafka-console-producer
+	@kubectl exec -it kafka-0 -n confluent -- bash -c \
+		"echo '{\"order_id\":\"O-200\",\"customer\":\"alice\",\"items\":\"widget,gadget,gizmo\",\"quantities\":\"2,1,5\"}' \
+		| kafka-console-producer --bootstrap-server localhost:9071 --topic orders"
+	@echo "→ Produced one sample order to the 'orders' topic"
+
 .PHONY: build-ptf-udf-timer-driven
-build-ptf-udf-timer-driven: ## Build the ptf_udf_timer_driven fat JAR (requires Gradle)
+build-ptf-udf-timer-driven: ## Build the ptf_udf_timer_driven uber JAR (requires Gradle)
 	@echo "→ Building ptf_udf_timer_driven JAR..."
 	@if [ ! -f examples/ptf_udf_timer_driven/java/gradle/wrapper/gradle-wrapper.jar ]; then \
 		echo "→ gradle-wrapper.jar missing — regenerating..."; \
