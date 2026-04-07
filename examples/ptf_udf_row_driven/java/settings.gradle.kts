@@ -1,3 +1,3 @@
-rootProject.name = "apache_flink-kickstarter-ii"
+rootProject.name = "ptf_udf_row_driven-java"
 
 include("app")

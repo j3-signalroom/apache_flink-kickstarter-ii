@@ -7,6 +7,7 @@ The format is base on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), 
 ## [0.17.00.000] - TBD
 ### Changed
 - Issue [`#203`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/203)
+- Issue [`#205`](https://github.com/j3-signalroom/apache_flink-kickstarter-ii/issues/205)
 
 ## [0.16.00.000] - 2026-04-06
 ### Added
