@@ -13,12 +13,12 @@
 
 ## **1.0 The guideline**
 
-**Use SQL for everything it can express. Reach for a `ProcessTableFunction` only when you need something SQL fundamentally cannot do—and when you do, make the PTF do *only that thing*.**
+**Use SQL for everything it can express. Reach for a PTF only when you need something SQL fundamentally cannot do — and when you do, make the PTF do *only that thing*.**
 
 Why this is the right default:
 
 1. **The optimizer sees SQL; it cannot see inside a UDF.**
-   Predicate pushdown, projection pruning, join reordering, filter fusion, watermark alignment—all stop at the boundary of a Java function. Every column referenced in `eval()` must be materialized whether you use it or not.
+   Predicate pushdown, projection pruning, join reordering, filter fusion, watermark alignment — all stop at the boundary of a Java function. Every column referenced in `eval()` must be materialized whether you use it or not.
 
 2. **SQL is declarative and portable.**
    A `LATERAL VIEW` query runs unchanged across Flink versions, Confluent Cloud, and local test environments. A PTF is compiled Java—packaged, registered, versioned, and deployed.
@@ -65,7 +65,7 @@ When you *do* write a stateful PTF:
   Emit only the minimal facts. Let SQL handle enrichment, formatting, and final shaping.
 
 * **One PTF, one responsibility.**
-  No “god PTFs.” If it sessionizes *and* dedupes *and* enriches—you’ve gone too far.
+  No “god PTFs.” If it sessionizes *and* dedupes *and* enriches — you’ve gone too far.
 
 * **Keep `eval()` boring.**
   If you’re doing parsing or heavy transformations, it likely belongs in SQL or a small stateless UDF.
@@ -74,7 +74,7 @@ When you *do* write a stateful PTF:
   This pays off during debugging and checkpoint recovery.
 
 * **Test in isolation.**
-  A well-designed PTF has a narrow contract—table in, table out—which makes it easy to validate with a mini-cluster.
+  A well-designed PTF has a narrow contract — table in, table out — which makes it easy to validate with a mini-cluster.
 
 ---
 
