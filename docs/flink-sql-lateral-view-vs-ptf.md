@@ -1,47 +1,86 @@
-# When to use Flink SQL `LATERAL VIEW` vs. a `ProcessTableFunction` (PTF)
+# **When to use Flink SQL `LATERAL VIEW` vs. a `ProcessTableFunction` (PTF)**
 
 <!--toc start-->
-+ [**1.0 The guideline**](#10-the-guideline)
-+ [**2.0 A practical version of the rule**](#20-a-practical-version-of-the-rule)
-+ [**3.0 What "minimizing the complexity of the UDF" should look like in practice**](#30-what-minimizing-the-complexity-of-the-udf-should-look-like-in-practice)
-+ [**4.0 The mental model**](#40-the-mental-model)
+
+* [**1.0 The guideline**](#10-the-guideline)
+* [**2.0 A practical version of the rule**](#20-a-practical-version-of-the-rule)
+* [**3.0 What "minimizing the complexity of the UDF" looks like in practice**](#30-what-minimizing-the-complexity-of-the-udf-looks-like-in-practice)
+* [**4.0 The mental model**](#40-the-mental-model)
+
 <!--toc end-->
+
+---
 
 ## **1.0 The guideline**
 
-**Use plain FlinkSQL (including `LATERAL`, `UNNEST`, `CROSS JOIN`, and built-in table functions) for everything it can already express. Reach for a `ProcessTableFunction` only when you need something Flink SQL fundamentally cannot do — and when you do, make the PTF's job *only* that thing.**
+**Use SQL for everything it can express. Reach for a `ProcessTableFunction` only when you need something SQL fundamentally cannot do—and when you do, make the PTF do *only that thing*.**
 
-The reasons this is the right default:
+Why this is the right default:
 
-1. **The optimizer can see through Flink SQL; it cannot see into a UDF.** Predicate pushdown, projection pushdown, join reordering, filter fusion, watermark alignment — all of that stops at the boundary of a Java function. Every column you read inside `eval()` is a column the planner must materialize for you whether you end up using it or not.
-2. **Flink SQL is portable and declarative.** A `LATERAL VIEW` query runs unchanged on a new Flink version, on a managed service, on Confluent Cloud, on a unit test with a mini-cluster. A PTF is Java you have to compile, package, register, and version.
-3. **State and timers are the actual hard part.** That's where bugs live (TTL, key cardinality, checkpointing cost, late events, timer storms). Concentrating that complexity in one small, well-named, well-tested PTF is exactly the kind of isolation you want.
-4. **Schema evolution is easier in Flink SQL.** Adding a column to an `UNNEST` chain is a one-line edit. Adding a column to a PTF means touching `@DataTypeHint`, the `Row.of(...)` call, the tests, and rebuilding the JAR.
+1. **The optimizer sees SQL; it cannot see inside a UDF.**
+   Predicate pushdown, projection pruning, join reordering, filter fusion, watermark alignment—all stop at the boundary of a Java function. Every column referenced in `eval()` must be materialized whether you use it or not.
+
+2. **SQL is declarative and portable.**
+   A `LATERAL VIEW` query runs unchanged across Flink versions, Confluent Cloud, and local test environments. A PTF is compiled Java—packaged, registered, versioned, and deployed.
+
+3. **State and timers are where complexity lives.**
+   That’s where bugs hide: TTL, key cardinality, checkpoint size, late events, timer storms. Keeping that complexity isolated in a small, well-defined PTF is exactly what you want.
+
+4. **Schema evolution is cheaper in SQL.**
+   Adding a column to an `UNNEST` chain is trivial. Adding it to a PTF means updating type hints, output construction, tests, and rebuilding the JAR.
+
+---
 
 ## **2.0 A practical version of the rule**
 
-Think of it as a decision ladder — stop at the first rung that works:
+Think of this as a decision ladder—stop at the first rung that works:
 
-1. **Pure Flink SQL** (projections, filters, joins, window TVFs, `MATCH_RECOGNIZE`).
-2. **Flink SQL + built-in table functions** (`UNNEST`, `LATERAL`, `JSON_TABLE`, `STRING_SPLIT`, …).
-3. **Scalar / table / aggregate UDF** — when you need a small piece of custom logic but no cross-row memory.
-4. **Row-semantic PTF** — when per-row logic is too gnarly for a scalar UDF *and* you want it to look like a table operator in Flink SQL (this is what [`OrderLineExpander`](../examples/ptf_udf_row_driven/java/app/src/main/java/ptf/OrderLineExpander.java) demonstrates; honestly, in production you'd usually do this one in Flink SQL).
-5. **Set-semantic PTF with state/timers** — when, and only when, you need keyed state, event-time timers, custom windowing, sessionization with bespoke gap rules, dedup-with-memory, "emit on Nth event," etc. *This is the rung where PTFs justify their existence.*
+1. **Pure SQL**
+   (projections, filters, joins, window TVFs, `MATCH_RECOGNIZE`)
 
-## **3.0 What "minimizing the complexity of the UDF" should look like in practice**
+2. **Flink SQL + built-in table functions**
+   (`UNNEST`, `LATERAL`, `JSON_TABLE`, `STRING_SPLIT`, …)
 
-When you do write a stateful PTF, keep these disciplines:
+3. **Scalar / table / aggregate UDFs**
+   Small custom logic with no cross-row memory
 
-- **Push everything you can upstream into Flink SQL.** Filter, project, and pre-join in Flink SQL *before* the data hits the PTF. The PTF should receive the narrowest possible table — only the columns and rows it actually needs to make state decisions. This shrinks state size, checkpoint size, and CPU.
-- **Push everything you can downstream into Flink SQL.** The PTF should emit the *minimum* facts needed; let Flink SQL do the formatting, enrichment joins, and final shaping. Don't have the PTF do a lookup join that a Flink SQL `JOIN` could do after the fact.
-- **One PTF, one responsibility.** Don't build a "god PTF" that sessionizes *and* dedupes *and* enriches *and* formats. Chain small ones, or split the work between a small PTF and surrounding Flink SQL.
-- **Keep `eval()` boring.** If a method on the PTF is doing string parsing or arithmetic gymnastics, that logic almost always belongs in a Flink SQL expression or a tiny scalar UDF, not inside the stateful operator.
-- **Make the state explicit and named.** Future-you (and the checkpoint-restore story) will thank you.
-- **Test the PTF in isolation** with a `TableEnvironment` mini-job. Because it has a narrow contract (table in, table out), it's straightforward to test if you've kept its responsibility small.
+4. **Row-semantic PTF**
+   When per-row logic is too complex for a scalar UDF but still stateless
+   *(In practice, this is often still better expressed in SQL.)*
+
+5. **Set-semantic PTF (state + timers)**
+   When you need keyed state, event-time timers, custom windowing, sessionization, deduplication with memory, or “emit on Nth event”
+   👉 **This is where PTFs justify their existence**
+
+---
+
+## **3.0 What "minimizing the complexity of the UDF" looks like in practice**
+
+When you *do* write a stateful PTF:
+
+* **Push everything upstream into SQL.**
+  Filter, project, and join *before* the PTF. Feed it the narrowest possible table. This reduces state size, checkpoint cost, and CPU.
+
+* **Push everything downstream into SQL.**
+  Emit only the minimal facts. Let SQL handle enrichment, formatting, and final shaping.
+
+* **One PTF, one responsibility.**
+  No “god PTFs.” If it sessionizes *and* dedupes *and* enriches—you’ve gone too far.
+
+* **Keep `eval()` boring.**
+  If you’re doing parsing or heavy transformations, it likely belongs in SQL or a small stateless UDF.
+
+* **Make state explicit and named.**
+  This pays off during debugging and checkpoint recovery.
+
+* **Test in isolation.**
+  A well-designed PTF has a narrow contract—table in, table out—which makes it easy to validate with a mini-cluster.
+
+---
 
 ## **4.0 The mental model**
 
-A good PTF in a Flink SQL pipeline is shaped like an **hourglass**:
+A good PTF in a SQL pipeline is shaped like an **hourglass**:
 
 ![ptf-development-mental-model](images/ptf-development-mental-model.png)
 
@@ -49,4 +88,4 @@ A good PTF in a Flink SQL pipeline is shaped like an **hourglass**:
 
 ---
 
-**One-line summary:** *Flink SQL for shape, PTF for memory.*
+> **If your PTF is doing formatting, joining, or reshaping — you wrote it too big.**
