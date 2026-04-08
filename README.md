@@ -577,6 +577,7 @@ Once you’ve set up [**Confluent Platform on Minikube**](#11-confluent-platform
 ### **2.1 Apache Flink User-Defined Functions (UDF)**
 
 #### **2.1.1 Process Table Functions (PTF)**
+
 <details>
 <summary><strong><em>What are PTFs?</em></strong></summary>
 
@@ -614,6 +615,8 @@ You write PTF UDFs as Java classes, deploy them as JAR files, and run them withi
 | [PTF UDF-type (`timer-driven`)](examples/ptf_udf_timer_driven/java/README.md) | Walks through both **local** and cloud environments *building*, *deploying*, and *testing* four **`timer-driven`** **PTF UDFs** bundled in one JAR: **Session Timeout Detector** (named timers using the inactivity pattern), **Abandoned Cart Detector** (named timers using the inactivity pattern for e-commerce), **Per-Event Follow-Up** (unnamed timers using the scheduling pattern), and **SLA Monitor** (unnamed timers using the scheduling pattern). | <p style="text-align: center;">[`CP Deploy`](examples/ptf_udf_timer_driven/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/ptf_udf_timer_driven/cc_deploy/README.md)</p> |
 
 </details>
+
+> [⏳ **PTF Rules of Thumb: The Hourglass Pattern**](docs/flink-sql-lateral-view-vs-ptf.md)
 
 ---
 
