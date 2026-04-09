@@ -28,7 +28,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 + [**2.0 The Examples**](#20-the-examples)
     - [**2.1 Apache Flink User-Defined Functions (UDF)**](#21-apache-flink-user-defined-functions-udf)
         + [**2.1.1 Process Table Functions (PTF)**](#211-process-table-functions-ptf)
-            - [**2.1.1.1 Limitations**](#2111-limitations)
+            - [**2.1.1.1 Limitation(s)**](#2111-limitations)
 + [**3.0 Debugging the Examples**](#30-debugging-the-examples)
     - [**3.1 Apache Flink UDF Debugging with Java Debug Wire Protocol (JDWP)**](#31-apache-flink-udf-debugging-with-java-debug-wire-protocol-jdwp)
         + [**3.1.1 Process Table Functions (PTF)**](#311-process-table-functions-ptf)
@@ -619,7 +619,7 @@ You write PTF UDFs as Java classes, deploy them as JAR files, and run them withi
 
 > [⏳ **PTF Rules of Thumb: The Hourglass Pattern**](docs/flink-sql-lateral-view-vs-ptf.md)
 
-##### **2.1.1.1 Limitations**
+##### **2.1.1.1 Limitation(s)**
 
 - [Why `@StateHint` POJO with `Map` or `List` Are Sensitive to "Extremely Large State"](docs/ccaf-map-list-ptf-udf-limitation-explanation.md)
 
