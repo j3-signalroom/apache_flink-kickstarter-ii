@@ -1,5 +1,9 @@
 # Why `@StateHint` POJO with `Map` or `List` Are Sensitive to "Extremely Large State"
 
+> **TL;DR:**  
+> A `Map` inside `@StateHint` is not a map—it’s a **serialized blob**.  
+> Every update rewrites the entire thing → performance collapse → 💥 fails at ~2GB **serialized value size**.
+
 The issue isn’t just “large state.”
 
 It’s **how that state is physically stored and accessed**.
@@ -17,6 +21,34 @@ It’s **how that state is physically stored and accessed**.
 ---
 
 ## **1.0 What `@StateHint` Really Means Under the Hood**
+
+```mermaid
+flowchart LR
+
+subgraph BAD["❌ ValueState (Blob Storage)"]
+    A1["Partition Key"]
+    A2["Serialized POJO (Map/List)"]
+    A1 --> A2
+
+    note1["Every update:
+    - Read entire blob
+    - Deserialize
+    - Modify
+    - Serialize entire blob
+    - Write back"]
+end
+
+subgraph GOOD["✅ MapState (Per-Entry Storage)"]
+    B1["Partition Key + key1"] --> V1["value1"]
+    B2["Partition Key + key2"] --> V2["value2"]
+    B3["Partition Key + key3"] --> V3["value3"]
+
+    note2["Every update:
+    - Access single entry
+    - No full deserialization
+    - Incremental write"]
+end
+```
 
 When you annotate a POJO with `@StateHint`, Flink backs it with a single **`ValueState<YourPojo>`**. That means the entire POJO — including any `Map` or `List` fields inside it — is treated as one atomic value. 
 
