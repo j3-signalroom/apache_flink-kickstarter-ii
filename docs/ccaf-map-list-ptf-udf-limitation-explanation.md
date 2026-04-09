@@ -41,7 +41,19 @@ Even if you only update one key in the map, you still pay the cost of the entire
 
 ## **2.0 Why This Can Become a Scaling Problem**
 
-States that use merge operations in [RocksDB](https://rocksdb.org/) (e.g. `ListState`) can silently accumulate value sizes > 2^31 bytes and will then fail on their next retrieval. This is currently a limitation of RocksDB JNI. As RocksDB's JNI bridge API is based on `byte[]`, the maximum supported size per value is 2^31 bytes. `MapState` is used as a replacement for `ListState` or `ValueState` in case the records get too big for the RocksDB JNI bridge.
+States that use `ListState`, a merge operation in [RocksDB](https://rocksdb.org/), can silently accumulate value sizes > 2^31 bytes and will then fail on their next retrieval.
+
+You see in RocksDB there are two main write patterns for state:
+
+1. Put - overwrites the entire value for a key.  This is what happens with `ValueState` and `MapState` use.  Each write replaces the previous value completely.
+
+2. Merge - appends data to an exisiting key without reading-then-writing.  This is what `ListState` uses.  When you call `listState.add(newElement)`, Flink doesn't read the exisitng list, deserialize it, append, re-serialize, and write back.  Instead, it uses RocksDB's merge operator to just append the new element directly in RocksDB.  This is much more efficient for large lists.
+
+### **2.
+
+ This is currently a limitation of RocksDB JNI. As RocksDB's JNI bridge API is based on `byte[]`, the maximum supported size per value is 2^31 bytes.
+
+`MapState` is used as a replacement for `ListState` or `ValueState` in case the records get too big for the RocksDB JNI bridge.
 
 So the hard cliff is **2 GB per serialized value** — if your `@StateHint` POJO's map grows large enough that its serialized form exceeds 2^31 bytes, you get a silent corruption and then a crash on the next read.
 
