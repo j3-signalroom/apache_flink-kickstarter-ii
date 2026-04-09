@@ -44,6 +44,8 @@ Every access becomes:
 
 Even if you only update one key in the map, you still pay the cost of the entire structure.
 
+---
+
 ## **2.0 Why This Can Become a Scaling Problem**
 
 States that use `ListState`, a merge operation in [RocksDB](https://rocksdb.org/), can silently accumulate value sizes > 2^31 bytes and will then fail on their next retrieval.
