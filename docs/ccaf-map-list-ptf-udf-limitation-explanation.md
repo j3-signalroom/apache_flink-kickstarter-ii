@@ -134,7 +134,7 @@ So if your map has 10,000 entries and you only need to update one of them, you'r
 
 `MapView` and `ListView` (which aren't supported in PTFs yet) would fix this by storing each map and list entry as its own independent record in RocksDB — so you only touch the one entry you actually need.
 
-The phrase "extremely large state" in the Confluent docs is basically shorthand for: *"at some point your map or list gets big enough that this full serdes cycle on every event becomes a real performance problem"* — and there's also a hard technical cliff at 2GB where the whole thing crashes.
+The phrase "extremely large state" in the callout on the [Confluent docs](https://docs.confluent.io/cloud/current/flink/concepts/process-table-functions.html#listview-not-supported) is basically shorthand for: *"at some point your map or list gets big enough that this full serdes cycle on every event becomes a real performance problem"* — and there's also a hard technical cliff at 2GB where the whole thing crashes.
 
 ---
 
