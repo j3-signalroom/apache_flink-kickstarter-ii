@@ -10,18 +10,19 @@ It’s **how that state is physically stored and accessed**.
 
 **Table of Contents**
 <!--toc-start-->
-- [1.0 What `@StateHint` Really Means Under the Hood](#10-what-statehint-really-means-under-the-hood)
-- [2.0 Why This Can Become a Scaling Problem](#20-why-this-can-become-a-scaling-problem)
-    - [2.1 Hard limit cliff at 2 GB per serialized value](#21-hard-limit-cliff-at-2-gb-per-serialized-value)
-- [3.0 The Solution: PTF should use `MapView` and `ListView`](#30-the-solution-ptf-should-use-mapview-and-listview)
-    - [3.1 Why Confluent's PTF Early Access doesn't support `MapView` or `ListView` yet](#31-why-confluents-ptf-early-access-doesnt-support-mapview-or-listview-yet)
-- [4.0 Summary](#40-summary)
+- [**1.0 What `@StateHint` Really Means Under the Hood**](#10-what-statehint-really-means-under-the-hood)
+- [**2.0 Why This Can Become a Scaling Problem**](#20-why-this-can-become-a-scaling-problem)
+    - [**2.1 Hard limit cliff at 2 GB per serialized value**](#21-hard-limit-cliff-at-2-gb-per-serialized-value)
+- [**3.0 The Solution: Use `MapView` and `ListView` (When Available)**](#30-the-solution-use-mapview-and-listview-when-available)
+    - [**3.1 Why Confluent's PTF Early Access doesn't support `MapView` or `ListView` yet**](#31-why-confluents-ptf-early-access-doesnt-support-mapview-or-listview-yet)
+- [4.0 What Actually Happens at Runtime](#40-what-actually-happens-at-runtime)
 <!-- tocstop -->
 
 ---
 
 ## **1.0 What `@StateHint` Really Means Under the Hood**
 
+**Blob vs Per-Entry State (What’s Actually Happening)**
 ```mermaid
 flowchart LR
 
@@ -100,15 +101,21 @@ That's what makes it particularly nasty — it's not a clean "your state is too 
 
 `MapState` is used as a replacement for `ListState` or `ValueState` in case the records get too big for the RocksDB JNI bridge.
 
+> 🚨 **Production Risk**
+> This does NOT fail when writing state.
+> It fails on the **next read**—often after checkpoint/restore.
+>
+> This makes it extremely difficult to diagnose in real systems.
+
 ---
 
-## **3.0 The Solution: PTF should use `MapView` and `ListView`**
+## **3.0 The Solution: Use `MapView` and `ListView` (When Available)**
 
 `MapView` and `ListView` are facades over Flink's native **`MapState`** and **`ListState`** primitives. In RocksDB:
 - Each **`MapState` entry** is stored as an independent RocksDB key (`partition_key + map_entry_key → value`). You can look up, update, or delete a single entry without touching the rest.
 - Each **`ListState` entry** is similarly stored per-element.
 
-This is why `MapView` and `ListView` are designed for "extremely large" collections — you never materialize the whole thing on the JVM heap. You do surgical point lookups via JNI into RocksDB.
+This is exactly why `MapView` and `ListView` exist—they are designed for **extremely large collections**.  You never materialize the whole thing on the JVM heap. You do surgical point lookups via JNI into RocksDB.
 
 ### **3.1 Why Confluent's PTF Early Access doesn't support `MapView` or `ListView` yet**
 
@@ -116,7 +123,7 @@ This is a tracked sub-task: [FLINK-37598 — "Support `ListView` and `MapView` i
 
 ---
 
-## **4.0 Summary**
+## **4.0 What Actually Happens at Runtime**
 When you use `@StateHint` with a POJO containing a `Map` or `List` field, Flink treats the **entire POJO as one single value** in storage. Every time an event arrives, Flink has to:
 
 1. Read the whole thing from RocksDB and deserialize it into memory
@@ -128,3 +135,19 @@ So if your map has 10,000 entries and you only need to update one of them, you'r
 `MapView` and `ListView` (which aren't supported in PTFs yet) would fix this by storing each map and list entry as its own independent record in RocksDB — so you only touch the one entry you actually need.
 
 The phrase "extremely large state" in the Confluent docs is basically shorthand for: *"at some point your map or list gets big enough that this full serdes cycle on every event becomes a real performance problem"* — and there's also a hard technical cliff at 2GB where the whole thing crashes.
+
+---
+
+## Final Mental Model
+
+> A `Map` inside `@StateHint` is not a data structure — it’s a **blob**.
+
+That means:
+
+- Every update rewrites everything  
+- There are no partial updates  
+- It will eventually hit a hard limit  
+
+And when it does:
+
+> It won’t fail immediately — it will fail later, and painfully.
