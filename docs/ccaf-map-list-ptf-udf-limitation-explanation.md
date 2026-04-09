@@ -1,7 +1,7 @@
 # Why `@StateHint` POJO with `Map` or `List` Are Sensitive to "Extremely Large State"
 
 > **TL;DR:**  
-> A `Map` inside `@StateHint` is not a map—it’s a **serialized blob**.  
+> A `Map` inside `@StateHint` is not a map — it’s a **serialized blob**.  
 > Every update rewrites the entire thing → performance collapse → 💥 fails at ~2GB **serialized value size**.
 
 The issue isn’t just “large state.”
@@ -103,7 +103,7 @@ That's what makes it particularly nasty — it's not a clean "your state is too 
 
 > 🚨 **Production Risk**
 > This does NOT fail when writing state.
-> It fails on the **next read**—often after checkpoint/restore.
+> It fails on the **next read** — often after checkpoint/restore.
 >
 > This makes it extremely difficult to diagnose in real systems.
 
@@ -115,7 +115,7 @@ That's what makes it particularly nasty — it's not a clean "your state is too 
 - Each **`MapState` entry** is stored as an independent RocksDB key (`partition_key + map_entry_key → value`). You can look up, update, or delete a single entry without touching the rest.
 - Each **`ListState` entry** is similarly stored per-element.
 
-This is exactly why `MapView` and `ListView` exist—they are designed for **extremely large collections**.  You never materialize the whole thing on the JVM heap. You do surgical point lookups via JNI into RocksDB.
+This is exactly why `MapView` and `ListView` exist — they are designed for **extremely large collections**.  You never materialize the whole thing on the JVM heap. You do surgical point lookups via JNI into RocksDB.
 
 ### **3.1 Why Confluent's PTF Early Access doesn't support `MapView` or `ListView` yet**
 
@@ -138,7 +138,7 @@ The phrase "extremely large state" in the callout on the [Confluent docs](https:
 
 ---
 
-## Final Mental Model
+## 🧠 Final Mental Model
 
 > A `Map` inside `@StateHint` is not a data structure — it’s a **blob**.
 
