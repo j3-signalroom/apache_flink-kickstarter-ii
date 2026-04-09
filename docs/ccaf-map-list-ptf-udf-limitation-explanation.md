@@ -7,7 +7,12 @@ It’s **how that state is physically stored and accessed**.
 **Table of Contents**
 <!--toc-start-->
 - [1.0 What `@StateHint` Really Means Under the Hood](#10-what-statehint-really-means-under-the-hood)
-<!--toc-end-->
+- [2.0 Why This Can Become a Scaling Problem](#20-why-this-can-become-a-scaling-problem)
+    - [2.1 Hard limit cliff at 2 GB per serialized value](#21-hard-limit-cliff-at-2-gb-per-serialized-value)
+- [3.0 The Solution: PTF should use `MapView` and `ListView`](#30-the-solution-ptf-should-use-mapview-and-listview)
+    - [3.1 Why Confluent's PTF Early Access doesn't support `MapView` or `ListView` yet](#31-why-confluents-ptf-early-access-doesnt-support-mapview-or-listview-yet)
+- [4.0 Summary](#40-summary)
+<!-- tocstop -->
 
 ---
 
@@ -49,15 +54,9 @@ You see in RocksDB there are two main write patterns for state:
 
 2. Merge - appends data to an exisiting key without reading-then-writing.  This is what `ListState` uses.  When you call `listState.add(newElement)`, Flink doesn't read the exisitng list, deserialize it, append, re-serialize, and write back.  Instead, it uses RocksDB's merge operator to just append the new element directly in RocksDB.  This is much more efficient for large lists.
 
-### **2.
+But there is a problem with the `Merge` pattern when your state values get very large.  If you have a `ListState` that grows so big that its serialized form exceeds 2^31 bytes=2GB (the max size of a Java `byte[]`), then you get silent corruption.  The write appears to succeed, but the next time you read it, it crashes because the data is corrupted.
 
- This is currently a limitation of RocksDB JNI. As RocksDB's JNI bridge API is based on `byte[]`, the maximum supported size per value is 2^31 bytes.
-
-`MapState` is used as a replacement for `ListState` or `ValueState` in case the records get too big for the RocksDB JNI bridge.
-
-So the hard cliff is **2 GB per serialized value** — if your `@StateHint` POJO's map grows large enough that its serialized form exceeds 2^31 bytes, you get a silent corruption and then a crash on the next read.
-
-#### **2.1 Hard limit cliff at 2 GB per serialized value**
+### **2.1 Hard limit cliff at 2 GB per serialized value**
 
 RocksDB's JNI (Java Native Interface) bridge — the layer that lets Java talk to RocksDB's native C++ code — passes data back and forth as `byte[]` arrays. Java's `byte[]` has a maximum length of `2^31 - 1` bytes (just under 2GB).
 
@@ -65,11 +64,11 @@ So when Flink tries to serialize your entire POJO (including its map or list) in
 
 That's what makes it particularly nasty — it's not a clean "your state is too big" error at write time. It's a silent corruption that blows up later, potentially after a checkpoint/restore cycle, making it hard to diagnose.
 
-For a `MapState` or `ListState`, this limit applies **per entry** rather than to the entire collection, so you'd have to have a single map value or list element exceed 2GB to hit it — which is essentially never going to happen in practice.
+`MapState` is used as a replacement for `ListState` or `ValueState` in case the records get too big for the RocksDB JNI bridge.
 
 ---
 
-## **2.0 The Solution: PTF should use `MapView` and `ListView`**
+## **3.0 The Solution: PTF should use `MapView` and `ListView`**
 
 `MapView` and `ListView` are facades over Flink's native **`MapState`** and **`ListState`** primitives. In RocksDB:
 - Each **`MapState` entry** is stored as an independent RocksDB key (`partition_key + map_entry_key → value`). You can look up, update, or delete a single entry without touching the rest.
@@ -77,13 +76,13 @@ For a `MapState` or `ListState`, this limit applies **per entry** rather than to
 
 This is why `MapView` and `ListView` are designed for "extremely large" collections — you never materialize the whole thing on the JVM heap. You do surgical point lookups via JNI into RocksDB.
 
-### **2.1 Why Confluent's PTF Early Access doesn't support `MapView` or `ListView` yet**
+### **3.1 Why Confluent's PTF Early Access doesn't support `MapView` or `ListView` yet**
 
 This is a tracked sub-task: [FLINK-37598 — "Support `ListView` and `MapView` in PTFs"](https://issues.apache.org/jira/browse/FLINK-37598) — filed by Timo Walther (the [FLIP-440](https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=298781093) author) to add list state and map state support in PTFs. It wasn't in the original FLIP-440 scope and is a planned addition. The Confluent Early Access simply reflects the upstream Flink state: `MapView` and `ListView` in PTFs are not yet implemented in Flink itself, let alone wired through Confluent's managed platform.
 
 ---
 
-## **3.0 Summary**
+## **4.0 Summary**
 When you use `@StateHint` with a POJO containing a `Map` or `List` field, Flink treats the **entire POJO as one single value** in storage. Every time an event arrives, Flink has to:
 
 1. Read the whole thing from RocksDB and deserialize it into memory

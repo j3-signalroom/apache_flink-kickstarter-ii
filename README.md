@@ -14,23 +14,24 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 <!-- toc -->
 + [**1.0 Prerequisites**](#10-prerequisites)
     - [**1.1 Confluent Platform on Minikube — Production-Like Streaming, Running Locally**](#11-confluent-platform-on-minikube--production-like-streaming-running-locally)
-        - [**1.1.1 Requirements**](#111-requirements)
-        - [**1.1.2 Local Infrastructure Deployment Made Simple with a `Makefile`**](#112-local-infrastructure-deployment-made-simple-with-a-makefile)
+        + [**1.1.1 Requirements**](#111-requirements)
+        + [**1.1.2 Local Infrastructure Deployment Made Simple with a `Makefile`**](#112-local-infrastructure-deployment-made-simple-with-a-makefile)
             - [**1.1.2.1 Install the Tooling (One Command Setup)**](#1121-install-the-tooling-one-command-setup)
             - [**1.1.2.2 Full stack (CP + Kafka UI)**](#1122-full-stack-cp--kafka-ui)
             - [**1.1.2.3 Add Apache Flink + CMF (run separately after `make cp-up`)**](#1123-add-apache-flink--cmf-run-separately-after-make-cp-up)
-        - [**1.1.3 `Makefile` Composite Workflow Target Reference**](#113-makefile-composite-workflow-target-reference)
-        - [**1.1.4 `Makefile` Individual Target Reference**](#114-makefile-individual-target-reference)
-        - [**1.1.5 `Makefile` Target Configuration Reference**](#115-makefile-target-configuration-reference)
-        - [**1.1.6 Remote Server Setup (SSH Tunneling)**](#116-remote-server-setup-ssh-tunneling)
+        + [**1.1.3 `Makefile` Composite Workflow Target Reference**](#113-makefile-composite-workflow-target-reference)
+        + [**1.1.4 `Makefile` Individual Target Reference**](#114-makefile-individual-target-reference)
+        + [**1.1.5 `Makefile` Target Configuration Reference**](#115-makefile-target-configuration-reference)
+        + [**1.1.6 Remote Server Setup (SSH Tunneling)**](#116-remote-server-setup-ssh-tunneling)
     - [**1.2 Confluent Cloud Setup**](#12-confluent-cloud-setup)
-        - [**1.2.1 Requirements**](#121-requirements)
+        + [**1.2.1 Requirements**](#121-requirements)
 + [**2.0 The Examples**](#20-the-examples)
     - [**2.1 Apache Flink User-Defined Functions (UDF)**](#21-apache-flink-user-defined-functions-udf)
-        - [**2.1.1 Process Table Functions (PTF)**](#211-process-table-functions-ptf)
+        + [**2.1.1 Process Table Functions (PTF)**](#211-process-table-functions-ptf)
+            - [**2.1.1.1 Limitations**](#2111-limitations)
 + [**3.0 Debugging the Examples**](#30-debugging-the-examples)
     - [**3.1 Apache Flink UDF Debugging with Java Debug Wire Protocol (JDWP)**](#31-apache-flink-udf-debugging-with-java-debug-wire-protocol-jdwp)
-        - [**3.1.1 Process Table Functions (PTF)**](#311-process-table-functions-ptf)
+        + [**3.1.1 Process Table Functions (PTF)**](#311-process-table-functions-ptf)
             - [**3.1.1.1 Debugging the row-driven PTF using set semantics (`UserEventEnricher`)**](#3111-debugging-the-row-driven-ptf-using-set-semantics-usereventenricher)
             - [**3.1.1.2 Debugging the row-driven PTF using row semantics (`OrderLineExpander`)**](#3112-debugging-the-row-driven-ptf-using-row-semantics-orderlineexpander)
             - [**3.1.1.3 Debugging the timer-driven PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**](#3113-debugging-the-timer-driven-ptfs-sessiontimeoutdetector-abandonedcartdetector-pereventfollowup-and-slamonitor)
@@ -617,6 +618,10 @@ You write PTF UDFs as Java classes, deploy them as JAR files, and run them withi
 </details>
 
 > [⏳ **PTF Rules of Thumb: The Hourglass Pattern**](docs/flink-sql-lateral-view-vs-ptf.md)
+
+##### **2.1.1.1 Limitations**
+
+- [Why `@StateHint` POJO with `Map` or `List` Are Sensitive to "Extremely Large State"](docs/ccaf-map-list-ptf-udf-limitation-explanation.md)
 
 ---
 
