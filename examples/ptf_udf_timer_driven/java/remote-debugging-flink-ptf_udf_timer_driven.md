@@ -1,4 +1,4 @@
-# Remote Debugging Timer-Driven Flink PTF UDFs
+# Remote Debugging `timer-driven` Flink PTF UDFs
 
 Flink TaskManagers are JVM processes, so you can enable **Java remote debugging (JDWP)** and attach your IDE (VS Code or IntelliJ IDEA) to them. This guide covers debugging both the **Session Timeout Detector** (named timers) and the **Per-Event Follow-Up** (unnamed timers) UDFs.
 
@@ -12,19 +12,19 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
   - [**2.4 IDE Debug Configurations**](#24-ide-debug-configurations)
     - [**2.4.1 VS Code (`.vscode/launch.json`)**](#241-vs-code-vscodelaunchjson)
     - [**2.4.2 IntelliJ IDEA (`.idea/runConfigurations/`)**](#242-intellij-idea-idearunconfigurations)
-- [**3.0 Debugging Timer-Driven PTFs**](#30-debugging-timer-driven-ptfs)
+- [**3.0 Debugging `timer-driven` PTFs**](#30-debugging-timer-driven-ptfs)
 - [**4.0 Important Caveats**](#40-important-caveats)
 - [**5.0 For Confluent Cloud**](#50-for-confluent-cloud)
 <!-- tocstop -->
 
 ---
 
-> JDWP is already enabled on the TaskManager, debug configurations for both VS Code and IntelliJ IDEA are in place, and port-forwarding is automated as a pre-launch task. Once your cluster is running and your UDF is deployed, use the **"Attach to Flink TaskManager (Timer-Driven)"** debug configuration to attach to the remote JVM and hit your breakpoints.
+> JDWP is already enabled on the TaskManager, debug configurations for both VS Code and IntelliJ IDEA are in place, and port-forwarding is automated as a pre-launch task. Once your cluster is running and your UDF is deployed, use the **"Attach to Flink TaskManager (`timer-driven`)"** debug configuration to attach to the remote JVM and hit your breakpoints.
 >
-> **Note:** Make sure you select the **"Attach to Flink TaskManager (Timer-Driven)"** configuration before launching the debugger. Starting a *launch* (rather than *attach*) configuration will attempt to run a local Java process, which fails because UDFs have no `main()` method.
+> **Note:** Make sure you select the **"Attach to Flink TaskManager (`timer-driven`)"** configuration before launching the debugger. Starting a *launch* (rather than *attach*) configuration will attempt to run a local Java process, which fails because UDFs have no `main()` method.
 >
-> - **VS Code:** Open the **Run and Debug** panel (Shift+Cmd+D), select **"Attach to Flink TaskManager (Timer-Driven)"** from the dropdown, then press **F5**.
-> - **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select **"Attach to Flink TaskManager (Timer-Driven)"**, then click **Debug** (Ctrl+D / Shift+F9).
+> - **VS Code:** Open the **Run and Debug** panel (Shift+Cmd+D), select **"Attach to Flink TaskManager (`timer-driven`)"** from the dropdown, then press **F5**.
+> - **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select **"Attach to Flink TaskManager (`timer-driven`)"**, then click **Debug** (Ctrl+D / Shift+F9).
 
 ## **1.0 Quick Start**
 
@@ -48,7 +48,7 @@ Flink TaskManagers are JVM processes, so you can enable **Java remote debugging 
     collect(Row.of(
     ```
 
-3. Select the **"Attach to Flink TaskManager (Timer-Driven)"** debug configuration in your IDE:
+3. Select the **"Attach to Flink TaskManager (`timer-driven`)"** debug configuration in your IDE:
 
     - **VS Code:** Open **Run and Debug** (Shift+Cmd+D) and choose it from the dropdown
     - **IntelliJ IDEA:** Choose it from the **Run/Debug Configurations** dropdown (top-right toolbar)
@@ -129,14 +129,14 @@ kubectl port-forward -n confluent <taskmanager-pod> 5005:5005
 
 ### **2.4 IDE Debug Configurations**
 
-Both IDEs ship a pre-configured **"Attach to Flink TaskManager (Timer-Driven)"** remote debug configuration. The attach configuration wires the port-forward script as a pre-launch step so the entire flow is one click.
+Both IDEs ship a pre-configured **"Attach to Flink TaskManager (`timer-driven`)"** remote debug configuration. The attach configuration wires the port-forward script as a pre-launch step so the entire flow is one click.
 
 #### **2.4.1 VS Code (`.vscode/launch.json`)**
 
 ```json
 {
   "type": "java",
-  "name": "Attach to Flink TaskManager (Timer-Driven)",
+  "name": "Attach to Flink TaskManager (timer-driven)",
   "request": "attach",
   "hostName": "localhost",
   "port": 5005,
@@ -150,7 +150,7 @@ Both IDEs ship a pre-configured **"Attach to Flink TaskManager (Timer-Driven)"**
 | Run Configuration | What it does |
 |---|---|
 | **Port Forward Flink TaskManager** | Shell Script config that runs `scripts/port-forward-taskmanager.sh` to `kubectl port-forward` port `5005` to the TaskManager pod |
-| **Attach to Flink TaskManager (Timer-Driven)** | Remote JVM Debug config that attaches to `localhost:5005`. The port-forward config runs automatically as a "Before launch" task |
+| **Attach to Flink TaskManager (`timer-driven`)** | Remote JVM Debug config that attaches to `localhost:5005`. The port-forward config runs automatically as a "Before launch" task |
 
 ## **3.0 Debugging Timer-Driven PTFs**
 

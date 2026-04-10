@@ -3,7 +3,7 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Attach to Flink TaskManager (Row-Driven)",
+            "name": "Attach to Flink TaskManager (row-driven)",
             "request": "attach",
             "hostName": "localhost",
             "port": 5005,
@@ -15,7 +15,7 @@
         },
         {
             "type": "java",
-            "name": "Attach to Flink TaskManager (Timer-Driven)",
+            "name": "Attach to Flink TaskManager (timer-driven)",
             "request": "attach",
             "hostName": "localhost",
             "port": 5005,

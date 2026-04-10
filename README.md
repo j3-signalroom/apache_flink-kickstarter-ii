@@ -32,9 +32,9 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 + [**3.0 Debugging the Examples**](#30-debugging-the-examples)
     - [**3.1 Apache Flink UDF Debugging with Java Debug Wire Protocol (JDWP)**](#31-apache-flink-udf-debugging-with-java-debug-wire-protocol-jdwp)
         + [**3.1.1 Process Table Functions (PTF)**](#311-process-table-functions-ptf)
-            - [**3.1.1.1 Debugging the row-driven PTF using set semantics (`UserEventEnricher`)**](#3111-debugging-the-row-driven-ptf-using-set-semantics-usereventenricher)
-            - [**3.1.1.2 Debugging the row-driven PTF using row semantics (`OrderLineExpander`)**](#3112-debugging-the-row-driven-ptf-using-row-semantics-orderlineexpander)
-            - [**3.1.1.3 Debugging the timer-driven PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**](#3113-debugging-the-timer-driven-ptfs-sessiontimeoutdetector-abandonedcartdetector-pereventfollowup-and-slamonitor)
+            - [**3.1.1.1 Debugging the `row-driven` PTF using set semantics (`UserEventEnricher`)**](#3111-debugging-the-row-driven-ptf-using-set-semantics-usereventenricher)
+            - [**3.1.1.2 Debugging the `row-driven` PTF using row semantics (`OrderLineExpander`)**](#3112-debugging-the-row-driven-ptf-using-row-semantics-orderlineexpander)
+            - [**3.1.1.3 Debugging the `timer-driven` PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**](#3113-debugging-the-timer-driven-ptfs-sessiontimeoutdetector-abandonedcartdetector-pereventfollowup-and-slamonitor)
 + [**4.0 Resources**](#40-resources)
     - [**4.1 Confluent for Kubernetes (CfK)**](#41-confluent-for-kubernetes-cfk)
     - [**4.2 Confluent Platform for Apache Flink**](#42-confluent-platform-for-apache-flink)
@@ -418,16 +418,16 @@ make cmf-proxy-inject
 
 | Target | Description |
 |--------|-------------|
-| `build-ptf-udf-row-driven` | Build the row-driven PTF UDF uber JAR (requires Gradle) |
-| `deploy-cp-ptf-udf-row-driven` | Build row-driven UDF JAR, copy to Flink pods, and submit SQL via Flink SQL Client |
-| `teardown-cp-ptf-udf-row-driven` | Tear down the row-driven PTF UDF deployment |
-| `deploy-cc-ptf-udf-row-driven` | Build and deploy the row-driven UDF JAR to Confluent Cloud via Terraform |
-| `teardown-cc-ptf-udf-row-driven` | Tear down the row-driven PTF UDF deployment from Confluent Cloud |
-| `build-ptf-udf-timer-driven` | Build the timer-driven PTF UDF uber JAR (requires Gradle) |
-| `deploy-cp-ptf-udf-timer-driven` | Build timer-driven UDF JAR, copy to Flink pods, and submit SQL via Flink SQL Client |
-| `teardown-cp-ptf-udf-timer-driven` | Tear down the timer-driven PTF UDF deployment |
-| `deploy-cc-ptf-udf-timer-driven` | Build and deploy the timer-driven UDF JAR to Confluent Cloud via Terraform |
-| `teardown-cc-ptf-udf-timer-driven` | Tear down the timer-driven PTF UDF deployment from Confluent Cloud |
+| `build-ptf-udf-row-driven` | Build the `row-driven` PTF UDF uber JAR (requires Gradle) |
+| `deploy-cp-ptf-udf-row-driven` | Build `row-driven` UDF JAR, copy to Flink pods, and submit SQL via Flink SQL Client |
+| `teardown-cp-ptf-udf-row-driven` | Tear down the `row-driven` PTF UDF deployment |
+| `deploy-cc-ptf-udf-row-driven` | Build and deploy the `row-driven` UDF JAR to Confluent Cloud via Terraform |
+| `teardown-cc-ptf-udf-row-driven` | Tear down the `row-driven` PTF UDF deployment from Confluent Cloud |
+| `build-ptf-udf-timer-driven` | Build the `timer-driven` PTF UDF uber JAR (requires Gradle) |
+| `deploy-cp-ptf-udf-timer-driven` | Build `timer-driven` UDF JAR, copy to Flink pods, and submit SQL via Flink SQL Client |
+| `teardown-cp-ptf-udf-timer-driven` | Tear down the `timer-driven` PTF UDF deployment |
+| `deploy-cc-ptf-udf-timer-driven` | Build and deploy the `timer-driven` UDF JAR to Confluent Cloud via Terraform |
+| `teardown-cc-ptf-udf-timer-driven` | Tear down the `timer-driven` PTF UDF deployment from Confluent Cloud |
 </details>
 
 ---
@@ -582,7 +582,7 @@ Once you’ve set up [**Confluent Platform on Minikube**](#11-confluent-platform
 <details>
 <summary><strong><em>What are PTFs?</em></strong></summary>
 
-PTFs are a special type of Apache Flink UDF that offers stateful, timer-aware processing capabilities directly within Flink SQL. PTFs can be either **row-driven** (invoked for each input row) or **timer-driven** (triggered based on timers you set in your code).
+PTFs are a special type of Apache Flink UDF that offers stateful, timer-aware processing capabilities directly within Flink SQL. PTFs can be either **`row-driven`** (invoked for each input row) or **`timer-driven`** (triggered based on timers you set in your code).
 
 </details>
 
@@ -635,7 +635,7 @@ You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink
 
 #### **3.1.1 Process Table Functions (PTF)**
 
-##### **3.1.1.1 Debugging the row-driven PTF using set semantics (`UserEventEnricher`)**
+##### **3.1.1.1 Debugging the `row-driven` PTF using set semantics (`UserEventEnricher`)**
 
 > For the full deep-dive, see [Remote Debugging Row-Driven Flink PTF UDFs](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md). The same guide also covers debugging `OrderLineExpander` (§1.3).
 
@@ -680,11 +680,11 @@ Your IDE will pause at your breakpoint. You can inspect `input`, `state`, and lo
 
 </details>
 
-##### **3.1.1.2 Debugging the row-driven PTF using row semantics (`OrderLineExpander`)**
+##### **3.1.1.2 Debugging the `row-driven` PTF using row semantics (`OrderLineExpander`)**
 
-> For the full deep-dive, see [Remote Debugging Row-Driven Flink PTF UDFs](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md) (§1.3).
+> For the full deep-dive, see [Remote Debugging `row-driven` Flink PTF UDFs](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md) (§1.3).
 >
-> The `OrderLineExpander` ships in the **same uber JAR** as `UserEventEnricher`, so the same `make deploy-cp-ptf-udf-row-driven` command and the same **"Attach to Flink TaskManager (Row-Driven)"** debug configuration are used. The deploy script registers both PTFs as separate Flink SQL functions and starts an `INSERT INTO orders_expanded SELECT ... FROM TABLE(order_line_expander(input => TABLE orders))` pipeline alongside the user-event enrichment job.
+> The `OrderLineExpander` ships in the **same uber JAR** as `UserEventEnricher`, so the same `make deploy-cp-ptf-udf-row-driven` command and the same **"Attach to Flink TaskManager (`row-driven`)"** debug configuration are used. The deploy script registers both PTFs as separate Flink SQL functions and starts an `INSERT INTO orders_expanded SELECT ... FROM TABLE(order_line_expander(input => TABLE orders))` pipeline alongside the user-event enrichment job.
 
 Deploy first: `make deploy-cp-ptf-udf-row-driven`, and then:
 
@@ -737,9 +737,9 @@ Your IDE will pause at your breakpoint. Inspect `input`, the parsed `itemParts` 
 
 </details>
 
-##### **3.1.1.3 Debugging the timer-driven PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**
+##### **3.1.1.3 Debugging the `timer-driven` PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**
 
-> For the full deep-dive, see [Remote Debugging Timer-Driven Flink PTF UDFs](examples/ptf_udf_timer_driven/java/remote-debugging-flink-ptf_udf_timer_driven.md).
+> For the full deep-dive, see [Remote Debugging `timer-driven` Flink PTF UDFs](examples/ptf_udf_timer_driven/java/remote-debugging-flink-ptf_udf_timer_driven.md).
 
 Deploy first: `make deploy-cp-ptf-udf-timer-driven`, and then:
 
