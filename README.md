@@ -637,7 +637,7 @@ You can attach your IDE's debugger (VS Code or IntelliJ IDEA) to a running Flink
 
 ##### **3.1.1.1 Debugging the `row-driven` PTF using set semantics (`UserEventEnricher`)**
 
-> For the full deep-dive, see [Remote Debugging Row-Driven Flink PTF UDFs](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md). The same guide also covers debugging `OrderLineExpander` (§1.3).
+> For the full deep-dive, see [Remote Debugging `row-driven` Flink PTF UDFs](examples/ptf_udf_row_driven/java/remote-debugging-flink-ptf_udf_row_driven.md). The same guide also covers debugging `OrderLineExpander` (§1.3).
 
 Deploy first: `make deploy-cp-ptf-udf-row-driven`, and then:
 
