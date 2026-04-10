@@ -115,7 +115,8 @@ public class AbandonedCartDetector extends ProcessTableFunction<Row> {
     public void eval(
             Context ctx,
             @StateHint CartState state,
-            @ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)
+            @ArgumentHint({ArgumentTrait.SET_SEMANTIC_TABLE,
+                           ArgumentTrait.REQUIRE_ON_TIME})
             Row input
     ) {
         String action   = input.getFieldAs("action");
