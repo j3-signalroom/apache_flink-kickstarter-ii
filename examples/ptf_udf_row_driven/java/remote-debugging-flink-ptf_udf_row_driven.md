@@ -1,8 +1,8 @@
-# Remote Debugging Row-Driven Flink PTF UDFs
+# Remote Debugging `row-driven` Flink PTF UDFs
 
 Flink TaskManagers are JVM processes, so you can enable **Java remote debugging (JDWP)** and attach your IDE (VS Code or IntelliJ IDEA) to them.
 
-This guide covers both row-driven PTFs in this package: **`UserEventEnricher`** (set semantics, stateful) and **`OrderLineExpander`** (row semantics, stateless). Because both UDFs ship in the same uber JAR, run inside the same TaskManager pod, and live in the same Gradle subproject (`app`), they share **one** debug configuration: **"Attach to Flink TaskManager (Row-Driven)"**. The only thing that differs between debugging the two is *where* you set the breakpoint and *which* `make produce-...-record` target you run to trigger it.
+This guide covers both row-driven PTFs in this package: **`UserEventEnricher`** (set semantics, stateful) and **`OrderLineExpander`** (row semantics, stateless). Because both UDFs ship in the same uber JAR, run inside the same TaskManager pod, and live in the same Gradle subproject (`app`), they share **one** debug configuration: **"Attach to Flink TaskManager (`row-driven`)"**. The only thing that differs between debugging the two is *where* you set the breakpoint and *which* `make produce-...-record` target you run to trigger it.
 
 **Table of Contents**
 <!-- toc -->
@@ -23,12 +23,12 @@ This guide covers both row-driven PTFs in this package: **`UserEventEnricher`** 
 
 ---
 
-> JDWP is already enabled on the TaskManager, debug configurations for both VS Code and IntelliJ IDEA are in place, and port-forwarding is automated as a pre-launch task. Once your cluster is running and the UDFs are deployed, use the **"Attach to Flink TaskManager (Row-Driven)"** debug configuration to attach to the remote JVM and hit your breakpoints in *either* `UserEventEnricher.java` or `OrderLineExpander.java`.
+> JDWP is already enabled on the TaskManager, debug configurations for both VS Code and IntelliJ IDEA are in place, and port-forwarding is automated as a pre-launch task. Once your cluster is running and the UDFs are deployed, use the **"Attach to Flink TaskManager (`row-driven`)"** debug configuration to attach to the remote JVM and hit your breakpoints in *either* `UserEventEnricher.java` or `OrderLineExpander.java`.
 >
-> **Note:** Make sure you select the **"Attach to Flink TaskManager (Row-Driven)"** configuration before launching the debugger. Starting a *launch* (rather than *attach*) configuration will attempt to run a local Java process, which fails because UDFs have no `main()` method.
+> **Note:** Make sure you select the **"Attach to Flink TaskManager (`row-driven`)"** configuration before launching the debugger. Starting a *launch* (rather than *attach*) configuration will attempt to run a local Java process, which fails because UDFs have no `main()` method.
 >
-> - **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select **"Attach to Flink TaskManager (Row-Driven)"** from the dropdown, then press **F5**.
-> - **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select **"Attach to Flink TaskManager (Row-Driven)"**, then click **Debug** (⌃D / Shift+F9).
+> - **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select **"Attach to Flink TaskManager (`row-driven`)"** from the dropdown, then press **F5**.
+> - **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select **"Attach to Flink TaskManager (`row-driven`)"**, then click **Debug** (⌃D / Shift+F9).
 
 ## **1.0 Quick Start**
 
@@ -44,7 +44,7 @@ These steps are identical for both UDFs — `make deploy-cp-ptf-udf-row-driven` 
     make deploy-cp-ptf-udf-row-driven   # Build UDF JAR, copy to Flink pods, submit SQL
     ```
 
-2. Select the **"Attach to Flink TaskManager (Row-Driven)"** debug configuration in your IDE:
+2. Select the **"Attach to Flink TaskManager (`row-driven`)"** debug configuration in your IDE:
 
     - **VS Code:** Open **Run and Debug** (⇧⌘D) and choose it from the dropdown
     - **IntelliJ IDEA:** Choose it from the **Run/Debug Configurations** dropdown (top-right toolbar)

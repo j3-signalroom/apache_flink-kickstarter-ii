@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Attach to Flink TaskManager (Timer-Driven)" type="Remote">
+  <configuration default="false" name="Attach to Flink TaskManager (timer-driven)" type="Remote">
     <module name="examples.ptf_udf_timer_driven.java.app.main" />
     <option name="USE_SOCKET_TRANSPORT" value="true" />
     <option name="SERVER_MODE" value="false" />
