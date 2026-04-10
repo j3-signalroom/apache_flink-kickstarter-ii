@@ -111,7 +111,8 @@ public class SlaMonitor extends ProcessTableFunction<Row> {
     public void eval(
             Context ctx,
             @StateHint RequestState state,
-            @ArgumentHint(ArgumentTrait.SET_SEMANTIC_TABLE)
+            @ArgumentHint({ArgumentTrait.SET_SEMANTIC_TABLE,
+                           ArgumentTrait.REQUIRE_ON_TIME})
             Row input
     ) {
         String status      = input.getFieldAs("status");
