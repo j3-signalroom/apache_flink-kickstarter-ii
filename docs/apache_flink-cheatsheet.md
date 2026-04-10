@@ -73,17 +73,16 @@ Without `.uid()`, Flink auto-generates UIDs from the job graph hash — any topo
 | Scheduled backup / archival | ❌ | ✅ |
 | Auto-managed lifecycle | ✅ | ❌ You manage it |
 | Performance overhead | Low (incremental) | Higher (full snapshot) |
-| Confluent Cloud support | Fully managed | Via REST API / CMF |
+| Confluent Cloud support | Fully managed | via REST API |
 
 ---
 
 ### Confluent Cloud for Apache Flink (CCAF) Nuances
 
-On CCAF, the savepoint story is surfaced through **CMF** and the Flink REST API. A few things to know:
+On CCAF, the savepoint story is surfaced through the Confluent Cloud REST API. A few things to know:
 
 - **Statement-level recovery** is checkpoint-driven; Confluent retains recent checkpoints per statement
-- **Savepoints** are accessible via the Flink REST API or CMF — useful for migrating statements between compute pools or upgrading logic
-- Confluent's managed environment abstracts checkpoint storage, so you can't directly configure `state.checkpoints.dir` the way you would in self-managed Flink
+- **Savepoints** are accessible via the Confluent Cloud REST API — useful for migrating statements between compute pools or upgrading logic
 
 ---
 
