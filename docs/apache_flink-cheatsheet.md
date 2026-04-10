@@ -16,7 +16,7 @@ Checkpoints are Flink's **automatic, internal recovery mechanism**. The system m
 - Triggered automatically by Flink at a configured interval
 - Lifecycle is managed by Flink — expired checkpoints are deleted automatically
 - Lightweight by design; optimized for speed over completeness
-- Stored in a configured state backend (RocksDB on disk, or heap)
+- Stored in a configured state backend ([RocksDB](https://rocksdb.org/) on disk, or heap)
 - Not portable across job topology changes (by default)
 - Incremental checkpointing available (especially with RocksDB) — only delta is written
 

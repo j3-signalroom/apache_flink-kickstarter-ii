@@ -38,7 +38,7 @@ A **Process Table Function (PTF)** is a new category of user-defined function [i
 
 In stream processing, **state** is data that persists across events. Without state every event is processed in isolation ─ you can filter or transform it, but you cannot count things, detect sequences, or remember what happened before. State is what turns a stateless pipe into an intelligent processor.
 
-Flink manages state for you: it stores it in a **state backend** (heap, RocksDB, etc.), checkpoints it for fault tolerance, and restores it on failure. You never serialize or recover state manually.
+Flink manages state for you: it stores it in a **state backend** (heap, [RocksDB](https://rocksdb.org/), etc.), checkpoints it for fault tolerance, and restores it on failure. You never serialize or recover state manually.
 
 ### **1.2 How operators use state**
 
