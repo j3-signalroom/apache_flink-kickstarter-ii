@@ -356,7 +356,7 @@ make cmf-proxy-inject
 
 ---
 
-#### **4.0 `Makefile` Target Configuration Reference**
+## **4.0 `Makefile` Target Configuration Reference**
 
 All variables are overridable at the command line.
 
