@@ -14,9 +14,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 <!-- toc -->
 + [**1.0 Prerequisites**](#10-prerequisites)
     - [**1.1 Confluent Platform on Minikube — Production-Like Streaming, Running Locally**](#11-confluent-platform-on-minikube--production-like-streaming-running-locally)
-        + [**1.1.1 Requirements**](#111-requirements)
     - [**1.2 Confluent Cloud Setup**](#12-confluent-cloud-setup)
-        + [**1.2.1 Requirements**](#121-requirements)
 + [**2.0 The Examples**](#20-the-examples)
     - [**2.1 Apache Flink User-Defined Functions (UDF)**](#21-apache-flink-user-defined-functions-udf)
         + [**2.1.1 Process Table Functions (PTF)**](#211-process-table-functions-ptf)
@@ -54,15 +52,9 @@ You get a production-like environment on your laptop:
 - **Apache Flink 2.1.1** via the Confluent Flink Kubernetes Operator 1.130
 - **Confluent Manager for Apache Flink (CMF) 2.1** for Flink environment management
 
-> Build locally. Debug with confidence. Deploy to production-ready environments.
-
-To get started with working with Confluent Platform on Minikube using the [`Makefile`](https://makefiletutorial.com/) automation, click [here](docs/running-make.md).
-
-#### **1.1.1 Requirements**
-
 To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with apt-get)**.
 
-The full stack — **Minikube + Confluent Platform + Flink + CMF** — is resource-intensive and designed to mirror a production-like environment. The following defaults are recommended:
+**Note**:  The full stack — **Minikube + Confluent Platform + Flink + CMF** — is resource-intensive and designed to mirror a production-like environment. The following defaults are recommended:
 
 | Resource | Default |
 | -------- | ------- |
@@ -72,13 +64,15 @@ The full stack — **Minikube + Confluent Platform + Flink + CMF** — is resour
 
 > These settings ensure stable performance across all components. You can tune them if needed, but lower resources may lead to pod restarts or degraded performance.
 
+To get started with Confluent Platform on Minikube, click [here](docs/running-make.md).
+
+> 💡 **_Build locally. Debug with confidence. Deploy to production-ready environments._**
+
 ---
 
 ### **1.2 Confluent Cloud Setup**
 
 In addition to running the examples locally, you also have the ability to run the examples in Confluent Cloud.  The examples are designed to be as close as possible to the local Confluent Platform setup, so you can easily compare and contrast the two environments.
-
-#### **1.2.1 Requirements**
 
 Before you begin, ensure you have access to the following cloud accounts:
 
