@@ -133,7 +133,7 @@ You write PTF UDFs as Java classes, deploy them as JAR files, and run them withi
 
 </details>
 
-> [⏳ **PTF Rules of Thumb: The Hourglass Pattern**](docs/flink-sql-lateral-view-vs-ptf.md)
+[⏳ **PTF Rules of Thumb: The Hourglass Pattern**](docs/flink-sql-lateral-view-vs-ptf.md)
 
 ##### **2.1.1.1 Limitation(s)**
 
