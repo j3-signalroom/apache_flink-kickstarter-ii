@@ -58,9 +58,7 @@ You get a production-like environment on your machine, with all the components y
 - **Apache Flink 2.1.1** via the Confluent Flink Kubernetes Operator 1.130
 - **Confluent Manager for Apache Flink (CMF) 2.1** for Flink environment management
 
-To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with apt-get)**.
-
-**Note**:  The full stack — **Minikube + Confluent Platform + Flink + CMF** — is resource-intensive and designed to mirror a production-like environment. The following defaults are recommended:
+To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with apt-get)**.  The full stack — **Minikube + Confluent Platform + Flink + CMF** — is resource-intensive and designed to mirror a production-like environment. The following defaults are recommended:
 
 | Resource | Default |
 | -------- | ------- |
@@ -69,10 +67,10 @@ To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with ap
 | Disk     | 50 GB   |
 
 > These settings ensure stable performance across all components. You can tune them as needed, but lower resource levels may cause pod restarts or degraded performance.
->
-> If you have limited resources, consider a **remote server setup (SSH tunneling)** with a provider like [Vultr VPS](https://www.vultr.com/). If you go this route, follow these instructions to set up Confluent Platform on Minikube on it by clicking [here](docs/remote-server-ssh-tunneling.md).
 
 👉 If your machine meets all the requirements, click [here](docs/running-make.md).
+
+> If you have limited resources, click here to set up a [**Remote Server Setup (SSH Tunneling)**](docs/remote-server-ssh-tunneling.md) with a provider like [Vultr VPS](https://www.vultr.com/).
 
 💡 **_Build locally. Debug with confidence. Deploy to production-ready environments._**
 
