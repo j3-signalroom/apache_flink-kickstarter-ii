@@ -14,7 +14,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
 <!-- toc -->
 + [**1.0 Prerequisites**](#10-prerequisites)
     - [**1.1 Confluent Platform on Minikube — Production-Like Streaming, Running Locally**](#11-confluent-platform-on-minikube--production-like-streaming-running-locally)
-    - [**1.2 Confluent Cloud Setup**](#12-confluent-cloud-setup)
+    - [**1.2 Confluent Cloud**](#12-confluent-cloud)
 + [**2.0 The Examples**](#20-the-examples)
     - [**2.1 Apache Flink User-Defined Functions (UDF)**](#21-apache-flink-user-defined-functions-udf)
         + [**2.1.1 Process Table Functions (PTF)**](#211-process-table-functions-ptf)
@@ -70,7 +70,7 @@ To get started with Confluent Platform on Minikube, click [here](docs/running-ma
 
 ---
 
-### **1.2 Confluent Cloud Setup**
+### **1.2 Confluent Cloud**
 
 In addition to running the examples locally, you also have the ability to run the examples in Confluent Cloud.  The examples are designed to be as close as possible to the local Confluent Platform setup, so you can easily compare and contrast the two environments.
 
@@ -89,7 +89,7 @@ Make sure the following tools are installed on your local machine:
 
 ## **2.0 The Examples**
 
-Once you’ve set up [**Confluent Platform on Minikube**](#11-confluent-platform-on-minikube--production-like-streaming-running-locally) or created your [**Confluent Cloud**](#12-confluent-cloud-setup) account, you’re ready to try the examples.
+Once you’ve set up [**Confluent Platform on Minikube**](#11-confluent-platform-on-minikube--production-like-streaming-running-locally) or created your [**Confluent Cloud**](#12-confluent-cloud) account, you’re ready to try the examples:
 
 ### **2.1 Apache Flink User-Defined Functions (UDF)**
 
