@@ -107,7 +107,7 @@ Steps 7 and 14 are **two long-running streaming jobs** running side-by-side in t
 
 ```bash
 make install-prereqs       # installs tooling (docker, kubectl, minikube, helm, gradle)
-make cp-up                 # Minikube → CFK Operator → Kafka + SR + Connect + C3 + Kafka UI
+make cp-up                 # Minikube → CFK Operator → Kafka + SR + Connect + C3
 make cp-watch              # watch pods come up (Ctrl+C when all Running)
 make flink-up              # cert-manager → Flink Operator → CMF → Flink session cluster
 make flink-status          # verify Flink pods are Running

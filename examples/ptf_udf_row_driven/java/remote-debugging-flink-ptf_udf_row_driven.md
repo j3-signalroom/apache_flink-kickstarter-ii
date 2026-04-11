@@ -39,7 +39,7 @@ These steps are identical for both UDFs — `make deploy-cp-ptf-udf-row-driven` 
 1. **Deploy** the full stack and the UDFs:
 
     ```bash
-    make cp-up                          # Confluent Platform + Kafka UI
+    make cp-up                          # Confluent Platform
     make flink-up                       # Flink Operator + CMF + Flink session cluster
     make deploy-cp-ptf-udf-row-driven   # Build UDF JAR, copy to Flink pods, submit SQL
     ```

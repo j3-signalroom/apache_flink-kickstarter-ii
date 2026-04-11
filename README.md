@@ -17,7 +17,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
         + [**1.1.1 Requirements**](#111-requirements)
         + [**1.1.2 Local Infrastructure Deployment Made Simple with a `Makefile`**](#112-local-infrastructure-deployment-made-simple-with-a-makefile)
             - [**1.1.2.1 Install the Tooling (One Command Setup)**](#1121-install-the-tooling-one-command-setup)
-            - [**1.1.2.2 Full stack (CP + Kafka UI)**](#1122-full-stack-cp--kafka-ui)
+            - [**1.1.2.2 Full stack (CP)**](#1122-full-stack-cp)
             - [**1.1.2.3 Add Apache Flink + CMF (run separately after `make cp-up`)**](#1123-add-apache-flink--cmf-run-separately-after-make-cp-up)
         + [**1.1.3 `Makefile` Composite Workflow Target Reference**](#113-makefile-composite-workflow-target-reference)
         + [**1.1.4 `Makefile` Individual Target Reference**](#114-makefile-individual-target-reference)
@@ -53,7 +53,6 @@ You get a production-like environment on your laptop:
 - **Confluent Platform** (KRaft mode) via Confluent for Kubernetes (CFK)
 - **Apache Flink 2.1.1** via the Confluent Flink Kubernetes Operator 1.130
 - **Confluent Manager for Apache Flink (CMF) 2.1** for Flink environment management
-- **Kafka UI** ([Provectus](https://provectus.com/)) for cluster inspection
 
 The included [`Makefile`](https://makefiletutorial.com/) acts as your control plane—automating setup, teardown, and day-to-day workflows—so you can focus on building Flink pipelines, not infrastructure.
 
@@ -63,7 +62,7 @@ The included [`Makefile`](https://makefiletutorial.com/) acts as your control pl
 
 To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with apt-get)**.
 
-The full stack — **Minikube + Confluent Platform + Flink + CMF + Kafka UI** — is resource-intensive and designed to mirror a production-like environment. The following defaults are recommended:
+The full stack — **Minikube + Confluent Platform + Flink + CMF** — is resource-intensive and designed to mirror a production-like environment. The following defaults are recommended:
 
 | Resource | Default |
 | -------- | ------- |
@@ -139,15 +138,8 @@ graph TD
         CMF_UN["cmf-uninstall"]
     end
 
-    %% ── Phase 8: Kafka UI ───────────────────────────────────────────────
-    subgraph P8["Phase 8 — Kafka UI"]
-        KUI_INSTALL["kafka-ui-install\nhelm: provectus/kafka-ui\nbootstrap: kafka:9071"]
-        KUI_OPEN["kafka-ui-open\nlocalhost:8080"]
-        KUI_UN["kafka-ui-uninstall"]
-    end
-
-    %% ── Phase 9: Build & Deploy PTF UDFs ────────────────────────────────
-    subgraph P9["Phase 9 — Build & Deploy PTF UDFs"]
+    %% ── Phase 8: Build & Deploy PTF UDFs ────────────────────────────────
+    subgraph P8["Phase 8 — Build & Deploy PTF UDFs"]
         BUILD_PTF_SD["build-ptf-udf-row-driven\n./gradlew clean shadowJar\n(2 UDFs in one JAR)"]
         DEPLOY_CP_PTF_SD["deploy-cp-ptf-udf-row-driven\ncopy JAR → Flink SQL Client\n(2 row-driven pipelines)"]
         TEARDOWN_CP_PTF_SD["teardown-cp-ptf-udf-row-driven"]
@@ -176,7 +168,6 @@ graph TD
     CP_UP --> CHECK_PRE
     CP_UP --> MK_START
     CP_UP --> CP_CORE_UP
-    CP_UP --> KUI_INSTALL
 
     CP_CORE_UP["cp-core-up"] --> OP_INSTALL
     CP_CORE_UP --> CP_DEPLOY
@@ -206,7 +197,6 @@ graph TD
     DEPLOY_CC_PTF_TD --> BUILD_PTF_TD
 
     %% ── make cp-down dependency chain ────────────────────────────────────
-    CP_DOWN --> KUI_UN
     CP_DOWN --> CP_DELETE
     CP_DOWN --> OP_UNINSTALL
 
@@ -232,7 +222,6 @@ graph TD
     FL_DEPLOY -.->|"once Running"| FL_UI
     CMF_INSTALL -.->|"once Running"| CMF_OPEN
     CMF_INSTALL -.->|"C3 Flink tab"| CMF_PROXY
-    KUI_INSTALL -.->|"once Running"| KUI_OPEN
 
     %% ── Styles ───────────────────────────────────────────────────────────
     classDef entry    fill:#1a1a2e,stroke:#e94560,color:#fff,font-weight:bold
@@ -244,9 +233,9 @@ graph TD
 
     class CP_UP,FLINK_UP,CP_DOWN,FLINK_DOWN,TEARDOWN,NUKE entry
     class CP_CORE_UP,DEPLOY_CP_PTF_SD,DEPLOY_CC_PTF_SD,DEPLOY_CP_PTF_TD,DEPLOY_CC_PTF_TD composite
-    class INSTALL_PRE,CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,KUI_INSTALL,BUILD_PTF_SD,BUILD_PTF_TD,PRODUCE_UE,PRODUCE_OR,PRODUCE_UA,PRODUCE_UAC,PRODUCE_SR,PRODUCE_CE install
-    class MK_STOP,MK_DELETE,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,KUI_UN,UNINSTALL_PRE,TEARDOWN_CP_PTF_SD,TEARDOWN_CC_PTF_SD,TEARDOWN_CP_PTF_TD,TEARDOWN_CC_PTF_TD remove
-    class C3,FL_UI,CMF_OPEN,KUI_OPEN ui
+    class INSTALL_PRE,CHECK_PRE,MK_START,NS,OP_INSTALL,CP_DEPLOY,CERT,FL_OP,FL_RBAC,FL_DEPLOY,CMF_INSTALL,CMF_ENV,CMF_PROXY,BUILD_PTF_SD,BUILD_PTF_TD,PRODUCE_UE,PRODUCE_OR,PRODUCE_UA,PRODUCE_UAC,PRODUCE_SR,PRODUCE_CE install
+    class MK_STOP,MK_DELETE,OP_UNINSTALL,CP_DELETE,FL_DELETE,FL_OP_UN,CERT_UN,CMF_UN,UNINSTALL_PRE,TEARDOWN_CP_PTF_SD,TEARDOWN_CC_PTF_SD,TEARDOWN_CP_PTF_TD,TEARDOWN_CC_PTF_TD remove
+    class C3,FL_UI,CMF_OPEN ui
     class MANIFEST,RBAC_MANIFEST file
 ```
 
@@ -263,13 +252,13 @@ This installs `docker`, `kubernetes-cli`, `minikube`, `helm`, `gettext`, `gradle
 
 ---
 
-##### **1.1.2.2 Full stack (CP + Kafka UI)**
+##### **1.1.2.2 Full stack (CP)**
 
 ```bash
 make cp-up
 ```
 
-This runs: `check-prereqs` → `minikube-start` → `namespace` → `operator-install` → `cp-deploy` → `kafka-ui-install`.
+This runs: `check-prereqs` → `minikube-start` → `namespace` → `operator-install` → `cp-deploy`.
 
 Run `make cp-watch` to watch for pods coming up in the confluent namespace and ensure they are running before proceeding (Ctrl+C to exit).
 
@@ -307,9 +296,9 @@ make cmf-proxy-inject
 
 | Target | What it does |
 |--------|-------------|
-| `make cp-up` | Full stack: Minikube + CP + Kafka UI |
+| `make cp-up` | Full stack: Minikube + CP |
 | `make flink-up` | cert-manager + Confluent Flink Operator + CMF + Flink cluster |
-| `make cp-down` | Remove CP, Kafka UI, and Operator (Minikube keeps running) |
+| `make cp-down` | Remove CP and Operator (Minikube keeps running) |
 | `make flink-down` | Remove Flink cluster, CMF, Operator, and cert-manager |
 | `make confluent-teardown` | Full teardown: everything + stop Minikube |
 | `make nuke` | Full wipe: confluent-teardown + minikube-delete + uninstall-prereqs (leaves machine as close to factory as possible) |
@@ -405,18 +394,7 @@ make cmf-proxy-inject
 </details>
 
 <details>
-<summary>Phase 8 — Kafka UI (Provectus)</summary>
-
-| Target | Description |
-|--------|-------------|
-| `kafka-ui-install` | Install Kafka UI connected to the local CP cluster (Kafka + Schema Registry + Connect) |
-| `kafka-ui-status` | Show Kafka UI pod status |
-| `kafka-ui-open` | Port-forward Kafka UI and open `http://localhost:8080` |
-| `kafka-ui-uninstall` | Remove Kafka UI |
-</details>
-
-<details>
-<summary>Phase 9 — Build & Deploy Flink JARs</summary>
+<summary>Phase 8 — Build & Deploy Flink JARs</summary>
 
 | Target | Description |
 |--------|-------------|
@@ -460,7 +438,6 @@ All variables are overridable at the command line.
 | `CMF_ENV_NAME` | `dev-local` | Flink environment name registered in CMF |
 | `C3_PORT` | `9021` | Control Center local port |
 | `FLINK_UI_PORT` | `8081` | Flink UI local port |
-| `KAFKA_UI_PORT` | `8080` | Kafka UI local port |
 | `PTF_UDF_TOPICS` | `user_events enriched_events` | Kafka topics for the ptf_udf Flink job |
 </details>
 
@@ -549,9 +526,8 @@ Connecting activates the `LocalForward` rules. No extra flags needed.
 |-----|----|
 | `http://localhost:9021` | Confluent Control Center |
 | `http://localhost:8081` | Apache Flink UI |
-| `http://localhost:8080` | Kafka UI |
 
-> The port-forwards on the remote side are started by `make c3-open`, `make flink-ui`, and `make kafka-ui-open` (called internally by `make cp-up` / `make flink-up`). The SSH `LocalForward` simply bridges your laptop to those already-listening ports on the remote.
+> The port-forwards on the remote side are started by `make c3-open` and `make flink-ui` (called internally by `make cp-up` / `make flink-up`). The SSH `LocalForward` simply bridges your laptop to those already-listening ports on the remote.
 </details>
 
 ---
