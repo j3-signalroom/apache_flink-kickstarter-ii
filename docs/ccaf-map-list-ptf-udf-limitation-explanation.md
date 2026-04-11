@@ -157,4 +157,4 @@ That means:
 
 And when it does:
 
-> It won’t fail immediately — it will fail later, and painfully.
+😖 It won’t fail immediately — it will fail later, and painfully.
