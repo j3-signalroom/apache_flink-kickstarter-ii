@@ -39,7 +39,7 @@ subgraph BAD["❌ ValueState (Blob Storage)"]
     - Write back"]
 end
 
-subgraph GOOD["✅ MapState (Per-Entry Storage)"]
+subgraph GOOD["✅ MapState — DataStream API (Per-Entry Storage)"]
     B1["Partition Key + key1"] --> V1["value1"]
     B2["Partition Key + key2"] --> V2["value2"]
     B3["Partition Key + key3"] --> V3["value3"]
@@ -51,7 +51,7 @@ subgraph GOOD["✅ MapState (Per-Entry Storage)"]
 end
 ```
 
-When you annotate a POJO with `@StateHint`, Flink backs it with a single **`ValueState<YourPojo>`**. That means the entire POJO — including any `Map` or `List` fields inside it — is treated as one atomic value. 
+When you annotate a POJO with `@StateHint`, Flink backs it with a single **`ValueState<YourPojo>`** — a DataStream API keyed state primitive. That means the entire POJO — including any `Map` or `List` fields inside it — is treated as one atomic value. 
 
 So, this:
 
@@ -81,13 +81,13 @@ Even if you only update one key in the map, you still pay the cost of the entire
 
 ## **2.0 Why This Can Become a Scaling Problem**
 
-States that use `ListState`, a merge operation in [RocksDB](https://rocksdb.org/), can silently accumulate value sizes > 2^31 bytes and will then fail on their next retrieval.
+Flink's keyed state primitives — `ValueState`, `MapState`, and `ListState` — are part of the **DataStream API**. These are the low-level building blocks that determine how data is physically stored in [RocksDB](https://rocksdb.org/). States that use `ListState`, a merge operation in RocksDB, can silently accumulate value sizes > 2^31 bytes and will then fail on their next retrieval.
 
 You see in RocksDB there are two main write patterns for state:
 
 1. Put - overwrites the entire value for a key.  This is what happens with `ValueState` and `MapState` use.  Each write replaces the previous value completely.
 
-2. Merge - appends data to an exisiting key without reading-then-writing.  This is what `ListState` uses.  When you call `listState.add(newElement)`, Flink doesn't read the exisitng list, deserialize it, append, re-serialize, and write back.  Instead, it uses RocksDB's merge operator to just append the new element directly in RocksDB.  This is much more efficient for large lists.
+2. Merge - appends data to an existing key without reading-then-writing.  This is what `ListState` uses.  When you call `listState.add(newElement)`, Flink doesn't read the existing list, deserialize it, append, re-serialize, and write back.  Instead, it uses RocksDB's merge operator to just append the new element directly in RocksDB.  This is much more efficient for large lists.
 
 But there is a problem with the `Merge` pattern when your state values get very large.  If you have a `ListState` that grows so big that its serialized form exceeds 2^31 bytes=2GB (the max size of a Java `byte[]`), then you get silent corruption.  The write appears to succeed, but the next time you read it, it crashes because the data is corrupted.
 
@@ -99,7 +99,7 @@ So when Flink tries to serialize your entire POJO (including its map or list) in
 
 That's what makes it particularly nasty — it's not a clean "your state is too big" error at write time. It's a silent corruption that blows up later, potentially after a checkpoint/restore cycle, making it hard to diagnose.
 
-`MapState` is used as a replacement for `ListState` or `ValueState` in case the records get too big for the RocksDB JNI bridge.
+`MapState` (DataStream API) is used as a replacement for `ListState` or `ValueState` in case the records get too big for the RocksDB JNI bridge.
 
 > 🚨 **Production Risk**
 > This does NOT fail when writing state.
@@ -111,11 +111,18 @@ That's what makes it particularly nasty — it's not a clean "your state is too 
 
 ## **3.0 The Solution: Use `MapView` and `ListView` (When Available)**
 
-`MapView` and `ListView` are facades over Flink's native **`MapState`** and **`ListState`** primitives. In RocksDB:
+`MapView` and `ListView` are **Table API / SQL API** abstractions — they are facades designed for use in User-Defined Aggregate Functions (UDAFs) and Process Table Functions (PTFs). Under the hood, they delegate to Flink's **DataStream API** keyed state primitives (`MapState` and `ListState`, respectively). In RocksDB:
 - Each **`MapState` entry** is stored as an independent RocksDB key (`partition_key + map_entry_key → value`). You can look up, update, or delete a single entry without touching the rest.
 - Each **`ListState` entry** is similarly stored per-element.
 
-This is exactly why `MapView` and `ListView` exist — they are designed for **extremely large collections**.  You never materialize the whole thing on the JVM heap. You do surgical point lookups via JNI into RocksDB.
+This is exactly why `MapView` and `ListView` exist — they bridge the Table API world (where you write UDAFs and PTFs) to the efficient per-entry storage of the DataStream API's `MapState` and `ListState`. They are designed for **extremely large collections**.  You never materialize the whole thing on the JVM heap. You do surgical point lookups via JNI into RocksDB.
+
+> **API Layer Summary:**
+> | Layer | State Types | Used In |
+> |---|---|---|
+> | **DataStream API** | `ValueState`, `MapState`, `ListState`, `ReducingState`, `AggregatingState` | `RichFunction`, `KeyedProcessFunction`, etc. |
+> | **Table API / SQL** | `MapView`, `ListView` | UDAFs, PTFs (wraps DataStream state primitives) |
+> | **`@StateHint` POJO** | Maps to `ValueState` internally | PTFs (blob storage — the problem this doc describes) |
 
 ### **3.1 Why Confluent's PTF Early Access doesn't support `MapView` or `ListView` yet**
 
@@ -132,9 +139,9 @@ When you use `@StateHint` with a POJO containing a `Map` or `List` field, Flink 
 
 So if your map has 10,000 entries and you only need to update one of them, you're still reading and writing all 10,000 entries on every single event.
 
-`MapView` and `ListView` (which aren't supported in PTFs yet) would fix this by storing each map and list entry as its own independent record in RocksDB — so you only touch the one entry you actually need.
+`MapView` and `ListView` — Table API facades over the DataStream API's `MapState` and `ListState` — (which aren't supported in PTFs yet) would fix this by storing each map and list entry as its own independent record in RocksDB — so you only touch the one entry you actually need.
 
-The phrase "extremely large state" in the callout on the [Confluent docs](https://docs.confluent.io/cloud/current/flink/concepts/process-table-functions.html#listview-not-supported) is basically shorthand for: *"at some point your map or list gets big enough that this full serdes cycle on every event becomes a real performance problem"* — and there's also a hard technical cliff at 2GB where the whole thing crashes.
+The phrase "extremely large state" in the callout on the [Confluent docs](https://docs.confluent.io/cloud/current/flink/concepts/process-table-functions.html#listview-not-supported) is basically shorthand for: *"at some point your `map` or `list` gets big enough that this full serdes cycle on every event becomes a real performance problem"* — and there's also a hard technical cliff at 2GB where the whole thing crashes.
 
 ---
 
