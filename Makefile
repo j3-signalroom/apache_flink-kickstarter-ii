@@ -17,8 +17,7 @@
 #   6. Apache Flink 2.1.1 (cert-manager, Confluent Flink Kubernetes Operator
 #      1.130, session cluster deployment, Flink UI)
 #   7. Confluent Manager for Apache Flink (CMF) 2.1
-#   8. Kafka UI (Provectus Helm chart)
-#   9. Flink JAR build (Gradle shadow JAR) and REST API job submission
+#   8. Flink JAR build (Gradle shadow JAR) and REST API job submission
 # ==============================================================================
 
 
@@ -48,8 +47,7 @@ CERT_MANAGER_VER    ?= v1.18.2
 CMF_VER             ?= 2.1.0
 CMF_ENV_NAME        ?= dev-local
 
-# Ports for port-forwarding to local machine (Control Center, CMF, Flink UI, Kafka UI)
-KAFKA_UI_PORT       ?= 8080
+# Ports for port-forwarding to local machine (Control Center, CMF, Flink UI)
 C3_PORT             ?= 9021
 FLINK_UI_PORT       ?= 8081
 CMF_PORT            ?= 8080
@@ -93,6 +91,24 @@ install-prereqs: ## Install docker, kubectl, minikube, helm, gettext, gradle, an
 		(test -d /Applications/Docker.app || test -f /usr/local/bin/kubectl.docker) || brew install --cask docker; \
 		brew install kubernetes-cli minikube helm gettext gradle openjdk@21; \
 		echo "✔ Prerequisites installed."; \
+		CURRENT_JAVA=$$(java -version 2>&1 | head -1 | sed 's/.*"\([0-9]*\)\..*/\1/' || echo ""); \
+		if [ "$$CURRENT_JAVA" != "21" ]; then \
+			JDK21_PREFIX=$$(brew --prefix openjdk@21); \
+			echo ""; \
+			echo "⚠ openjdk@21 is keg-only — your shell still resolves 'java' to JDK $$CURRENT_JAVA."; \
+			echo "  Make JDK 21 visible to 'check-prereqs' with one of:"; \
+			echo ""; \
+			echo "  Option A — symlink system-wide (one-time, requires sudo):"; \
+			echo "    sudo ln -sfn $$JDK21_PREFIX/libexec/openjdk.jdk /Library/Java/JavaVirtualMachines/openjdk-21.jdk"; \
+			echo "    export JAVA_HOME=\$$(/usr/libexec/java_home -v 21)"; \
+			echo "    export PATH=\$$JAVA_HOME/bin:\$$PATH"; \
+			echo ""; \
+			echo "  Option B — point JAVA_HOME at the keg directly (no sudo):"; \
+			echo "    export JAVA_HOME=$$JDK21_PREFIX"; \
+			echo "    export PATH=\$$JAVA_HOME/bin:\$$PATH"; \
+			echo ""; \
+			echo "  Add the two 'export' lines to ~/.zshrc to make it permanent."; \
+		fi; \
 	elif [ "$(IS_LINUX)" = "Linux" ]; then \
 		command -v apt-get >/dev/null 2>&1 || { echo "✘ apt-get not found. Install prerequisites manually for your Linux distribution."; exit 1; }; \
 		apt-get update; \
@@ -129,7 +145,17 @@ check-prereqs: ## Verify required tools are available
 	@command -v java      >/dev/null 2>&1 || (echo "✘ java not found"      && exit 1)
 	@JAVA_VER=$$(java -version 2>&1 | head -1 | sed 's/.*"\([0-9]*\)\..*/\1/'); \
 	if [ "$$JAVA_VER" != "21" ]; then \
-		echo "✘ JDK 21 required but found JDK $$JAVA_VER. Install JDK 21 or set JAVA_HOME accordingly."; exit 1; \
+		echo "✘ JDK 21 required but found JDK $$JAVA_VER."; \
+		if [ "$(IS_DARWIN)" = "Darwin" ] && brew --prefix openjdk@21 >/dev/null 2>&1; then \
+			JDK21_PREFIX=$$(brew --prefix openjdk@21); \
+			echo "  openjdk@21 is already installed via Homebrew but keg-only. Run:"; \
+			echo "    export JAVA_HOME=$$JDK21_PREFIX"; \
+			echo "    export PATH=\$$JAVA_HOME/bin:\$$PATH"; \
+			echo "  (add to ~/.zshrc to make permanent), then re-run the make target."; \
+		else \
+			echo "  Install JDK 21 (run 'make install-prereqs') or set JAVA_HOME accordingly."; \
+		fi; \
+		exit 1; \
 	fi
 	@echo "✔ All prerequisites found."
 
@@ -531,69 +557,7 @@ cmf-proxy-remove: ## Remove the cmf-proxy sidecar and resume CFK reconciliation 
 	fi
 
 # ------------------------------------------------------------------------------
-# Phase 8: Kafka UI (Provectus)
-# ------------------------------------------------------------------------------
-.PHONY: kafka-ui-install
-kafka-ui-install: ## Install Kafka UI and connect it to the Confluent Kafka cluster
-	@echo "→ Adding Kafka UI Helm repo..."
-	helm repo add kafka-ui https://provectus.github.io/kafka-ui-charts
-	helm repo update
-	@echo "→ Installing Kafka UI..."
-	helm upgrade --install kafka-ui kafka-ui/kafka-ui \
-		--namespace $(NAMESPACE) \
-		--set yamlApplicationConfig.kafka.clusters[0].name="confluent" \
-		--set yamlApplicationConfig.kafka.clusters[0].bootstrapServers="kafka:9071" \
-		--set yamlApplicationConfig.kafka.clusters[0].schemaRegistry="http://schemaregistry:8081" \
-		--set yamlApplicationConfig.kafka.clusters[0].kafkaConnect[0].name="connect" \
-		--set yamlApplicationConfig.kafka.clusters[0].kafkaConnect[0].address="http://connect:8083" \
-		--set yamlApplicationConfig.auth.type="DISABLED" \
-		--set yamlApplicationConfig.management.health.ldap.enabled="false"
-	@echo "✔ Kafka UI installed."
-
-.PHONY: kafka-ui-status
-kafka-ui-status: ## Check Kafka UI pod status
-	kubectl get pods -n $(NAMESPACE) | grep kafka-ui
-
-.PHONY: kafka-ui-open
-kafka-ui-open: ## Port-forward Kafka UI in the background and open it in your browser ('make kafka-ui-stop' to kill)
-	@if (lsof -iTCP:$(KAFKA_UI_PORT) -sTCP:LISTEN -t >/dev/null 2>&1) || \
-	   (ss -tlnp 2>/dev/null | grep -q ':$(KAFKA_UI_PORT) '); then \
-		echo "→ Port $(KAFKA_UI_PORT) is already in use."; \
-		echo "  Open in your browser: http://localhost:$(KAFKA_UI_PORT)"; \
-		$(OPEN_CMD) http://localhost:$(KAFKA_UI_PORT); \
-	else \
-		echo "→ Forwarding Kafka UI to http://localhost:$(KAFKA_UI_PORT) (background)"; \
-		kubectl port-forward -n $(NAMESPACE) svc/kafka-ui $(KAFKA_UI_PORT):80 >/dev/null 2>&1 & \
-		echo $$! > /tmp/kafka-ui-pf.pid; \
-		sleep 1; \
-		if kill -0 $$(cat /tmp/kafka-ui-pf.pid) 2>/dev/null; then \
-			echo "✔ Port-forward running (PID $$(cat /tmp/kafka-ui-pf.pid)). Stop with 'make kafka-ui-stop'."; \
-			echo "  Open in your browser: http://localhost:$(KAFKA_UI_PORT)"; \
-			$(OPEN_CMD) http://localhost:$(KAFKA_UI_PORT); \
-		else \
-			echo "✘ Port-forward failed to start."; exit 1; \
-		fi; \
-	fi
-
-.PHONY: kafka-ui-stop
-kafka-ui-stop: ## Stop the background Kafka UI port-forward
-	@if [ -f /tmp/kafka-ui-pf.pid ] && kill -0 $$(cat /tmp/kafka-ui-pf.pid) 2>/dev/null; then \
-		kill $$(cat /tmp/kafka-ui-pf.pid); \
-		rm -f /tmp/kafka-ui-pf.pid; \
-		echo "✔ Kafka UI port-forward stopped."; \
-	else \
-		echo "→ No active Kafka UI port-forward found."; \
-		rm -f /tmp/kafka-ui-pf.pid; \
-	fi
-
-.PHONY: kafka-ui-uninstall
-kafka-ui-uninstall: ## Uninstall Kafka UI (safe to run even if not installed)
-	@helm uninstall kafka-ui -n $(NAMESPACE) 2>/dev/null \
-		&& echo "✔ Kafka UI removed." \
-		|| echo "→ kafka-ui not installed, skipping."
-
-# ------------------------------------------------------------------------------
-# Phase 9: Build & Deploy Flink JARs
+# Phase 8: Build & Deploy Flink JARs
 # ------------------------------------------------------------------------------
 .PHONY: build-ptf-udf-row-driven
 build-ptf-udf-row-driven: ## Build the ptf_udf_row_driven uber JAR (requires Gradle)
@@ -718,9 +682,9 @@ produce-cart-events-record: ## Produce one sample cart event to the 'cart_events
 # Composite workflows
 # ------------------------------------------------------------------------------
 .PHONY: cp-up
-cp-up: check-prereqs minikube-start cp-core-up kafka-ui-install ## Full stack: Minikube → cp-core-up → kafka-ui (run 'make flink-up' separately for Flink)
+cp-up: check-prereqs minikube-start cp-core-up ## Full stack: Minikube → cp-core-up (run 'make flink-up' separately for Flink)
 	@echo ""
-	@echo "✔ Confluent Platform and Kafka UI are deploying."
+	@echo "✔ Confluent Platform is deploying."
 	@echo "  Run 'make cp-watch' to monitor pod startup."
 	@echo "  Run 'make flink-up' to also deploy Apache Flink + CMF."
 
@@ -740,8 +704,8 @@ flink-up: flink-cert-manager flink-operator-install cmf-install cmf-env-create f
 	@echo "  Once running, open the Flink UI with 'make flink-ui'."
 
 .PHONY: cp-down
-cp-down: kafka-ui-uninstall cp-delete operator-uninstall ## Tear down Kafka UI, CP and Operator (keeps Minikube running)
-	@echo "✔ Confluent Platform, Kafka UI and Operator removed."
+cp-down: cp-delete operator-uninstall ## Tear down CP and Operator (keeps Minikube running)
+	@echo "✔ Confluent Platform and Operator removed."
 
 .PHONY: flink-down
 flink-down: flink-delete cmf-uninstall flink-operator-uninstall cert-manager-uninstall ## Tear down Flink cluster, CMF, operator, and cert-manager
@@ -755,7 +719,7 @@ cert-manager-uninstall: ## Uninstall cert-manager (safe to run even if not insta
 		|| echo "→ cert-manager not installed, skipping."
 
 .PHONY: confluent-teardown
-confluent-teardown: ## Full teardown: remove Flink, Kafka UI, CP, Operator, namespace, and stop Minikube
+confluent-teardown: ## Full teardown: remove Flink, CP, Operator, namespace, and stop Minikube
 	@minikube status --format='{{.Host}}' 2>/dev/null | grep -q "Running" \
 		|| (echo "✘ Minikube is not running — nothing to tear down." && exit 1)
 	$(MAKE) flink-down
