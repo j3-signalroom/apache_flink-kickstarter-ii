@@ -66,7 +66,7 @@ To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with ap
 
 To get started with Confluent Platform on Minikube, click [here](docs/running-make.md).
 
-> 💡 **_Build locally. Debug with confidence. Deploy to production-ready environments._**
+💡 **_Build locally. Debug with confidence. Deploy to production-ready environments._**
 
 ---
 
