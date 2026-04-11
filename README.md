@@ -62,9 +62,11 @@ To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with ap
 | Memory   | 20 GB   |
 | Disk     | 50 GB   |
 
-> These settings ensure stable performance across all components. You can tune them if needed, but lower resources may lead to pod restarts or degraded performance.
+> These settings ensure stable performance across all components. You can tune them as needed, but lower resource levels may cause pod restarts or degraded performance.
+>
+> If you have limited resources, consider a **remote server setup (SSH tunneling)** with a provider like [Vultr VPS](https://www.vultr.com/). If you go this route, follow these instructions to set up Confluent Platform on Minikube on it by clicking [here](docs/remote-server-ssh-tunneling.md).
 
-To get started with Confluent Platform on Minikube, click [here](docs/running-make.md).
+👉 To get started with **Confluent Platform on Minikube**, click [here](docs/running-make.md).
 
 💡 **_Build locally. Debug with confidence. Deploy to production-ready environments._**
 
