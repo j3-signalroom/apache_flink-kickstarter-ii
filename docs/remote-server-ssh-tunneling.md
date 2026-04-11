@@ -33,13 +33,13 @@ chmod 600 ~/.ssh/authorized_keys
 
 ```
 Host [label for the remote server]
-  HostName [IP address]
-  User root
-  IdentityFile ~/.ssh/ssh-key-dev-cloud-server-access
-  IdentitiesOnly yes
-  LocalForward 9021 localhost:9021
-  LocalForward 8081 localhost:8081
-  LocalForward 8080 localhost:8080
+HostName [IP address]
+User root
+IdentityFile ~/.ssh/ssh-key-dev-cloud-server-access
+IdentitiesOnly yes
+LocalForward 9021 localhost:9021
+LocalForward 8081 localhost:8081
+LocalForward 8080 localhost:8080
 ```
 
 The three `LocalForward` lines tunnel the UI ports from the remote server to your local machine automatically every time you connect.
@@ -48,10 +48,27 @@ The three `LocalForward` lines tunnel the UI ports from the remote server to you
 <details>
 <summary>Step 2 — Terminal 1: bring up the stack on the remote</summary>
 
+Start by connecting to the remote server:
+
 ```bash
 ssh [label for the remote server]
-cd /path/to/apache_flink-kickstarter-ii
+```
 
+Clone the repo on the remote server using the [GitHub CLI](https://cli.github.com/):
+
+```bash
+gh repo clone j3-signalroom/apache_flink-kickstarter-ii
+```
+
+Change to the repo directory:
+
+```bash
+cd /path/to/apache_flink-kickstarter-ii
+```
+
+Then run the `make` targets to bring up the stack:
+
+```bash
 make install-prereqs       # installs tooling (docker, kubectl, minikube, helm, gradle)
 make cp-up                 # Minikube → CFK Operator → Kafka + SR + Connect + C3
 make cp-watch              # watch pods come up (Ctrl+C when all Running)
