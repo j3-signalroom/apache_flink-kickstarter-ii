@@ -70,7 +70,7 @@ To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with ap
 
 👉 If your machine meets all the requirements, click [here](docs/running-make.md).
 
-> If you have limited resources, click here to set up a [**Remote Server Setup (SSH Tunneling)**](docs/remote-server-ssh-tunneling.md) with a provider like [Vultr VPS](https://www.vultr.com/).
+If you have limited resources, click here to set up a [**Remote Server Setup (SSH Tunneling)**](docs/remote-server-ssh-tunneling.md) using a provider like [Vultr VPS](https://www.vultr.com/).
 
 💡 **_Build locally. Debug with confidence. Deploy to production-ready environments._**
 
