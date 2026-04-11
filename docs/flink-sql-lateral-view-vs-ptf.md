@@ -88,4 +88,4 @@ A good PTF in a SQL pipeline is shaped like an **hourglass**:
 
 ---
 
-> 💡 **If your PTF is doing formatting, joining, or reshaping — you wrote it too big.**
+💡 **If your PTF is doing formatting, joining, or reshaping — you wrote it too big.**
