@@ -113,8 +113,8 @@ graph TD
         CP_DELETE["cp-delete"]
     end
 
-    %% ── Phase 5: Control Center ─────────────────────────────────────────
-    subgraph P5["Phase 5 — Control Center"]
+    %% ── Phase 5: Confluent Control Center (C3) ──────────────────────────
+    subgraph P5["Phase 5 — Confluent Control Center (C3)"]
         C3["c3-open\nlocalhost:9021"]
     end
 
@@ -271,7 +271,9 @@ make cp-up
 
 This runs: `check-prereqs` → `minikube-start` → `namespace` → `operator-install` → `cp-deploy` → `kafka-ui-install`.
 
-Once pods are up, open Control Center:
+Run `make cp-watch` to watch for pods coming up in the confluent namespace and ensure they are running before proceeding (Ctrl+C to exit).
+
+Once pods are up, open Confluent Control Center (C3):
 
 ```bash
 make c3-open        # http://localhost:9021
