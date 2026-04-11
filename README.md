@@ -68,7 +68,7 @@ To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with ap
 
 > These settings ensure stable performance across all components. You can tune them as needed, but lower resource levels may cause pod restarts or degraded performance.
 
-👉 If your machine meets all the requirements, click [**here**](docs/running-make.md).  Otherwise, if you have limited resources, click here to set up a [**Remote Server Setup (SSH Tunneling)**](docs/remote-server-ssh-tunneling.md) using a provider like [Vultr VPS](https://www.vultr.com/).
+👉 If your machine meets all the requirements, click [**here**](docs/running-make.md).  Otherwise, if you have limited resources, click [**here**](docs/remote-server-ssh-tunneling.md) to set up a *Remote Server Setup (SSH Tunneling)* using a provider like [Vultr VPS](https://www.vultr.com/).
 
 💡 **_Build locally. Debug with confidence. Deploy to production-ready environments._**
 
