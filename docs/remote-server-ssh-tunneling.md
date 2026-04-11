@@ -51,8 +51,12 @@ The three `LocalForward` lines tunnel the UI ports from the remote server to you
 ```bash
 ssh [label for the remote server]
 cd /path/to/apache_flink-kickstarter-ii
-make cp-up
-make flink-up
+
+make install-prereqs       # installs tooling (docker, kubectl, minikube, helm, gradle)
+make cp-up                 # Minikube → CFK Operator → Kafka + SR + Connect + C3
+make cp-watch              # watch pods come up (Ctrl+C when all Running)
+make flink-up              # cert-manager → Flink Operator → CMF → Flink session cluster
+make flink-status          # verify Flink pods are Running
 ```
 </details>
 
