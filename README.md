@@ -41,6 +41,12 @@ First, clone the repo to your local machine using the [GitHub CLI](https://cli.g
 gh repo clone j3-signalroom/apache_flink-kickstarter-ii
 ```
 
+Change to the repo directory:
+
+```bash
+cd /path/to/apache_flink-kickstarter-ii
+```
+
 Then decide where you want to run the examples:
 
 ### **1.1 Confluent Platform on Minikube — Production-Like Streaming, Running Locally**
