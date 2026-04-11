@@ -46,7 +46,7 @@ Then decide where you want to run the examples:
 ### **1.1 Confluent Platform on Minikube — Production-Like Streaming, Running Locally**
 To **_run_**, **_test_**, and **_debug_** Apache Flink like a production engineer, this project provides a full Confluent Platform stack running locally on [Minikube](https://minikube.sigs.k8s.io/docs/) — no cloud required.
 
-You get a production-like environment on your laptop:
+You get a production-like environment on your machine, with all the components you’d expect in a real deployment:
 
 - **Confluent Platform** (KRaft mode) via Confluent for Kubernetes (CFK)
 - **Apache Flink 2.1.1** via the Confluent Flink Kubernetes Operator 1.130
@@ -66,7 +66,7 @@ To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with ap
 >
 > If you have limited resources, consider a **remote server setup (SSH tunneling)** with a provider like [Vultr VPS](https://www.vultr.com/). If you go this route, follow these instructions to set up Confluent Platform on Minikube on it by clicking [here](docs/remote-server-ssh-tunneling.md).
 
-👉 To get started with **Confluent Platform on Minikube**, click [here](docs/running-make.md).
+👉 If your machine meets all the requirements, click [here](docs/running-make.md).
 
 💡 **_Build locally. Debug with confidence. Deploy to production-ready environments._**
 
