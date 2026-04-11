@@ -43,6 +43,8 @@ First, clone the repo to your local machine using the [GitHub CLI](https://cli.g
 gh repo clone j3-signalroom/apache_flink-kickstarter-ii
 ```
 
+Then decide where you want to run the examples:
+
 ### **1.1 Confluent Platform on Minikube — Production-Like Streaming, Running Locally**
 To **_run_**, **_test_**, and **_debug_** Apache Flink like a production engineer, this project provides a full Confluent Platform stack running locally on [Minikube](https://minikube.sigs.k8s.io/docs/) — no cloud required.
 
