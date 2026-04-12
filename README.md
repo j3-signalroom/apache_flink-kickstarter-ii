@@ -58,7 +58,7 @@ You get a production-like environment on your machine, with all the components y
 - **Apache Flink 2.1.1** via the Confluent Flink Kubernetes Operator 1.130
 - **Confluent Manager for Apache Flink (CMF) 2.1** for Flink environment management
 
-To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with apt-get)**.  The full stack — **Minikube + Confluent Platform + Flink + CMF** — is resource-intensive and designed to mirror a production-like environment. The following defaults are recommended:
+To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with apt-get)**.  The full stack — **Minikube + Confluent Platform + Flink + CMF** — is resource-intensive and designed to mirror a production environment. Therefore, the following defaults are recommended:
 
 | Resource | Default |
 | -------- | ------- |
