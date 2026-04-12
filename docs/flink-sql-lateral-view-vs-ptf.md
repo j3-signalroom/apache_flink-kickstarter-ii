@@ -5,7 +5,6 @@
 * [**1.0 The guideline**](#10-the-guideline)
 * [**2.0 A practical version of the rule**](#20-a-practical-version-of-the-rule)
 * [**3.0 What "minimizing the complexity of the UDF" looks like in practice**](#30-what-minimizing-the-complexity-of-the-udf-looks-like-in-practice)
-* [**4.0 The mental model**](#40-the-mental-model)
 
 <!--toc end-->
 
@@ -78,7 +77,7 @@ When you *do* write a stateful PTF:
 
 ---
 
-## **4.0 The mental model**
+## 🧠 Final Mental Model
 
 A good PTF in a SQL pipeline is shaped like an **hourglass**:
 

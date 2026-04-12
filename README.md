@@ -70,13 +70,13 @@ To run this project, you’ll need **macOS (with Homebrew)** or **Linux (with ap
 
 👉 If your machine meets all the requirements, click [**here**](docs/running-make.md).  Otherwise, click [**here**](docs/remote-server-ssh-tunneling.md) to set up a *Remote Server Setup (SSH Tunneling)* on a provider like [Vultr VPS](https://www.vultr.com/).
 
-💡 **_Build locally. Debug with confidence. Deploy to production-ready environments._**
+🧠 **_Build locally. Debug with confidence. Deploy to production-ready environments._**
 
 ---
 
 ### **1.2 Confluent Cloud**
 
-In addition to running the examples locally, you also have the ability to run the examples in Confluent Cloud.  The examples are designed to be as close as possible to the local Confluent Platform setup, so you can easily compare and contrast the two environments.
+In addition to running the examples **locally**, you can also run them in Confluent Cloud.  The examples are designed to mirror the local Confluent Platform setup as closely as possible, so you can easily compare and contrast the two environments.  Or, better yet, run the same example in both environments to confirm that they behave the same way.
 
 Before you begin, ensure you have access to the following cloud accounts:
 
@@ -93,7 +93,7 @@ Make sure the following tools are installed on your local machine:
 
 ## **2.0 The Examples**
 
-Once you’ve set up [**Confluent Platform on Minikube**](#11-confluent-platform-on-minikube--production-like-streaming-running-locally) or created your [**Confluent Cloud**](#12-confluent-cloud) account, you’re ready to try the examples:
+Once you’ve set up [**Confluent Platform on Minikube**](#11-confluent-platform-on-minikube--production-like-streaming-running-locally) or have your [**Confluent Cloud**](#12-confluent-cloud) account with the prerequisites in place, you’re ready to try the examples:
 
 ### **2.1 Apache Flink User-Defined Functions (UDF)**
 
