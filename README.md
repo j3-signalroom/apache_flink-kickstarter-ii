@@ -2,7 +2,7 @@
 
 > **_On GitHub, Watch → Custom → Releases is the most useful setting if you want to stay updated on when something important is released for this project._**
 
-**Apache Flink Kickstarter II** is the 2026 evolution of my original Kickstarter project ─ rebuilt to showcase the cutting edge of the [Confluent Distribution of Open Software Source (OSS)] **Apache Flink 2.1.x**.
+**Apache Flink Kickstarter II** is the 2026 evolution of my original Kickstarter project ─ rebuilt to showcase the cutting edge of the [Confluent distribution of Open Software Source (OSS)] **Apache Flink 2.1.x**.
 
 Designed as a hands-on, production-minded accelerator, it brings Flink to life _locally_ on **Confluent Platform on Minikube**, while drawing direct comparisons to **Confluent Cloud for Apache Flink** ─ so you can clearly see what’s possible across environments.
 
