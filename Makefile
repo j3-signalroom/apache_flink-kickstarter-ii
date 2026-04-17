@@ -677,6 +677,44 @@ produce-cart-events-record: ## Produce one sample cart event to the 'cart_events
 		| kafka-console-producer --bootstrap-server localhost:9071 --topic cart_events"
 	@echo "→ Produced one sample cart event to the 'cart_events' topic"
 
+.PHONY: build-scalar-udf
+build-scalar-udf: ## Build the scalar_udf uber JAR (requires Gradle)
+	@echo "→ Building scalar_udf JAR..."
+	@if [ ! -f examples/ptf_udf_row_driven/java/gradle/wrapper/gradle-wrapper.jar ]; then \
+		echo "→ gradle-wrapper.jar missing — regenerating..."; \
+		cd examples/scalar_udf/java && gradle wrapper --gradle-version 9.4.1 -q; \
+	fi
+	cd examples/scalar_udf/java && ./gradlew clean shadowJar -q
+	@echo "✔ JAR built: $$(ls examples/scalar_udf/java/app/build/libs/*.jar | head -1)"
+
+.PHONY: deploy-cc-scalar-udf
+deploy-cc-scalar-udf: build-scalar-udf ## Build and deploy the scalar_udf JAR to Confluent Cloud (CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
+	@echo "→ Deploying scalar_udf to Confluent Cloud..."
+	$(mkfile_dir)scripts/deploy-cc-scalar-udf.sh create --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
+	@echo "✔ Deployment complete."
+
+.PHONY: teardown-cc-scalar-udf
+teardown-cc-scalar-udf: ## Tear down the scalar_udf deployment from Confluent Cloud (CONFLUENT_API_KEY, CONFLUENT_API_SECRET required)
+	@echo "→ Tearing down scalar_udf deployment from Confluent Cloud..."
+	$(mkfile_dir)scripts/deploy-cc-scalar-udf.sh destroy --confluent-api-key="$(CONFLUENT_API_KEY)" --confluent-api-secret="$(CONFLUENT_API_SECRET)"
+	@echo "✔ Teardown complete."
+
+.PHONY: deploy-cp-scalar-udf
+deploy-cp-scalar-udf: build-scalar-udf ## Build scalar UDF JAR, copy to Flink pods, and execute SQL via Flink SQL Client
+	@echo "→ Deploying ptf_udf_timer_driven via Flink SQL..."
+	$(mkfile_dir)scripts/deploy-cp-scalar-udf.sh create \
+		--namespace="$(NAMESPACE)" \
+		--flink-cluster="$(FLINK_CLUSTER_NAME)"
+	@echo "✔ SQL statements executed."
+
+.PHONY: teardown-cp-scalar-udf
+teardown-cp-scalar-udf: ## Tear down the scalar_udf deployment
+	@echo "→ Tearing down scalar_udf..."
+	$(mkfile_dir)scripts/deploy-cp-scalar-udf.sh destroy \
+		--namespace="$(NAMESPACE)" \
+		--flink-cluster="$(FLINK_CLUSTER_NAME)"
+	@echo "✔ Teardown complete."
+
 
 # ------------------------------------------------------------------------------
 # Composite workflows
