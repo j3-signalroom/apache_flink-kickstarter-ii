@@ -143,6 +143,33 @@ You write PTF UDFs as Java classes, deploy them as JAR files, and run them withi
 
 - [Why `@StateHint` POJO with `Map` or `List` Are Sensitive to "Extremely Large State"](docs/ccaf-map-list-ptf-udf-limitation-explanation.md)
 
+#### **2.2.1 Scalar**
+
+<details>
+<summary><strong><em>What are Scalars?</em></strong></summary>
+
+First, what is a **scalar** value?  A scalar is a single, atomic value — one number, one string, one boolean, or one timestamp — as opposed to a collection or composite structure.  The term comes from mathematics (a scalar is a magnitude without direction, in contrast to a vector, which has both magnitude and direction), and it carries into computing with the same core meaning: one value, not many.
+
+A **Scalar UDF** is a custom function that takes zero or more input arguments and returns a single scalar value per row. It's the simplest and most common type of UDF in SQL engines.
+
+> **Note**: In Flink, there is a subtle nuance. A scalar can return a `ROW< ... >` or an `ARRAY< ... >` and is still classified as "scalar" in the *function classification sense*, even though the value itself is composite. The classification is about **"one output value per input row," not about whether that value is primitive**. This trips people up occasionally — a UDF that returns `ROW<masked_email STRING, hash_prefix STRING>` is still a Scalar UDF.
+
+**Core Characteristics:***
+
+- **Row-by-row evaluation**: called once per input row, produces one output value per call
+- **Stateless by default**: no access to *keyed state*, *timers*, or *watermarks* (unlike PTFs or aggregate functions)
+- **Deterministic or non-deterministic**: you can declare `isDeterministic()` — affects query optimization and plan caching
+**Type-inferred**: return type can be auto-inferred or explicitly declared via `@DataTypeHint` / `getTypeInference()`
+
+</details>
+
+<details>
+<summary><strong><em>Why use Scalars?</em></strong></summary>
+
+Scalar functions earn their keep when you need per-row transformation logic that's either too complex, too reusable, or too encapsulated for inline SQL expressions. 
+
+</details>
+
 ---
 
 ## **3.0 Debugging the Examples**
@@ -340,3 +367,4 @@ Your IDE will pause at your breakpoint. Inspect `input`, `state`, and local vari
 ### **4.3 Confluent Cloud for Apache Flink (CCAF)**
 - [Stream Processing with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/overview.html)
 - [Get Started with Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/get-started/overview.html)
+- [User-defined Functions in Confluent Cloud for Apache Flink](https://docs.confluent.io/cloud/current/flink/concepts/user-defined-functions.html)
