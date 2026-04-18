@@ -19,6 +19,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
     - [**2.1 Apache Flink User-Defined Functions (UDF)**](#21-apache-flink-user-defined-functions-udf)
         + [**2.1.1 Process Table Functions (PTF)**](#211-process-table-functions-ptf)
             - [**2.1.1.1 Limitation(s)**](#2111-limitations)
+        + [**2.1.2 Scalars**](#212-scalars)
 + [**3.0 Debugging the Examples**](#30-debugging-the-examples)
     - [**3.1 Apache Flink UDF Debugging with Java Debug Wire Protocol (JDWP)**](#31-apache-flink-udf-debugging-with-java-debug-wire-protocol-jdwp)
         + [**3.1.1 Process Table Functions (PTF)**](#311-process-table-functions-ptf)
@@ -143,7 +144,7 @@ You write PTF UDFs as Java classes, deploy them as JAR files, and run them withi
 
 - [Why `@StateHint` POJO with `Map` or `List` Are Sensitive to "Extremely Large State"](docs/ccaf-map-list-ptf-udf-limitation-explanation.md)
 
-#### **2.2.1 Scalar**
+#### **2.1.2 Scalars**
 
 <details>
 <summary><strong><em>What are Scalars?</em></strong></summary>
@@ -154,7 +155,7 @@ A **Scalar UDF** is a custom function that takes zero or more input arguments an
 
 > **Note**: In Flink, there is a subtle nuance. A scalar can return a `ROW< ... >` or an `ARRAY< ... >` and is still classified as "scalar" in the *function classification sense*, even though the value itself is composite. The classification is about **"one output value per input row," not about whether that value is primitive**. This trips people up occasionally — a UDF that returns `ROW<masked_email STRING, hash_prefix STRING>` is still a Scalar UDF.
 
-**Core Characteristics:***
+**Core Characteristics:**
 
 - **Row-by-row evaluation**: called once per input row, produces one output value per call
 - **Stateless by default**: no access to *keyed state*, *timers*, or *watermarks* (unlike PTFs or aggregate functions)
