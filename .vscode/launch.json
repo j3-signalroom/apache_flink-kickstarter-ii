@@ -24,6 +24,18 @@
                 "${workspaceFolder}/examples/ptf_udf_timer_driven/java/app/src/main/java"
             ],
             "preLaunchTask": "Port Forward Flink TaskManager"
+        },
+        {
+            "type": "java",
+            "name": "Attach to Flink TaskManager (scalar udf)",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": 5005,
+            "projectName": "app",
+            "sourcePaths": [
+                "${workspaceFolder}/examples/scalar_udf/java/app/src/main/java"
+            ],
+            "preLaunchTask": "Port Forward Flink TaskManager"
         }
     ]
 }

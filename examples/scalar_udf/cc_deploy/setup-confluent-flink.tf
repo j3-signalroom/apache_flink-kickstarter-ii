@@ -95,6 +95,219 @@ module "flink_api_key_rotation" {
   day_count                    = var.day_count
 }
 
+# ============================================================================
+# UDF 1: CelsiusToFahrenheit
+# ============================================================================
+
+resource "confluent_flink_statement" "drop_celsius_reading" {
+  statement = "DROP TABLE IF EXISTS celsius_reading;"
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.scalar_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.scalar_udf.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.scalar_udf.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.scalar_udf.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.scalar_udf.id
+  }
+
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+}
+
+resource "confluent_flink_statement" "celsius_reading_source" {
+  statement = <<-EOT
+    CREATE TABLE celsius_reading (
+        sensor_id               BIGINT,
+        celsius_temperature     DOUBLE
+    );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.scalar_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.scalar_udf.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.scalar_udf.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.scalar_udf.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.scalar_udf.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.drop_celsius_reading,
+    confluent_kafka_topic.celsius_reading
+  ]
+}
+
+resource "confluent_flink_statement" "insert_celsius_reading" {
+  statement = <<-EOT
+    INSERT INTO celsius_reading (sensor_id, celsius_temperature)
+    VALUES
+        (1000, 18),
+        (1001, 20),
+        (1002, 22),
+        (1003, 24),
+        (1004, 26),
+        (1005, 28);
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.scalar_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.scalar_udf.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.scalar_udf.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.scalar_udf.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.scalar_udf.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.celsius_reading_source
+  ]
+}
+
+resource "confluent_flink_statement" "drop_celsius_to_fahrenheit" {
+  statement = "DROP TABLE IF EXISTS celsius_to_fahrenheit;"
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.scalar_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.scalar_udf.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.scalar_udf.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.scalar_udf.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.scalar_udf.id
+  }
+
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+}
+
+resource "confluent_flink_statement" "celsius_to_fahrenheit_source" {
+  statement = <<-EOT
+    CREATE TABLE celsius_to_fahrenheit (
+      sensor_id               BIGINT,
+      celsius_temperature     DOUBLE,
+      fahrenheit_temperature  DOUBLE
+    );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.scalar_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.scalar_udf.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.scalar_udf.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.scalar_udf.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.scalar_udf.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.drop_celsius_to_fahrenheit,
+    confluent_kafka_topic.celsius_to_fahrenheit
+  ]
+}
+
 # Upload the JAR as a Flink artifact
 resource "confluent_flink_artifact" "scalar_udf" {
   display_name   = "ptf-udf"
@@ -108,20 +321,13 @@ resource "confluent_flink_artifact" "scalar_udf" {
   }
 
   depends_on = [
-    confluent_flink_statement.insert_user_events,
-    confluent_flink_statement.enriched_events_sink,
-    confluent_flink_statement.insert_orders,
-    confluent_flink_statement.orders_expanded_sink,
+    confluent_flink_statement.celsius_to_fahrenheit_source
   ]
 }
 
-# ============================================================================
-# UDF 1: CelsiusToFahrenheit — select example
-# ============================================================================
-
 resource "confluent_flink_statement" "create_celsius_udf" {
   statement = <<-EOT
-    CREATE FUNCTION CelsiusToFahrenheit
+    CREATE FUNCTION celsius_to_fahrenheit
       AS 'scalar_udf.CelsiusToFahrenheit'
       USING JAR 'confluent-artifact://${confluent_flink_artifact.scalar_udf.id}';
   EOT
@@ -163,10 +369,13 @@ resource "confluent_flink_statement" "create_celsius_udf" {
   ]
 }
 
-resource "confluent_flink_statement" "celsius_udf_example" {
+resource "confluent_flink_statement" "celsius_to_fahrenheit_sink" {
   statement = <<-EOT
-    SELECT 
-      20 temperature_in_celsius, CelsiusToFahrenheit(temperature_in_celsius) AS temperature_in_fahrenheit;
+    INSERT INTO celsius_to_fahrenheit (sensor_id, celsius_temperature, fahrenheit_temperature)
+        SELECT 
+            sensor_id, celsius_temperature, celsius_to_fahrenheit(celsius_temperature)
+        FROM
+            celsius_reading;
   EOT
 
   properties = {
@@ -206,12 +415,220 @@ resource "confluent_flink_statement" "celsius_udf_example" {
 }
 
 # ============================================================================
-# UDF 2: FahrenheitToCelsius — select example
+# UDF 2: FahrenheitToCelsius
 # ============================================================================
+resource "confluent_flink_statement" "drop_fahrenheit_reading" {
+  statement = "DROP TABLE IF EXISTS fahrenheit_reading;"
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.scalar_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.scalar_udf.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.scalar_udf.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.scalar_udf.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.scalar_udf.id
+  }
+
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+}
+
+resource "confluent_flink_statement" "fahrenheit_reading_source" {
+  statement = <<-EOT
+      CREATE TABLE fahrenheit_reading (
+          sensor_id               BIGINT,
+          fahrenheit_temperature  DOUBLE
+      );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.scalar_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.scalar_udf.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.scalar_udf.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.scalar_udf.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.scalar_udf.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.drop_fahrenheit_reading,
+    confluent_kafka_topic.fahrenheit_reading
+  ]
+}
+
+resource "confluent_flink_statement" "insert_fahrenheit_reading" {
+  statement = <<-EOT
+    INSERT INTO fahrenheit_reading (sensor_id, fahrenheit_temperature)
+    VALUES
+        (2000, 64.4),
+        (2001, 68),
+        (2002, 71.6),
+        (2003, 75.2),
+        (2004, 78.8),
+        (2005, 82.4);
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.scalar_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.scalar_udf.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.scalar_udf.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.scalar_udf.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.scalar_udf.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.fahrenheit_reading_source
+  ]
+}
+
+resource "confluent_flink_statement" "drop_fahrenheit_to_celsius" {
+  statement = "DROP TABLE IF EXISTS fahrenheit_to_celsius;"
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.scalar_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.scalar_udf.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.scalar_udf.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.scalar_udf.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.scalar_udf.id
+  }
+
+  lifecycle {
+    ignore_changes = [statement, compute_pool]
+  }
+}
+
+resource "confluent_flink_statement" "fahrenheit_to_celsius_source" {
+  statement = <<-EOT
+    CREATE TABLE fahrenheit_to_celsius (
+        sensor_id               BIGINT,
+        fahrenheit_temperature  DOUBLE,
+        celsius_temperature     DOUBLE
+    );
+  EOT
+
+  properties = {
+    "sql.current-catalog"  = confluent_environment.scalar_udf.display_name
+    "sql.current-database" = confluent_kafka_cluster.scalar_udf.display_name
+  }
+
+  rest_endpoint = data.confluent_flink_region.scalar_udf.rest_endpoint
+  credentials {
+    key    = module.flink_api_key_rotation.active_api_key.id
+    secret = module.flink_api_key_rotation.active_api_key.secret
+  }
+
+  organization {
+    id = data.confluent_organization.signalroom.id
+  }
+
+  environment {
+    id = confluent_environment.scalar_udf.id
+  }
+
+  principal {
+    id = confluent_service_account.flink_sql_runner.id
+  }
+
+  compute_pool {
+    id = confluent_flink_compute_pool.scalar_udf.id
+  }
+
+  lifecycle {
+    ignore_changes = [compute_pool]
+  }
+
+  depends_on = [
+    confluent_flink_statement.drop_fahrenheit_to_celsius,
+    confluent_kafka_topic.fahrenheit_to_celsius
+  ]
+}
 
 resource "confluent_flink_statement" "create_fahrenheit_udf" {
   statement = <<-EOT
-    CREATE FUNCTION FahrenheitToCelsius
+    CREATE FUNCTION fahrenheit_to_celsius
       AS 'scalar_udf.FahrenheitToCelsius'
       USING JAR 'confluent-artifact://${confluent_flink_artifact.scalar_udf.id}';
   EOT
@@ -253,10 +670,13 @@ resource "confluent_flink_statement" "create_fahrenheit_udf" {
   ]
 }
 
-resource "confluent_flink_statement" "fahrenheit_udf_example" {
+resource "confluent_flink_statement" "fahrenheit_to_celsius_sink" {
   statement = <<-EOT
-    SELECT 
-      70 temperature_in_fahrenheit, FahrenheitToCelsius(temperature_in_fahrenheit) AS temperature_in_celsius;
+    INSERT INTO fahrenheit_to_celsius (sensor_id, fahrenheit_temperature, celsius_temperature)
+      SELECT 
+          sensor_id, fahrenheit_temperature, fahrenheit_to_celsius(fahrenheit_temperature)
+      FROM
+          fahrenheit_reading;
   EOT
 
   properties = {
@@ -291,6 +711,6 @@ resource "confluent_flink_statement" "fahrenheit_udf_example" {
   }
 
   depends_on = [
-    confluent_flink_statement.create_fahrenheit_udf
+    confluent_flink_statement.create_celsius_udf
   ]
 }
