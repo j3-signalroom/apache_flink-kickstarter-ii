@@ -35,7 +35,7 @@ print_step() {
 }
 
 # Configuration folders
-TERRAFORM_DIR="$(cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../examples/ptf_udf_row_driven/cc_deploy" && pwd)"
+TERRAFORM_DIR="$(cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../examples/scalar_udf/cc_deploy" && pwd)"
 MAKEFILE_DIR="$(cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../" && pwd)"
 
 print_info "Terraform Directory: $TERRAFORM_DIR"
