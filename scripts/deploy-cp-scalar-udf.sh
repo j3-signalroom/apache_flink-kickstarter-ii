@@ -2,8 +2,8 @@
 
 #
 # *** Script Syntax ***
-# ./deploy-cp-ptf-udf-row-driven.sh <create | destroy> [--namespace=confluent]
-#                                                      [--flink-cluster=flink-basic]
+# ./deploy-cp-scalar-udf.sh <create | destroy> [--namespace=confluent]
+#                                              [--flink-cluster=flink-basic]
 #
 #
 
@@ -35,8 +35,8 @@ print_step() {
 # Resolve directories relative to script location
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-JAR_PATH="$PROJECT_DIR/examples/ptf_udf_row_driven/java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
-JAR_POD_PATH="/opt/flink/usrlib/user-event-enricher.jar"
+JAR_PATH="$PROJECT_DIR/examples/scalar_udf/java/app/build/libs/app-1.0.0-SNAPSHOT.jar"
+JAR_POD_PATH="/opt/flink/usrlib/scalar-udf.jar"
 
 # Defaults (overridable via arguments)
 NAMESPACE="confluent"
@@ -143,7 +143,7 @@ copy_udf_jar_to_flink_pods() {
 
     if [ ! -f "$JAR_PATH" ]; then
         print_error "JAR not found at: ${JAR_PATH}"
-        print_error "Run 'make build-ptf-udf-row-driven' first."
+        print_error "Run 'make build-scalar-udf' first."
         exit 1
     fi
 
@@ -168,7 +168,7 @@ copy_udf_jar_to_flink_pods() {
 # CREATE action
 # ===========================================================================
 do_create() {
-    print_info "Deploying PTF UDF via Flink SQL..."
+    print_info "Deploying Scalar UDF via Flink SQL..."
     print_info "  Namespace:     ${NAMESPACE}"
     print_info "  Flink cluster: ${FLINK_CLUSTER_NAME}"
 
@@ -177,7 +177,7 @@ do_create() {
 
     # Step 1: Pre-create Kafka topics (CFK broker has auto.create.topics.enable=false)
     print_step "Creating Kafka topics..."
-    for topic in user_events enriched_events orders orders_expanded; do
+    for topic in celsius_reading celsius_to_fahrenheit fahrenheit_reading fahrenheit_to_celsius; do
         kubectl exec -n "$NAMESPACE" kafka-0 -- \
             kafka-topics --bootstrap-server kafka:9071 \
                          --create --if-not-exists \
@@ -191,141 +191,126 @@ do_create() {
     # Step 2: Run all SQL in a single sql-client session so that tables
     #         created by earlier statements are visible to later ones
     #         (the default_catalog is in-memory and per-session).
-    run_sql "Deploy PTF UDF pipeline" \
-        "-- Source table
-DROP TABLE IF EXISTS user_events;
+    run_sql "Deploy Scalar UDF pipeline" \
+        "
+-- ============================================================================
+-- UDF 1: CelsiusToFahrenheit
+-- ============================================================================
 
-CREATE TABLE user_events (
-    user_id    STRING,
-    event_type STRING,
-    payload    STRING
+-- Source table
+DROP TABLE IF EXISTS celsius_reading;
+
+CREATE TABLE celsius_reading (
+    sensor_id               BIGINT,
+    celsius_temperature     DOUBLE
 ) WITH (
     'connector'                    = 'kafka',
-    'topic'                        = 'user_events',
+    'topic'                        = 'celsius_reading',
     'properties.bootstrap.servers' = 'kafka:9071',
     'format'                       = 'json',
     'scan.startup.mode'            = 'earliest-offset'
 );
 
 -- Sample data (runs synchronously so topic exists before downstream reads)
-INSERT INTO user_events (user_id, event_type, payload)
+INSERT INTO celsius_reading (sensor_id, celsius_temperature)
 VALUES
-    ('alice',   'login',    'web'),
-    ('bob',     'click',    'button-checkout'),
-    ('alice',   'purchase', 'order-1234'),
-    ('charlie', 'login',    'mobile'),
-    ('bob',     'logout',   'session-end'),
-    ('alice',   'click',    'button-settings');
+    (1000, 18),
+    (1001, 20),
+    (1002, 22),
+    (1003, 24),
+    (1004, 26),
+    (1005, 28);
 
 -- Sink table
-DROP TABLE IF EXISTS enriched_events;
+DROP TABLE IF EXISTS celsius_to_fahrenheit;
 
-CREATE TABLE enriched_events (
-    user_id     STRING,
-    event_type  STRING,
-    payload     STRING,
-    session_id  BIGINT,
-    event_count BIGINT,
-    last_event  STRING
+CREATE TABLE celsius_to_fahrenheit (
+    sensor_id               BIGINT,
+    celsius_temperature     DOUBLE,
+    fahrenheit_temperature  DOUBLE
 ) WITH (
     'connector'                    = 'kafka',
-    'topic'                        = 'enriched_events',
+    'topic'                        = 'celsius_to_fahrenheit',
     'properties.bootstrap.servers' = 'kafka:9071',
     'format'                       = 'json'
 );
 
 -- Register the UDF
-CREATE FUNCTION IF NOT EXISTS user_event_enricher
-    AS 'ptf.UserEventEnricher'
+CREATE FUNCTION celsius_to_fahrenheit
+    AS 'scalar_udf.CelsiusToFahrenheit'
     USING JAR 'file://${JAR_POD_PATH}';
 
--- Start the enrichment pipeline
-INSERT INTO enriched_events
-SELECT
-    user_id,
-    event_type,
-    payload,
-    session_id,
-    event_count,
-    last_event
-FROM TABLE(
-    user_event_enricher(
-        input => TABLE user_events PARTITION BY user_id,
-        uid   => 'enriched-events-v1'
-    )
-);
+-- Sample data (runs synchronously so topic exists before downstream reads)
+INSERT INTO celsius_to_fahrenheit (sensor_id, celsius_temperature, fahrenheit_temperature)
+    SELECT 
+        sensor_id, celsius_temperature, celsius_to_fahrenheit(celsius_temperature)
+    FROM
+        celsius_reading;
 
 -- ============================================================================
--- UDF 2: OrderLineExpander (row semantics)
+-- UDF 2: FahrenheitToCelsius
 -- ============================================================================
 
--- Source table for orders
-DROP TABLE IF EXISTS orders;
+-- Source table
+DROP TABLE IF EXISTS fahrenheit_reading;
 
-CREATE TABLE orders (
-    order_id   STRING,
-    customer   STRING,
-    items      STRING,
-    quantities STRING
+CREATE TABLE fahrenheit_reading (
+    sensor_id               BIGINT,
+    fahrenheit_temperature  DOUBLE
 ) WITH (
     'connector'                    = 'kafka',
-    'topic'                        = 'orders',
+    'topic'                        = 'fahrenheit_reading',
     'properties.bootstrap.servers' = 'kafka:9071',
     'format'                       = 'json',
     'scan.startup.mode'            = 'earliest-offset'
 );
 
--- Sample data
-INSERT INTO orders (order_id, customer, items, quantities)
+-- Sample data (runs synchronously so topic exists before downstream reads)
+INSERT INTO fahrenheit_reading (sensor_id, fahrenheit_temperature)
 VALUES
-    ('O-100', 'alice',   'widget,gadget,gizmo', '2,1,5'),
-    ('O-101', 'bob',     'widget',              '3'),
-    ('O-102', 'charlie', 'gizmo,gadget',        '1,4');
+    (2000, 64.4),
+    (2001, 68),
+    (2002, 71.6),
+    (2003, 75.2),
+    (2004, 78.8),
+    (2005, 82.4);
 
--- Sink table for expanded order lines
-DROP TABLE IF EXISTS orders_expanded;
+-- Sink table
+DROP TABLE IF EXISTS fahrenheit_to_celsius;
 
-CREATE TABLE orders_expanded (
-    order_id    STRING,
-    customer    STRING,
-    item_name   STRING,
-    quantity    INT,
-    line_number INT
+CREATE TABLE fahrenheit_to_celsius (
+    sensor_id               BIGINT,
+    fahrenheit_temperature  DOUBLE,
+    celsius_temperature     DOUBLE
 ) WITH (
     'connector'                    = 'kafka',
-    'topic'                        = 'orders_expanded',
+    'topic'                        = 'fahrenheit_to_celsius',
     'properties.bootstrap.servers' = 'kafka:9071',
     'format'                       = 'json'
 );
 
--- Register the row-semantic UDF
-CREATE FUNCTION IF NOT EXISTS order_line_expander
-    AS 'ptf.OrderLineExpander'
+-- Register the UDF
+CREATE FUNCTION fahrenheit_to_celsius
+    AS 'scalar_udf.FahrenheitToCelsius'
     USING JAR 'file://${JAR_POD_PATH}';
 
--- Start the expansion pipeline (no PARTITION BY — row semantics forbids it)
-INSERT INTO orders_expanded
-SELECT
-    order_id,
-    customer,
-    item_name,
-    quantity,
-    line_number
-FROM TABLE(
-    order_line_expander(
-        input => TABLE orders
-    )
-);"
+-- Sample data (runs synchronously so topic exists before downstream reads)
+INSERT INTO fahrenheit_to_celsius (sensor_id, fahrenheit_temperature, celsius_temperature)
+    SELECT 
+        sensor_id, fahrenheit_temperature, fahrenheit_to_celsius(fahrenheit_temperature)
+    FROM
+        fahrenheit_reading;
+"
 
     print_info "All statements executed successfully."
-    print_info "Run 'make flink-ui' to monitor the running enrichment job."
+    print_info "Run 'make flink-ui' to monitor the running select job."
 }
 
 # ===========================================================================
 # DESTROY action
 # ===========================================================================
 do_destroy() {
-    print_info "Tearing down PTF UDF via Flink SQL..."
+    print_info "Tearing down Scalar UDF via Flink SQL..."
     print_info "  Namespace:     ${NAMESPACE}"
     print_info "  Flink cluster: ${FLINK_CLUSTER_NAME}"
 
@@ -365,16 +350,16 @@ except:
 
     # Drop functions and tables in a single session
     run_sql "Drop UDFs, tables" \
-        "DROP FUNCTION IF EXISTS user_event_enricher;
-DROP FUNCTION IF EXISTS order_line_expander;
-DROP TABLE IF EXISTS enriched_events;
-DROP TABLE IF EXISTS user_events;
-DROP TABLE IF EXISTS orders_expanded;
-DROP TABLE IF EXISTS orders;"
+        "DROP FUNCTION IF EXISTS celsius_to_fahrenheit;
+DROP FUNCTION IF EXISTS fahrenheit_to_celsius;
+DROP TABLE IF EXISTS celsius_reading;
+DROP TABLE IF EXISTS celsius_to_fahrenheit;
+DROP TABLE IF EXISTS fahrenheit_reading;
+DROP TABLE IF EXISTS fahrenheit_to_celsius;"
 
     # Delete the associated Kafka topics
     print_step "Deleting Kafka topics..."
-    for topic in user_events enriched_events orders orders_expanded; do
+    for topic in celsius_reading celsius_to_fahrenheit fahrenheit_reading fahrenheit_to_celsius; do
         kubectl exec -n "$NAMESPACE" kafka-0 -- \
             kafka-topics --bootstrap-server kafka:9071 \
                          --delete --if-exists \
