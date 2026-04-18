@@ -160,7 +160,7 @@ A **Scalar UDF** is a custom function that takes zero or more input arguments an
 - **Row-by-row evaluation**: called once per input row, produces one output value per call
 - **Stateless by default**: no access to *keyed state*, *timers*, or *watermarks* (unlike PTFs or aggregate functions)
 - **Deterministic or non-deterministic**: you can declare `isDeterministic()` — affects query optimization and plan caching
-**Type-inferred**: return type can be auto-inferred or explicitly declared via `@DataTypeHint` / `getTypeInference()`
+- **Type-inferred**: return type can be auto-inferred or explicitly declared via `@DataTypeHint` / `getTypeInference()`
 
 </details>
 
