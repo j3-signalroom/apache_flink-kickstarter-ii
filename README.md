@@ -167,7 +167,13 @@ A **Scalar UDF** is a custom function that takes zero or more input arguments an
 <details>
 <summary><strong><em>Why use Scalars?</em></strong></summary>
 
-Scalar functions earn their keep when you need per-row transformation logic that's either too complex, too reusable, or too encapsulated for inline SQL expressions. 
+Scalar functions earn their keep when you need per-row transformation logic that’s either too complex, too reusable, or too encapsulated for inline SQL expressions.  Here is a list of reasons to use scalars:
+
+- **Encapsulate logic that SQL expresses poorly**
+- **Reusability and DRY (Don't Repeat Yourself)**
+- **Consistency and governance**
+- **Access to the host language ecosystem**
+- **Hiding complexity from SQL authors**
 
 </details>
 
