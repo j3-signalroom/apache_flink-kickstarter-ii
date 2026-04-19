@@ -173,7 +173,28 @@ Scalar functions earn their keep when you need per-row transformation logic that
 - **Reusability and DRY (Don't Repeat Yourself)**
 - **Consistency and governance**
 - **Access to the host language ecosystem**
-- **Hiding complexity from SQL authors**
+- **Hiding complexity from SQL creaters**
+
+</details>
+
+<details>
+<summary><strong><em>When do you use Scalars?</em></strong></summary>
+
+</details>
+
+<details>
+<summary><strong><em>Where do you use Scalars?</em></strong></summary>
+
+You write PTF UDFs as Java classes, deploy them as JAR files, and run them within your Flink SQL queries.
+
+</details>
+
+<details open>
+<summary><strong><em>How are examples of Scalars put into practice?</em></strong></summary>
+
+| Type | Purpose | Confluent Platform on Minikube | Confluent Cloud |
+| --- | --- | --- | --- |
+| [Scalar UDF-type](examples/scalar_udf/java/README.md) | Walks through both **local** and cloud environments *building*, *deploying*, and *testing* two **Scalar UDFs** bundled in a single JAR that illustrate the simplest and oldest category of Flink user-defined function — a pure, row-at-a-time function callable from SQL. The first, **`CelsiusToFahrenheit`**, converts a Celsius temperature to its Fahrenheit equivalent, and the second, **`FahrenheitToCelsius`**, converts a Fahrenheit temperature to its Celsius equivalent. | <p style="text-align: center;">[`CP Deploy`](examples/scalar_udf/cp_deploy/README.md)</p> | <p style="text-align: center;">[`CC Deploy`](examples/scalar_udf/cc_deploy/README.md)</p> |
 
 </details>
 
