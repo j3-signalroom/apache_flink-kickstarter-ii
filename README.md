@@ -180,12 +180,14 @@ Scalar functions earn their keep when you need per-row transformation logic that
 <details>
 <summary><strong><em>When do you use Scalars?</em></strong></summary>
 
+Scalars are used when your use case requires a transformation that is awkward or impossible to do in pure SQL. Moreover, they are used when you only need to supply zero or more input arguments and return a single value per row.
+
 </details>
 
 <details>
 <summary><strong><em>Where do you use Scalars?</em></strong></summary>
 
-You write PTF UDFs as Java classes, deploy them as JAR files, and run them within your Flink SQL queries.
+You write Scalar UDFs as Java classes, deploy them as JAR files, and run them within your Flink SQL queries.
 
 </details>
 
