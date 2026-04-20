@@ -47,6 +47,13 @@ tfplan
 # Downloaded dependencies
 .cache/
 
+# Python / uv
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
 # Environment/secrets
 .ptf_udf
 *.pem

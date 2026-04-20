@@ -38,6 +38,10 @@ endif
 
 # CMF manages Flink via confluentinc/cp-flink images — not the open-source flink image
 FLINK_IMAGE         ?= confluentinc/cp-flink:2.1.1-cp1-java21$(if $(filter arm64,$(MINIKUBE_NODE_ARCH)),-arm64,)
+
+# Locally-built image extending FLINK_IMAGE with Python 3.11 + PyFlink (built by
+# `make build-cp-flink-python-image` into minikube's docker daemon).
+FLINK_PYTHON_IMAGE  ?= cp-flink-python:2.1.1-cp1-java21
 FLINK_OPERATOR_VER  ?= 1.130.0
 FLINK_VERSION       ?= v2_1
 FLINK_CLUSTER_NAME  ?= flink-basic
@@ -711,6 +715,39 @@ deploy-cp-scalar-udf: build-scalar-udf ## Build scalar UDF JAR, copy to Flink po
 teardown-cp-scalar-udf: ## Tear down the scalar_udf deployment
 	@echo "→ Tearing down scalar_udf..."
 	$(mkfile_dir)scripts/deploy-cp-scalar-udf.sh destroy \
+		--namespace="$(NAMESPACE)" \
+		--flink-cluster="$(FLINK_CLUSTER_NAME)"
+	@echo "✔ Teardown complete."
+
+.PHONY: build-cp-flink-python-image
+build-cp-flink-python-image: ## Build the cp-flink-python image (Python 3.11 + PyFlink built from uv.lock) into minikube's docker daemon
+	@echo "→ Building $(FLINK_PYTHON_IMAGE) into minikube docker daemon..."
+	@command -v minikube >/dev/null 2>&1 || { echo "minikube not installed"; exit 1; }
+	@command -v docker   >/dev/null 2>&1 || { echo "docker not installed"; exit 1; }
+	eval "$$(minikube docker-env)" && \
+		docker build \
+			--build-arg FLINK_IMAGE=$(FLINK_IMAGE) \
+			-f k8s/images/cp-flink-python/Dockerfile \
+			-t $(FLINK_PYTHON_IMAGE) \
+			examples/scalar_udf/python
+	@echo "✔ Image built: $(FLINK_PYTHON_IMAGE)"
+	@echo ""
+	@echo "  Next:"
+	@echo "    FLINK_IMAGE=$(FLINK_PYTHON_IMAGE) make flink-deploy"
+	@echo "    make deploy-cp-scalar-udf-python"
+
+.PHONY: deploy-cp-scalar-udf-python
+deploy-cp-scalar-udf-python: ## Deploy PyFlink scalar UDFs via Flink SQL Client (cluster must use $(FLINK_PYTHON_IMAGE))
+	@echo "→ Deploying PyFlink scalar UDFs via Flink SQL..."
+	$(mkfile_dir)scripts/deploy-cp-scalar-udf-python.sh create \
+		--namespace="$(NAMESPACE)" \
+		--flink-cluster="$(FLINK_CLUSTER_NAME)"
+	@echo "✔ SQL statements executed."
+
+.PHONY: teardown-cp-scalar-udf-python
+teardown-cp-scalar-udf-python: ## Tear down the PyFlink scalar UDF deployment
+	@echo "→ Tearing down PyFlink scalar UDFs..."
+	$(mkfile_dir)scripts/deploy-cp-scalar-udf-python.sh destroy \
 		--namespace="$(NAMESPACE)" \
 		--flink-cluster="$(FLINK_CLUSTER_NAME)"
 	@echo "✔ Teardown complete."
