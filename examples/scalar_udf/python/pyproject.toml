@@ -1,0 +1,15 @@
+[project]
+name = "scalar-udf-python"
+version = "0.1.0"
+description = "PyFlink scalar UDF examples — Celsius/Fahrenheit conversion"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "apache-flink==2.1.1",
+]
+
+# apache-beam (a transitive dep of apache-flink) ships a legacy setup.py that
+# imports pkg_resources without declaring it as a build dependency. Modern
+# setuptools (>=80) removed pkg_resources as a top-level namespace, so pin
+# the build-time setuptools to a version that still ships it.
+[tool.uv.extra-build-dependencies]
+apache-beam = [{ requirement = "setuptools<80" }]
