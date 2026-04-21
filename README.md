@@ -449,7 +449,7 @@ Deploy first: `make deploy-cc-scalar-udf`, and then:
 Open [`FahrenheitToCelsius.java`](examples/scalar_udf/java/app/src/main/java/scalar_udf/FahrenheitToCelsius.java) and click in the gutter at the first line of the `eval()` method:
 
 ```java
-if (celsius == null)
+if (fahrenheit == null)
 ```
 
 </details>
