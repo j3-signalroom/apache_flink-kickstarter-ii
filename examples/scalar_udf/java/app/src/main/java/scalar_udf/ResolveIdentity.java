@@ -137,10 +137,9 @@ public class ResolveIdentity extends ScalarFunction {
 
     private static String normalize(String normalizedType, String rawValue) {
         String trimmed = rawValue.strip();
-        switch (normalizedType) {
-            case "email":
-                return trimmed.toLowerCase();
-            case "phone":
+        return switch (normalizedType) {
+            case "email" -> trimmed.toLowerCase();
+            case "phone" -> {
                 StringBuilder digits = new StringBuilder(trimmed.length());
                 for (int i = 0; i < trimmed.length(); i++) {
                     char c = trimmed.charAt(i);
@@ -148,10 +147,10 @@ public class ResolveIdentity extends ScalarFunction {
                         digits.append(c);
                     }
                 }
-                return digits.toString();
-            default:
-                return trimmed.toLowerCase();
-        }
+                yield digits.toString();
+            }
+            default -> trimmed.toLowerCase();
+        };
     }
 
     private static String toHex(byte[] bytes) {
