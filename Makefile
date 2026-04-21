@@ -681,6 +681,20 @@ produce-cart-events-record: ## Produce one sample cart event to the 'cart_events
 		| kafka-console-producer --bootstrap-server localhost:9071 --topic cart_events"
 	@echo "→ Produced one sample cart event to the 'cart_events' topic"
 
+.PHONY: produce-celsius-reading-record
+produce-celsius-reading-record: ## Produce one sample Celsius reading to the 'celsius_reading' topic using kafka-console-producer
+	@kubectl exec -it kafka-0 -n confluent -- bash -c \
+		"echo '{\"sensor_id\":1999,\"celsius_temperature\":25.0}' \
+		| kafka-console-producer --bootstrap-server localhost:9071 --topic celsius_reading"
+	@echo "→ Produced one sample Celsius reading to the 'celsius_reading' topic"
+
+.PHONY: produce-fahrenheit-reading-record
+produce-fahrenheit-reading-record: ## Produce one sample Fahrenheit reading to the 'fahrenheit_reading' topic using kafka-console-producer
+	@kubectl exec -it kafka-0 -n confluent -- bash -c \
+		"echo '{\"sensor_id\":2999,\"fahrenheit_temperature\":77.0}' \
+		| kafka-console-producer --bootstrap-server localhost:9071 --topic fahrenheit_reading"
+	@echo "→ Produced one sample Fahrenheit reading to the 'fahrenheit_reading' topic"
+
 .PHONY: build-scalar-udf
 build-scalar-udf: ## Build the scalar_udf uber JAR (requires Gradle)
 	@echo "→ Building scalar_udf JAR..."
