@@ -28,6 +28,7 @@ Every **example** is delivered end-to-end ─ from schema design to fully operat
             - [**3.1.1.3 Debugging the `timer-driven` PTFs (`SessionTimeoutDetector`, `AbandonedCartDetector`, `PerEventFollowUp`, and `SlaMonitor`)**](#3113-debugging-the-timer-driven-ptfs-sessiontimeoutdetector-abandonedcartdetector-pereventfollowup-and-slamonitor)
         + [**3.1.2 Scalars**](#312-scalars)
             - [**3.1.2.1 Debugging the Celsius to Fahrenheit Scalar UDF (`CelsiusToFahrenheit`)**](#3121-debugging-the-celsius-to-fahrenheit-scalar-udf-celsiustofahrenheit)
+            - [**3.1.2.2 Debugging the Fahrenheit to Celsius Scalar UDF (`FahrenheitToCelsius`)**](#3122-debugging-the-fahrenheit-to-celsius-scalar-udf-fahrenheittocelsius)
 + [**4.0 Resources**](#40-resources)
     - [**4.1 Confluent for Kubernetes (CfK)**](#41-confluent-for-kubernetes-cfk)
     - [**4.2 Confluent Platform for Apache Flink**](#42-confluent-platform-for-apache-flink)
@@ -387,9 +388,9 @@ Your IDE will pause at your breakpoint. Inspect `input`, `state`, and local vari
 
 ##### **3.1.2.1 Debugging the Celsius to Fahrenheit Scalar UDF (`CelsiusToFahrenheit`)**
 
-> For the full deep-dive, see [Remote Debugging `row-driven` Flink PTF UDFs](examples/scalar_udf/java/remote-debugging-flink-scalar_udf.md) (§1.2).
+> For the full deep-dive, see [Remote Debugging Flink Scalar UDFs](examples/scalar_udf/java/remote-debugging-flink-scalar_udf.md) (§1.2).
 >
-> The `CelsiusToFahrenheit` ships in the **same uber JAR** as `FahrenheitToCelsius`, so the same `make deploy-cc-scalar-udf` command and the same **"Attach to Flink TaskManager (scalar udf)"** debug configuration are used. The deploy script registers both Scalars as separate Flink SQL functions and starts an `INSERT INTO celsius_to_fahrenheit (sensor_id, celsius_temperature, fahrenheit_temperature) SELECT sensor_id, celsius_temperature, celsius_to_fahrenheit(celsius_temperature) FROM celsius_reading;` pipeline alongside the user-event enrichment job.
+> The `CelsiusToFahrenheit` ships in the **same uber JAR** as `FahrenheitToCelsius`, so the same `make deploy-cc-scalar-udf` command and the same **"Attach to Flink TaskManager (scalar udf)"** debug configuration are used. The deploy script registers both Scalars as separate Flink SQL functions and starts an `INSERT INTO celsius_to_fahrenheit (sensor_id, celsius_temperature, fahrenheit_temperature) SELECT sensor_id, celsius_temperature, celsius_to_fahrenheit(celsius_temperature) FROM celsius_reading;` pipeline alongside the scalar udf examples job.
 
 Deploy first: `make deploy-cc-scalar-udf`, and then:
 
@@ -431,6 +432,55 @@ The sample record has two items in its comma-separated list, so `eval()` will ru
 <summary>4. Debug</summary>
 
 Your IDE will pause at your breakpoint. Inspect `input`, then return the calculated Fahrenheit value.
+
+</details>
+
+##### **3.1.2.2 Debugging the Fahrenheit to Celsius Scalar UDF (`FahrenheitToCelsius`)**
+
+> For the full deep-dive, see [Remote Debugging Flink Scalar UDFs](examples/scalar_udf/java/remote-debugging-flink-scalar_udf.md) (§1.3).
+>
+> The `FahrenheitToCelsius` ships in the **same uber JAR** as `CelsiusToFahrenheit`, so the same `make deploy-cc-scalar-udf` command and the same **"Attach to Flink TaskManager (scalar udf)"** debug configuration are used. The deploy script registers both Scalars as separate Flink SQL functions and starts an `INSERT INTO fahrenheit_to_celsius (sensor_id, fahrenheit_temperature, celsius_temperature) SELECT sensor_id, fahrenheit_temperature, fahrenheit_to_celsius(fahrenheit_temperature) FROM fahrenheit_reading;` pipeline alongside the scalar udf examples job.
+
+Deploy first: `make deploy-cc-scalar-udf`, and then:
+
+<details>
+<summary>1. Set a breakpoint</summary>
+
+Open [`FahrenheitToCelsius.java`](examples/scalar_udf/java/app/src/main/java/scalar_udf/FahrenheitToCelsius.java) and click in the gutter at the first line of the `eval()` method:
+
+```java
+if (celsius == null)
+```
+
+</details>
+
+<details>
+<summary>2. Attach the debugger</summary>
+
+Use the **same** **"Attach to Flink TaskManager (scalar udf)"** configuration as `FahrenheitToCelsius` — both Scalars run in the same TaskManager pod from the same JAR. The IDE will [automatically port-forward](scripts/port-forward-taskmanager.sh) to the TaskManager pod and attach to the JDWP agent on port `5005`.
+
+- **VS Code:** Open the **Run and Debug** panel (⇧⌘D), select the configuration from the dropdown, and press **F5**
+- **IntelliJ IDEA:** Open the **Run/Debug Configurations** dropdown (top-right toolbar), select the configuration, and click **Debug** (⌃D / Shift+F9)
+
+</details>
+
+<details>
+<summary>3. Send a test order</summary>
+
+Produce a single JSON order to the `orders` topic to trigger the breakpoint:
+
+```bash
+make produce-fahrenheit-reading-record
+```
+
+The sample record has two items in its comma-separated list, so `eval()` will run once and emit a Celsius value.
+
+</details>
+
+<details>
+<summary>4. Debug</summary>
+
+Your IDE will pause at your breakpoint. Inspect `input`, then return the calculated Celsius value.
 
 </details>
 
