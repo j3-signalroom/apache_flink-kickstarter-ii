@@ -9,6 +9,7 @@ version = "1.0.0-SNAPSHOT"
 val flinkVersion = "2.1.0"
 val kafkaConnectorVersion = "4.0.1-2.0"
 val log4jVersion = "2.24.3"
+val awsSdkVersion = "2.30.38"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -34,6 +35,18 @@ dependencies {
     compileOnly("org.apache.logging.log4j:log4j-slf4j2-impl:$log4jVersion")
     compileOnly("org.apache.logging.log4j:log4j-api:$log4jVersion")
     compileOnly("org.apache.logging.log4j:log4j-core:$log4jVersion")
+
+    // AWS Secrets Manager (shaded into the UDF JAR so the cp-flink runtime
+    // doesn't need to ship it). Pulled in only by UDFs that opt-in via the
+    // *_SECRET_ID env var; the env-var-only fallback path does not touch it.
+    // Exclude the default netty HTTP client to keep the shaded JAR small —
+    // url-connection-client (JDK HttpURLConnection) is plenty for occasional
+    // synchronous GetSecretValue calls in UDF open().
+    implementation("software.amazon.awssdk:secretsmanager:$awsSdkVersion") {
+        exclude(group = "software.amazon.awssdk", module = "netty-nio-client")
+        exclude(group = "software.amazon.awssdk", module = "apache-client")
+    }
+    implementation("software.amazon.awssdk:url-connection-client:$awsSdkVersion")
 
     // Test
     testImplementation("org.apache.flink:flink-table-planner-loader:$flinkVersion")

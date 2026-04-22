@@ -15,6 +15,10 @@ dependencies = [
     # parity test to catch any pattern-set changes.
     "presidio-analyzer==2.2.359",
     "presidio-anonymizer==2.2.362",
+    # boto3 is used by pseudonymize_pii and tokenize_pan when their
+    # *_SECRET_ID env vars point at AWS Secrets Manager (or LocalStack via
+    # AWS_ENDPOINT_URL_SECRETSMANAGER). Unused if only the env-var fallback is set.
+    "boto3>=1.36,<2",
 ]
 
 # apache-beam (a transitive dep of apache-flink) ships a legacy setup.py that

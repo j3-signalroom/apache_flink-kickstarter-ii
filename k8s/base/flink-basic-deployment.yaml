@@ -54,6 +54,26 @@ spec:
               mountPath: /flink-lib
       containers:
         - name: flink-main-container
+          env:
+            # AWS Secrets Manager via LocalStack (in-cluster). Used by UDFs
+            # that opt in via *_SECRET_ID env vars (e.g. PII_PSEUDONYM_SECRET_ID,
+            # PAN_TOKENIZATION_SECRET_ID below). Dummy creds because LocalStack
+            # ignores them; AWS SDKs only require that they be non-empty.
+            - name: AWS_REGION
+              value: us-east-1
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: AWS_ENDPOINT_URL_SECRETSMANAGER
+              value: http://localstack.localstack.svc.cluster.local:4566
+            - name: AWS_ACCESS_KEY_ID
+              value: test
+            - name: AWS_SECRET_ACCESS_KEY
+              value: test
+            # Per-UDF secret-id pointers. Seeded by the localstack-seed Job.
+            - name: PII_PSEUDONYM_SECRET_ID
+              value: flink/scalar-udf/pii-pseudonym
+            - name: PAN_TOKENIZATION_SECRET_ID
+              value: flink/scalar-udf/pan-tokenization
           volumeMounts:
             - name: flink-lib
               mountPath: /opt/flink/lib

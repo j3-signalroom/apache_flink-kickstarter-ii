@@ -27,6 +27,14 @@ MINIKUBE_CPUS       ?= 6
 MINIKUBE_MEM        ?= 20480
 MINIKUBE_DISK       ?= 50g
 
+# LocalStack (in-cluster AWS Secrets Manager simulator) — see Phase 6b targets.
+# Override the secret values to use deterministic keys (rotation testing,
+# cross-environment reproducibility); leave unset to auto-generate random hex.
+LOCALSTACK_NAMESPACE        ?= localstack
+LOCALSTACK_MANIFEST_DIR     ?= k8s/base/localstack
+PII_PSEUDONYM_SECRET        ?=
+PAN_TOKENIZATION_SECRET     ?=
+
 # Detect the Minikube node architecture (fallback to host architecture if kubectl is unavailable).
 MINIKUBE_NODE_ARCH  := $(shell kubectl get node -o jsonpath='{.items[0].status.nodeInfo.architecture}' 2>/dev/null || uname -m)
 ifeq ($(MINIKUBE_NODE_ARCH),x86_64)
@@ -458,6 +466,78 @@ flink-delete: ## Delete the Flink session cluster (safe to run even if cluster i
 		|| echo "→ Flink cluster not found or API server unreachable, skipping."
 
 # ------------------------------------------------------------------------------
+# Phase 6b: LocalStack (in-cluster AWS Secrets Manager simulator)
+#
+# Provides AWS Secrets Manager to UDFs (e.g. PseudonymizePii, TokenizePan) via a
+# ClusterIP service at http://localstack.localstack.svc.cluster.local:4566.
+# The Flink pod template in $(FLINK_MANIFEST) sets AWS_ENDPOINT_URL_SECRETSMANAGER
+# and the per-UDF *_SECRET_ID env vars so the resolver hits LocalStack.
+# ------------------------------------------------------------------------------
+.PHONY: localstack-deploy
+localstack-deploy: ## Apply LocalStack manifests and wait for the pod to become ready
+	@echo "→ Applying LocalStack manifests from $(LOCALSTACK_MANIFEST_DIR)..."
+	kubectl apply -f $(LOCALSTACK_MANIFEST_DIR)/namespace.yaml
+	kubectl apply -f $(LOCALSTACK_MANIFEST_DIR)/deployment.yaml
+	kubectl apply -f $(LOCALSTACK_MANIFEST_DIR)/service.yaml
+	@echo "→ Waiting for LocalStack pod to be ready (timeout 3m)..."
+	kubectl wait --for=condition=ready pod -l app=localstack -n $(LOCALSTACK_NAMESPACE) --timeout=180s
+	@echo "✔ LocalStack is running at http://localstack.$(LOCALSTACK_NAMESPACE).svc.cluster.local:4566"
+
+.PHONY: localstack-seed
+localstack-seed: ## Seed Secrets Manager (auto-generates 32-byte hex unless PII_PSEUDONYM_SECRET / PAN_TOKENIZATION_SECRET are set)
+	@PII_VAL="$(PII_PSEUDONYM_SECRET)"; \
+	if [ -z "$$PII_VAL" ]; then \
+		PII_VAL=$$(openssl rand -hex 32); \
+		echo "→ Generated random PII_PSEUDONYM_SECRET (override with: make localstack-seed PII_PSEUDONYM_SECRET=...)"; \
+	else \
+		echo "→ Using supplied PII_PSEUDONYM_SECRET."; \
+	fi; \
+	PAN_VAL="$(PAN_TOKENIZATION_SECRET)"; \
+	if [ -z "$$PAN_VAL" ]; then \
+		PAN_VAL=$$(openssl rand -hex 32); \
+		echo "→ Generated random PAN_TOKENIZATION_SECRET (override with: make localstack-seed PAN_TOKENIZATION_SECRET=...)"; \
+	else \
+		echo "→ Using supplied PAN_TOKENIZATION_SECRET."; \
+	fi; \
+	echo "→ Creating/updating localstack-seed-values Secret in namespace '$(LOCALSTACK_NAMESPACE)'..."; \
+	kubectl create secret generic localstack-seed-values \
+		--namespace=$(LOCALSTACK_NAMESPACE) \
+		--from-literal=pii-pseudonym="$$PII_VAL" \
+		--from-literal=pan-tokenization="$$PAN_VAL" \
+		--dry-run=client -o yaml | kubectl apply -f -
+	@echo "→ Removing previous seed Job (if any) so it can be re-run..."
+	@kubectl delete job localstack-seed -n $(LOCALSTACK_NAMESPACE) --ignore-not-found=true
+	@echo "→ Applying seed Job..."
+	kubectl apply -f $(LOCALSTACK_MANIFEST_DIR)/seed-job.yaml
+	@echo "→ Waiting for seed Job to complete (timeout 3m)..."
+	kubectl wait --for=condition=complete job/localstack-seed -n $(LOCALSTACK_NAMESPACE) --timeout=180s
+	@echo "✔ Secrets Manager seeded. View Job logs with:"
+	@echo "    kubectl logs -n $(LOCALSTACK_NAMESPACE) job/localstack-seed"
+
+.PHONY: localstack-up
+localstack-up: localstack-deploy localstack-seed ## Deploy LocalStack and seed Secrets Manager (composite of localstack-deploy + localstack-seed)
+	@echo "✔ LocalStack ready and seeded."
+
+.PHONY: localstack-status
+localstack-status: ## Show LocalStack pod status and list seeded secrets
+	@echo "--- LocalStack pod ---"
+	@kubectl get pods -n $(LOCALSTACK_NAMESPACE) -l app=localstack 2>/dev/null || echo "(no localstack pod found)"
+	@echo ""
+	@echo "--- Seeded secrets ---"
+	@kubectl exec -n $(LOCALSTACK_NAMESPACE) deploy/localstack -- \
+		awslocal secretsmanager list-secrets --query 'SecretList[].Name' --output text 2>/dev/null \
+		|| echo "(localstack not reachable — is it deployed?)"
+
+.PHONY: localstack-down
+localstack-down: ## Delete the LocalStack deployment, service, seed Job, seed values Secret, and namespace
+	@kubectl delete -f $(LOCALSTACK_MANIFEST_DIR)/seed-job.yaml --ignore-not-found=true 2>/dev/null || true
+	@kubectl delete secret localstack-seed-values -n $(LOCALSTACK_NAMESPACE) --ignore-not-found=true 2>/dev/null || true
+	@kubectl delete -f $(LOCALSTACK_MANIFEST_DIR)/service.yaml --ignore-not-found=true 2>/dev/null || true
+	@kubectl delete -f $(LOCALSTACK_MANIFEST_DIR)/deployment.yaml --ignore-not-found=true 2>/dev/null || true
+	@kubectl delete -f $(LOCALSTACK_MANIFEST_DIR)/namespace.yaml --ignore-not-found=true 2>/dev/null || true
+	@echo "✔ LocalStack removed."
+
+# ------------------------------------------------------------------------------
 # Phase 7: Confluent Manager for Apache Flink (CMF)
 # ------------------------------------------------------------------------------
 .PHONY: cmf-install
@@ -785,7 +865,7 @@ cp-core-up: operator-install cp-deploy ## Phases 3-5: install CFK Operator → d
 	@echo "  Once all pods are Running, run 'make c3-open' to access Control Center."
 
 .PHONY: flink-up
-flink-up: flink-cert-manager flink-operator-install cmf-install cmf-env-create flink-deploy ## Install cert-manager → Confluent Flink Operator → CMF → Flink cluster
+flink-up: flink-cert-manager flink-operator-install cmf-install cmf-env-create localstack-up flink-deploy ## Install cert-manager → Confluent Flink Operator → CMF → LocalStack (seeded) → Flink cluster
 	@echo ""
 	@echo "✔ Flink + CMF are deploying."
 	@echo "  Run 'make flink-status' to check Flink pod status."
@@ -797,8 +877,8 @@ cp-down: cp-delete operator-uninstall ## Tear down CP and Operator (keeps Miniku
 	@echo "✔ Confluent Platform and Operator removed."
 
 .PHONY: flink-down
-flink-down: flink-delete cmf-uninstall flink-operator-uninstall cert-manager-uninstall ## Tear down Flink cluster, CMF, operator, and cert-manager
-	@echo "✔ Flink cluster, CMF, operator, and cert-manager removed."
+flink-down: flink-delete cmf-uninstall flink-operator-uninstall cert-manager-uninstall localstack-down ## Tear down Flink cluster, CMF, operator, cert-manager, and LocalStack
+	@echo "✔ Flink cluster, CMF, operator, cert-manager, and LocalStack removed."
 
 .PHONY: cert-manager-uninstall
 cert-manager-uninstall: ## Uninstall cert-manager (safe to run even if not installed)
