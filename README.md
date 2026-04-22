@@ -190,7 +190,7 @@ Scalars are used when your use case requires a transformation that is awkward or
 <details>
 <summary><strong><em>Where do you use Scalars?</em></strong></summary>
 
-You write Scalar UDFs as Java classes, deploy them as JAR files, and run them within your Flink SQL queries.
+You have a choice of writing Scalar UDFs in Java by creating Java classes and deploying them as JAR files, or in Python by creating Python classes and deploying them as Zip files, then running them within your Flink SQL queries.
 
 </details>
 
