@@ -89,7 +89,7 @@ import org.apache.flink.table.functions.ScalarFunction;
 public class TokenizePan extends ScalarFunction {
 
     private static final String ALGORITHM = "HmacSHA256";
-    private static final String SECRET_ENV_VAR = "PAN_TOKENIZATION_SECRET";
+    private static final String SECRET_BASE_NAME = "PAN_TOKENIZATION";
 
     private static final int BIN_LENGTH = 6;
     private static final int LAST4_LENGTH = 4;
@@ -109,15 +109,7 @@ public class TokenizePan extends ScalarFunction {
      */
     @Override
     public void open(FunctionContext context) throws Exception {
-        String secret = System.getenv(SECRET_ENV_VAR);
-        if (secret == null || secret.isEmpty()) {
-            throw new IllegalStateException(
-                "Environment variable " + SECRET_ENV_VAR + " must be set to a non-empty secret "
-                + "so that TokenizePan can compute keyed hashes. Treat this value as a "
-                + "production secret: losing it breaks re-tokenization of existing records, "
-                + "leaking it breaks the irreversibility guarantee and puts the Flink "
-                + "pipeline back into PCI DSS scope.");
-        }
+        String secret = SecretsResolver.resolve(SECRET_BASE_NAME);
         mac = Mac.getInstance(ALGORITHM);
         mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), ALGORITHM));
     }

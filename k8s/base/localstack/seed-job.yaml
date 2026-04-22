@@ -1,0 +1,74 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: localstack-seed
+  namespace: localstack
+  labels:
+    app: localstack
+    component: seed
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app: localstack
+        component: seed
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: seed
+          image: amazon/aws-cli:latest
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              value: test
+            - name: AWS_SECRET_ACCESS_KEY
+              value: test
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: AWS_ENDPOINT_URL
+              value: http://localstack.localstack.svc.cluster.local:4566
+            - name: PII_PSEUDONYM_SECRET_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: localstack-seed-values
+                  key: pii-pseudonym
+            - name: PAN_TOKENIZATION_SECRET_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: localstack-seed-values
+                  key: pan-tokenization
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              echo "Waiting for LocalStack to accept Secrets Manager requests..."
+              for i in $(seq 1 60); do
+                if aws --no-cli-pager secretsmanager list-secrets >/dev/null 2>&1; then
+                  echo "LocalStack is ready."
+                  break
+                fi
+                sleep 2
+              done
+
+              upsert_secret() {
+                name="$1"
+                value="$2"
+                if aws --no-cli-pager secretsmanager describe-secret --secret-id "$name" >/dev/null 2>&1; then
+                  echo "Updating existing secret: $name"
+                  aws --no-cli-pager secretsmanager put-secret-value \
+                    --secret-id "$name" --secret-string "$value" >/dev/null
+                else
+                  echo "Creating secret: $name"
+                  aws --no-cli-pager secretsmanager create-secret \
+                    --name "$name" --secret-string "$value" >/dev/null
+                fi
+              }
+
+              upsert_secret "flink/scalar-udf/pii-pseudonym" "$PII_PSEUDONYM_SECRET_VALUE"
+              upsert_secret "flink/scalar-udf/pan-tokenization" "$PAN_TOKENIZATION_SECRET_VALUE"
+
+              echo "Seed complete. Listing secrets:"
+              aws --no-cli-pager secretsmanager list-secrets \
+                --query 'SecretList[].Name' --output text

@@ -4,15 +4,16 @@ Copyright (c) 2026 Jeffrey Jonathan Jennings
 Author: Jeffrey Jonathan Jennings (J3)
 """
 import hmac
-import os
 from hashlib import sha256
 from typing import Optional
 
 from pyflink.table.udf import ScalarFunction, udf
 from pyflink.table import DataTypes
 
+import secrets_resolver
 
-_SECRET_ENV_VAR = "PII_PSEUDONYM_SECRET"
+
+_SECRET_BASE_NAME = "PII_PSEUDONYM"
 _NAMESPACE_SEPARATOR = b"\x1f"
 
 
@@ -38,10 +39,12 @@ class PseudonymizePii(ScalarFunction):
       that happened to share string bytes, which would otherwise let an
       analyst link records across columns they should not be able to link.
 
-    The secret is loaded once per Python worker from the
-    ``PII_PSEUDONYM_SECRET`` environment variable inside :meth:`open`, so it
-    never has to be passed at the SQL call site and never appears in query
-    plans or logs.
+    The secret is loaded once per Python worker inside :meth:`open` via
+    :mod:`secrets_resolver`: when ``PII_PSEUDONYM_SECRET_ID`` is set the value
+    is fetched from AWS Secrets Manager (honoring
+    ``AWS_ENDPOINT_URL_SECRETSMANAGER`` so LocalStack works in dev),
+    otherwise the resolver falls back to the ``PII_PSEUDONYM_SECRET`` env var.
+    Either way the secret never appears in query plans or logs.
 
     SQL invocation::
 
@@ -69,15 +72,7 @@ class PseudonymizePii(ScalarFunction):
         makes it the right place to load secrets and build objects that are
         expensive to construct but cheap to reuse.
         """
-        secret = os.environ.get(_SECRET_ENV_VAR)
-        if not secret:
-            raise RuntimeError(
-                f"Environment variable {_SECRET_ENV_VAR} must be set to a non-empty "
-                "secret so that PseudonymizePii can compute keyed hashes. Treat this "
-                "value as a production secret: losing it breaks re-pseudonymization, "
-                "leaking it breaks the irreversibility guarantee."
-            )
-        self._secret = secret.encode("utf-8")
+        self._secret = secrets_resolver.resolve(_SECRET_BASE_NAME).encode("utf-8")
 
     def eval(self, namespace: str, value: Optional[str]) -> Optional[str]:
         """

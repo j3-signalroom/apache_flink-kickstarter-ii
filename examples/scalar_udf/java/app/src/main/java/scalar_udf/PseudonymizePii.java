@@ -38,9 +38,12 @@ import org.apache.flink.table.functions.ScalarFunction;
  *       analyst link records across columns they should not be able to link.</li>
  * </ul>
  *
- * <p>The secret is loaded once per task slot from the {@code PII_PSEUDONYM_SECRET}
- * environment variable inside {@link #open(FunctionContext)}, so it never has
- * to be passed at the SQL call site and never appears in query plans or logs.
+ * <p>The secret is loaded once per task slot inside {@link #open(FunctionContext)} via
+ * {@link SecretsResolver}: when {@code PII_PSEUDONYM_SECRET_ID} is set the value is
+ * fetched from AWS Secrets Manager (honoring {@code AWS_ENDPOINT_URL_SECRETSMANAGER} so
+ * LocalStack works in dev), otherwise the resolver falls back to the
+ * {@code PII_PSEUDONYM_SECRET} env var. Either way the secret never appears in query
+ * plans or logs.
  *
  * <h3>SQL invocation</h3>
  * <pre>{@code
@@ -57,7 +60,7 @@ import org.apache.flink.table.functions.ScalarFunction;
 public class PseudonymizePii extends ScalarFunction {
 
     private static final String ALGORITHM = "HmacSHA256";
-    private static final String SECRET_ENV_VAR = "PII_PSEUDONYM_SECRET";
+    private static final String SECRET_BASE_NAME = "PII_PSEUDONYM";
     private static final byte NAMESPACE_SEPARATOR = 0x1F;
 
     private transient Mac mac;
@@ -73,14 +76,7 @@ public class PseudonymizePii extends ScalarFunction {
      */
     @Override
     public void open(FunctionContext context) throws Exception {
-        String secret = System.getenv(SECRET_ENV_VAR);
-        if (secret == null || secret.isEmpty()) {
-            throw new IllegalStateException(
-                "Environment variable " + SECRET_ENV_VAR + " must be set to a non-empty secret "
-                + "so that PseudonymizePii can compute keyed hashes. Treat this value as a "
-                + "production secret: losing it breaks re-pseudonymization, leaking it "
-                + "breaks the irreversibility guarantee.");
-        }
+        String secret = SecretsResolver.resolve(SECRET_BASE_NAME);
         mac = Mac.getInstance(ALGORITHM);
         mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), ALGORITHM));
     }

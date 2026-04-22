@@ -4,15 +4,16 @@ Copyright (c) 2026 Jeffrey Jonathan Jennings
 Author: Jeffrey Jonathan Jennings (J3)
 """
 import hmac
-import os
 from hashlib import sha256
 from typing import Optional
 
 from pyflink.table.udf import ScalarFunction, udf
 from pyflink.table import DataTypes
 
+import secrets_resolver
 
-_SECRET_ENV_VAR = "PAN_TOKENIZATION_SECRET"
+
+_SECRET_BASE_NAME = "PAN_TOKENIZATION"
 _BIN_LENGTH = 6
 _LAST4_LENGTH = 4
 _MIN_PAN_LENGTH = 13
@@ -102,16 +103,7 @@ class TokenizePan(ScalarFunction):
         which makes it the right place to load secrets and build objects
         that are expensive to construct but cheap to reuse.
         """
-        secret = os.environ.get(_SECRET_ENV_VAR)
-        if not secret:
-            raise RuntimeError(
-                f"Environment variable {_SECRET_ENV_VAR} must be set to a non-empty "
-                "secret so that TokenizePan can compute keyed hashes. Treat this "
-                "value as a production secret: losing it breaks re-tokenization of "
-                "existing records, leaking it breaks the irreversibility guarantee "
-                "and puts the Flink pipeline back into PCI DSS scope."
-            )
-        self._secret = secret.encode("utf-8")
+        self._secret = secrets_resolver.resolve(_SECRET_BASE_NAME).encode("utf-8")
 
     def eval(self, raw_pan: Optional[str]) -> Optional[str]:
         """
