@@ -92,7 +92,7 @@ Make sure the following tools are installed on your local machine:
 * **[Java JDK 21](https://www.oracle.com/java/technologies/javase/jdk21-archive-downloads.html)** — for building Java based Flink UDFs
 * **[Gradle 9.4.1 or higher](https://gradle.org/install/)** — for building Java based Flink UDFs
 * **[Python 3.11](https://www.python.org/downloads/)** — for building Python based Flink UDFs
-* **[uv](https://docs.astral.sh/uv/)** — for managing Python environments and dependencies
+* **[uv](https://docs.astral.sh/uv/)** — for building Python based Flink UDFs
 * **[Terraform CLI version 1.13.0 or higher](https://developer.hashicorp.com/terraform/install)** — for deploying infrastructure to Confluent Cloud
 
 ---
