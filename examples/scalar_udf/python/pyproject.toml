@@ -1,7 +1,7 @@
 [project]
 name = "scalar-udf-python"
 version = "0.20.00.000"
-description = "PyFlink scalar UDF examples"
+description = "PyFlink Scalar UDF Examples"
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "apache-flink==2.1.1",
