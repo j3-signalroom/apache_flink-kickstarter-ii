@@ -40,7 +40,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
 # Now copy the UDF source files (changes here don't bust the venv cache).
-COPY celsius_to_fahrenheit.py fahrenheit_to_celsius.py ./
+# The build context is examples/scalar_udf/python — UDF .py files live under src/.
+COPY src/celsius_to_fahrenheit.py src/fahrenheit_to_celsius.py ./
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 2 — final image: cp-flink + Python 3.11 + prebuilt venv + UDF files.
