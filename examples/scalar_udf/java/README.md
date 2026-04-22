@@ -1,6 +1,6 @@
 # Java Scalar User-Defined Function (UDF) examples ─ a tour from unit conversion to cross-system keying
 
-> This package contains **seven scalar UDFs** that together illustrate the simplest and oldest category of Flink user-defined function: a pure, row-at-a-time function callable from SQL. They are grouped into three themes ─ starting with the tiniest possible "Hello, UDF" and building up to the scalar UDFs you are most likely to reach for in a real streaming pipeline.
+> This package contains **eight scalar UDFs** that together illustrate the simplest and oldest category of Flink user-defined function: a pure, row-at-a-time function callable from SQL. They are grouped into three themes ─ starting with the tiniest possible "Hello, UDF" and building up to the scalar UDFs you are most likely to reach for in a real streaming pipeline.
 >
 > **Unit-conversion primer** (the "Hello, UDF" pair)
 > - **`CelsiusToFahrenheit`** ─ converts a `DOUBLE` Celsius temperature to its Fahrenheit equivalent using `F = (C × 9/5) + 32`.
@@ -10,12 +10,13 @@
 > - **`PseudonymizePii`** ─ deterministic, keyed HMAC-SHA256 pseudonym of a PII value, domain-separated by a namespace argument. Use to hide raw PII from analysts while keeping joins and aggregations stable.
 > - **`ResolveIdentity`** ─ un-keyed SHA-256 of a normalized identity signal (email trimmed+lower-cased, phone digits-only, etc.). Use as a portable join key across systems that don't share a secret.
 > - **`TokenizePan`** ─ tokenizes a Primary Account Number (PAN) into a `{BIN}{HMAC-hex middle}{last-4}` shape, taking the Flink pipeline out of PCI DSS scope while preserving BIN and last-4 for fraud analytics and reconciliation.
+> - **`MaskPiiRegex`** ─ detects PII entities (emails, IPs, US SSNs, credit cards with Luhn) in free-form text using Microsoft Presidio's regex recognizers and masks every match with `****`. A sibling PyFlink UDF of the same name produces byte-identical output for the same input.
 >
 > **Pipeline-reliability UDFs**
 > - **`DedupKey`** ─ computes a stable idempotency key from an `ARRAY<STRING>` of business-level fields using length-prefix-encoded SHA-256. Use in a `ROW_NUMBER() OVER (PARTITION BY dedup_key …)` pattern to defang at-least-once duplicates.
 > - **`ConsistentBucket`** ─ maps a key to `[0, num_buckets)` using Kafka's 32-bit `murmur2` ─ the exact same hash Kafka's default partitioner uses, so Flink output co-partitions with Kafka producers, database shards, and cache slots.
 >
-> All seven UDFs ship in the same uber JAR and are registered as separate Flink functions from that one artifact. Together they demonstrate how the [`ScalarFunction`](https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/functions/udfs/#scalar-functions) API lets you write plain, deterministic Java methods that Flink can call once per input row and inline directly into the query plan ─ no state, no timers, no operator graph surgery required.
+> All eight UDFs ship in the same uber JAR and are registered as separate Flink functions from that one artifact. Together they demonstrate how the [`ScalarFunction`](https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/functions/udfs/#scalar-functions) API lets you write plain, deterministic Java methods that Flink can call once per input row and inline directly into the query plan ─ no state, no timers, no operator graph surgery required.
 
 **Table of Contents**
 <!-- toc -->
@@ -31,6 +32,7 @@
     + [**3.1 `PseudonymizePii` ─ irreversibly hide PII while keeping joins intact**](#31-pseudonymizepii--irreversibly-hide-pii-while-keeping-joins-intact)
     + [**3.2 `ResolveIdentity` ─ portable canonical key across partner systems**](#32-resolveidentity--portable-canonical-key-across-partner-systems)
     + [**3.3 `TokenizePan` ─ drop a Flink pipeline out of PCI DSS scope**](#33-tokenizepan--drop-a-flink-pipeline-out-of-pci-dss-scope)
+    + [**3.4 `MaskPiiRegex` ─ Presidio-backed free-form text PII masking with Java/Python parity**](#34-maskpiiregex--presidio-backed-free-form-text-pii-masking-with-javapython-parity)
 + [**4.0 Pipeline-reliability UDFs**](#40-pipeline-reliability-udfs)
     + [**4.1 `DedupKey` ─ stable idempotency key for at-least-once streams**](#41-dedupkey--stable-idempotency-key-for-at-least-once-streams)
     + [**4.2 `ConsistentBucket` ─ Kafka-compatible murmur2 partitioning**](#42-consistentbucket--kafka-compatible-murmur2-partitioning)
@@ -168,7 +170,7 @@ Kafka (fahrenheit_reading)
 
 ## **3.0 PII & data-governance UDFs**
 
-These three UDFs cover the overlapping but distinct problems of **hiding PII from analysts**, **resolving the same real-world entity across systems**, and **reducing the PCI DSS blast radius of a Flink pipeline handling payment cards**. They share a common implementation shape ─ they all `open()` once to set up a cryptographic primitive, then hash per row ─ but the design choices differ deliberately:
+These four UDFs cover the overlapping but distinct problems of **hiding PII from analysts**, **resolving the same real-world entity across systems**, **reducing the PCI DSS blast radius of a Flink pipeline handling payment cards**, and **masking detected PII entities in free-form text**. The first three share a common implementation shape ─ they `open()` once to set up a cryptographic primitive, then hash per row; the fourth (`MaskPiiRegex`) sits apart because it detects PII spans rather than transforming a known-type column, and it destroys the original value rather than producing a joinable surrogate. The design choices differ deliberately across all four:
 
 - Secret or no secret?
 - Per-call normalization or raw bytes?
@@ -244,6 +246,30 @@ SELECT order_id,
 ```
 
 > **What this is *not*:** a vault-backed reversible tokenizer. If you need to charge the card later, use your PSP's network-token API ─ those require network I/O and state, which belong in an async function or an external service, not in a scalar UDF. And using this UDF is a necessary-but-not-sufficient PCI step; you still need secret custody, rotation, and network segmentation between the "has PAN" and "has only tokens" zones.
+
+### **3.4 `MaskPiiRegex` ─ Presidio-backed free-form text PII masking with Java/Python parity**
+
+Detects PII entities in free-form text using Microsoft [Presidio](https://github.com/microsoft/presidio)'s regex recognizers and replaces every matched span with `****`. Supported entity types are **email, IP address (v4/v6), US SSN, and credit card** ─ with Luhn checksum for cards and Presidio's invalidate-result logic for SSNs (rejects all-same-digit, mismatched delimiters, zero groups, known sample SSNs like `123456789` / `078051120`).
+
+Unlike the other PII UDFs in this package, `MaskPiiRegex` is **destructive** (you cannot recover the original value from a masked output) and **non-deterministic across JOINs** (every match becomes the same `****`, so the output is not joinable on the PII column). Use it when the pipeline input is genuinely free-form text ─ chat messages, support tickets, unstructured notes ─ where you don't know which columns contain which entity types. For structured per-column PII handling, `PseudonymizePii` is the right tool.
+
+Source: [`MaskPiiRegex.java`](app/src/main/java/scalar_udf/MaskPiiRegex.java) (Java) and [`mask_pii_regex.py`](../python/mask_pii_regex.py) (Python).
+
+```sql
+CREATE FUNCTION mask_pii_regex
+    AS 'scalar_udf.MaskPiiRegex'
+    LANGUAGE JAVA;
+
+SELECT ticket_id,
+       mask_pii_regex(customer_message) AS redacted_message
+  FROM support_tickets;
+```
+
+> **Java/Python parity is enforced by cross-checking** the Java implementation against the Python sibling (which calls Presidio's regex recognizers directly with no spaCy NER). The test ports Presidio's patterns from `presidio-analyzer==2.2.359` verbatim into Java, applies an identical longest-match-wins greedy overlap resolution in both languages, and runs a shared fixture set through both. All 16 fixtures produce byte-identical output; if you bump the Presidio version, re-run the parity check because Presidio's pattern set occasionally changes between releases.
+
+> **Deliberately out of scope for version 1:** URL detection (Presidio's ~5 KB TLD alternation would add complexity without pedagogical value), phone detection (requires `libphonenumber` on both sides to agree), IBAN, crypto wallets, and country-specific identifiers other than US SSN. These are natural extensions if a real deployment needs them ─ add a new recognizer on each side with matching patterns + matching validation, run the parity test, commit both.
+
+> **If you need NER** (names, organizations, locations that can't be regex-matched), use Presidio's `AnalyzerEngine` with `SpacyNlpEngine` in a Python-only UDF. There is no equivalent NER stack for the JVM that produces matching output, so that path gives up Java parity by design ─ document it clearly in your data-lineage metadata so downstream consumers know which rows are Java-reproducible and which aren't.
 
 ---
 
@@ -325,7 +351,7 @@ SELECT *
 
 ## **5.0 Comparing the UDFs in this package**
 
-All seven classes share the same scalar-UDF contract; the table below tabulates where their design choices diverge.
+All eight classes share the same scalar-UDF contract; the table below tabulates where their design choices diverge.
 
 | UDF | Input signature | Output | Keyed? | Reversible? | Primary purpose |
 |---|---|---|---|---|---|
@@ -334,6 +360,7 @@ All seven classes share the same scalar-UDF contract; the table below tabulates 
 | `PseudonymizePii` | `(String namespace, String value)` | `String` (64-char hex) | ✅ HMAC-SHA256 | ❌ | Irreversibly hide PII from analysts |
 | `ResolveIdentity` | `(String type, String raw)` | `String` (64-char hex) | ❌ SHA-256 | ❌ (but brute-forceable in small domains) | Portable join key across partner systems |
 | `TokenizePan` | `String pan` | `String` (PAN-shaped) | ✅ HMAC-SHA256 | ❌ | PCI DSS scope reduction |
+| `MaskPiiRegex` | `String text` | `String` (with `****` replacements) | ❌ regex + Luhn / SSN validation | ❌ (destructive mask) | Free-form text PII masking (Presidio-backed) |
 | `DedupKey` | `String[] fields` | `String` (64-char hex) | ❌ SHA-256 | ❌ | Idempotency key for at-least-once streams |
 | `ConsistentBucket` | `(String key, Integer numBuckets)` | `Integer` `[0, N)` | ❌ murmur2 | ❌ | Kafka-compatible partitioning / bucketing |
 
@@ -349,7 +376,7 @@ Cross-cutting contract every UDF honors:
 | Rows in → rows out | 1 → 1 |
 | SQL registration | `CREATE FUNCTION <name> AS 'scalar_udf.<ClassName>' USING JAR …` |
 
-All seven UDFs compile into the same uber JAR (`app-1.0.0-SNAPSHOT.jar`, produced by `./gradlew shadowJar`) and are registered as separate Flink functions via `CREATE FUNCTION ... USING JAR` statements that point to the same artifact but reference different fully-qualified class names.
+All eight UDFs compile into the same uber JAR (`app-1.0.0-SNAPSHOT.jar`, produced by `./gradlew shadowJar`) and are registered as separate Flink functions via `CREATE FUNCTION ... USING JAR` statements that point to the same artifact but reference different fully-qualified class names.
 
 ---
 
@@ -361,3 +388,5 @@ All seven UDFs compile into the same uber JAR (`app-1.0.0-SNAPSHOT.jar`, produce
 - [PCI DSS v4.0 §3.3 ─ PAN Display](https://www.pcisecuritystandards.org/document_library/) (rationale for the first-6 + last-4 format in `TokenizePan`)
 - [ITU-T E.164 ─ The international public telecommunication numbering plan](https://www.itu.int/rec/T-REC-E.164) (phone normalization contract for `ResolveIdentity`)
 - [Apache Kafka `Utils.murmur2`](https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/utils/Utils.java) (reference implementation `ConsistentBucket` ports verbatim)
+- [Microsoft Presidio ─ predefined regex recognizers](https://github.com/microsoft/presidio/tree/main/presidio-analyzer/presidio_analyzer/predefined_recognizers) (pattern source for `MaskPiiRegex`)
+- [Confluent's `flink-udf-python-examples/pii_mask`](https://github.com/confluentinc/flink-udf-python-examples/blob/main/pii_mask/src/pii_mask/__init__.py) (Presidio + spaCy reference example this repo's `MaskPiiRegex` deliberately diverges from for Java/Python parity)
