@@ -226,8 +226,7 @@ public class MaskPiiRegex extends ScalarFunction {
         for (int i = 0; i < matched.length(); i++) {
             char c = matched.charAt(i);
             if (c >= '0' && c <= '9') digits.append(c);
-            else if (c == '-' || c == ' ') continue;
-            else return false;
+            else if (c != '-' && c != ' ') return false;
         }
         String d = digits.toString();
         if (d.length() < 2) return false;
@@ -254,10 +253,12 @@ public class MaskPiiRegex extends ScalarFunction {
         // 1. Mismatched delimiters (e.g., "123-45 6789")
         int dots = 0, dashes = 0, spaces = 0;
         for (int i = 0; i < matched.length(); i++) {
-            char c = matched.charAt(i);
-            if (c == '.') dots++;
-            else if (c == '-') dashes++;
-            else if (c == ' ') spaces++;
+            switch (matched.charAt(i)) {
+                case '.' -> dots++;
+                case '-' -> dashes++;
+                case ' ' -> spaces++;
+                default -> { /* not a separator */ }
+            }
         }
         int distinct = (dots > 0 ? 1 : 0) + (dashes > 0 ? 1 : 0) + (spaces > 0 ? 1 : 0);
         if (distinct > 1) return true;
