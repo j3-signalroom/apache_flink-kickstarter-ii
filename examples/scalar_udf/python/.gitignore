@@ -1,0 +1,4 @@
+# uv / build output
+.venv/
+dist/
+src/*.egg-info/
