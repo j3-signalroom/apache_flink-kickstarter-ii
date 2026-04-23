@@ -1,7 +1,7 @@
 [project]
 name = "scalar-udf-python"
 version = "0.20.00.000"
-description = "PyFlink Scalar UDF Examples (CP deployment path)"
+description = "PyFlink Scalar UDF Examples (shared by the CP venv install and the CC sdist-in-ZIP artifact)"
 requires-python = ">=3.11,<3.12"
 dependencies = [
     "apache-flink==2.1.1",

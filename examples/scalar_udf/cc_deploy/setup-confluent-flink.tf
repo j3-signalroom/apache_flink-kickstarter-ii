@@ -726,15 +726,16 @@ resource "confluent_flink_statement" "fahrenheit_to_celsius_sink" {
 # ============================================================================
 
 # Upload the Python sdist (wrapped in a ZIP per CC's artifact format) as a
-# Flink artifact. Built by `make build-scalar-udf-cc-python` from
-# examples/scalar_udf/python_cc/, which pins apache-flink==2.0.0 as CC requires.
+# Flink artifact. Built by `make build-scalar-udf-cc-python` directly from
+# examples/scalar_udf/python/ — the same package the CP path uses, since
+# CC's Python worker runtime accepts apache-flink==2.1.1.
 resource "confluent_flink_artifact" "scalar_udf_python" {
   display_name     = "ptf-udf-python"
   content_format   = "ZIP"
   runtime_language = "Python"
   cloud            = local.cloud
   region           = local.aws_region
-  artifact_file    = "${path.module}/../python_cc/dist/scalar_udf_cc-0.1.0.zip"
+  artifact_file    = "${path.module}/../python/dist/scalar_udf_python-0.20.0.0.zip"
 
   environment {
     id = confluent_environment.scalar_udf.id

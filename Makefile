@@ -787,21 +787,21 @@ build-scalar-udf: ## Build the scalar_udf uber JAR (requires Gradle)
 
 .PHONY: build-scalar-udf-cc-python
 build-scalar-udf-cc-python: ## Build the scalar_udf CC Python artifact (sdist wrapped in a ZIP, requires uv)
-	@echo "→ Building scalar_udf CC Python artifact..."
+	@echo "→ Building scalar_udf CC Python artifact from examples/scalar_udf/python/..."
 	@command -v uv >/dev/null 2>&1 || { echo "uv not installed — see https://docs.astral.sh/uv/"; exit 1; }
 	@command -v zip >/dev/null 2>&1 || { echo "zip not installed"; exit 1; }
-	@# Single source of truth: copy the whole scalar_udf package from
-	@# examples/scalar_udf/python/src/scalar_udf/ into the CC build tree. The
-	@# .gitignore in python_cc/ keeps src/ uncommitted so CP and CC can't drift.
-	rm -rf examples/scalar_udf/python_cc/src examples/scalar_udf/python_cc/dist
-	mkdir -p examples/scalar_udf/python_cc/src
-	cp -R examples/scalar_udf/python/src/scalar_udf examples/scalar_udf/python_cc/src/scalar_udf
-	@# `uv build --sdist` produces dist/scalar_udf_cc-<ver>.tar.gz (project name
-	@# is scalar-udf-cc, package inside is scalar_udf). CC expects the tarball
-	@# wrapped in a ZIP with `runtime_language = "Python"`.
-	cd examples/scalar_udf/python_cc && uv build --sdist
-	cd examples/scalar_udf/python_cc && zip -FS -j dist/scalar_udf_cc-0.1.0.zip dist/scalar_udf_cc-0.1.0.tar.gz
-	@echo "✔ ZIP built: $$(ls examples/scalar_udf/python_cc/dist/*.zip | head -1)"
+	@# CC supports apache-flink 2.1.1 (matching python/pyproject.toml), so the
+	@# CC sdist builds directly from python/ — no separate project needed. The
+	@# setuptools config there scopes packages.find to scalar_udf*, so run_job.py
+	@# at src/ top level stays out of the sdist.
+	rm -rf examples/scalar_udf/python/dist examples/scalar_udf/python/src/scalar_udf_python.egg-info
+	cd examples/scalar_udf/python && uv build --sdist
+	@# CC expects the sdist tarball wrapped in a ZIP with runtime_language = "Python".
+	@# Use a glob so the command keeps working when the version in pyproject.toml changes.
+	cd examples/scalar_udf/python/dist && sdist_tarball=$$(ls scalar_udf_python-*.tar.gz | head -1) && \
+		zip_name=$${sdist_tarball%.tar.gz}.zip && \
+		zip -FS -j $$zip_name $$sdist_tarball
+	@echo "✔ ZIP built: $$(ls examples/scalar_udf/python/dist/*.zip | head -1)"
 
 .PHONY: deploy-cc-scalar-udf
 deploy-cc-scalar-udf: build-scalar-udf build-scalar-udf-cc-python ## Build and deploy the scalar_udf JAR + Python ZIP to Confluent Cloud (CONFLUENT_API_KEY, CONFLUENT_API_SECRET required; CC Python UDFs are Early Access)
