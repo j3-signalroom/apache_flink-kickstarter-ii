@@ -41,8 +41,9 @@
 + [**6.0 Project layout, build, and deployment**](#60-project-layout-build-and-deployment)
     + [**6.1 Source layout (`src/`) and `uv` reproducibility**](#61-source-layout-src-and-uv-reproducibility)
     + [**6.2 Local run via `uv run` (no cluster)**](#62-local-run-via-uv-run-no-cluster)
-    + [**6.3 Cluster deployment via the `cp-flink-python` image**](#63-cluster-deployment-via-the-cp-flink-python-image)
-    + [**6.4 Secrets resolution: AWS Secrets Manager (LocalStack) with env-var fallback**](#64-secrets-resolution-aws-secrets-manager-localstack-with-env-var-fallback)
+    + [**6.3 CP cluster deployment via the `cp-flink-python` image**](#63-cp-cluster-deployment-via-the-cp-flink-python-image)
+    + [**6.4 CC cluster deployment via a `confluent_flink_artifact` ZIP**](#64-cc-cluster-deployment-via-a-confluent_flink_artifact-zip)
+    + [**6.5 Secrets resolution: AWS Secrets Manager (LocalStack) with env-var fallback**](#65-secrets-resolution-aws-secrets-manager-localstack-with-env-var-fallback)
 + [**7.0 Resources**](#70-resources)
 <!-- tocstop -->
 
@@ -452,7 +453,7 @@ uv run --directory src python run_job.py
 
 Use the same pattern to script ad-hoc tests of any other UDF in the package. Because PyFlink's mini-cluster runs the Python worker in-process, you can drop a `breakpoint()` into an `eval` method and step through it with `pdb`.
 
-### **6.3 Cluster deployment via the `cp-flink-python` image**
+### **6.3 CP cluster deployment via the `cp-flink-python` image**
 
 For minikube/Confluent Platform deployment, the [`cp-flink-python`](../../../k8s/images/cp-flink-python/Dockerfile) image extends `confluentinc/cp-flink:2.1.1-cp1-java21` with Python 3.11, the prebuilt venv, and the `scalar_udf` package installed into `/opt/flink/python-udf/.venv/lib/python3.11/site-packages/` on every JM/TM pod. The image is built into the minikube docker daemon (no registry push needed):
 
@@ -466,7 +467,25 @@ The deploy script ([`scripts/deploy-cp-scalar-udf-python.sh`](../../../scripts/d
 
 > **The Dockerfile installs the whole `scalar_udf` package** via `uv pip install --no-deps .`, so every UDF in [`src/scalar_udf/`](src/scalar_udf/) is deployable end-to-end without touching the image build. To register a new UDF on a running cluster, just add `DROP FUNCTION` / `CREATE FUNCTION` / `INSERT INTO` blocks for it to [`scripts/deploy-cp-scalar-udf-python.sh`](../../../scripts/deploy-cp-scalar-udf-python.sh) — no Dockerfile edits required.
 
-### **6.4 Secrets resolution: AWS Secrets Manager (LocalStack) with env-var fallback**
+### **6.4 CC cluster deployment via a `confluent_flink_artifact` ZIP**
+
+Confluent Cloud for Apache Flink accepts Python UDFs as a **source distribution wrapped in a ZIP**, uploaded via a `confluent_flink_artifact` resource with `content_format = "ZIP"` and `runtime_language = "Python"`. Because CC's Python worker runtime accepts `apache-flink==2.1.1` (the same version the CP session cluster runs), the CC artifact is built directly from **this same [`pyproject.toml`](pyproject.toml)** — no separate CC-only project is needed.
+
+```bash
+make build-scalar-udf-cc-python    # produces examples/scalar_udf/python/dist/scalar_udf_python-<ver>.zip
+# or, end-to-end:
+make deploy-cc-scalar-udf CONFLUENT_API_KEY=<key> CONFLUENT_API_SECRET=<secret>
+```
+
+Behind the `build-scalar-udf-cc-python` target:
+
+1. `uv build --sdist` runs against this directory, producing `dist/scalar_udf_python-<ver>.tar.gz` via setuptools. The `[tool.setuptools.packages.find]` scope of `include = ["scalar_udf*"]` deliberately excludes `src/run_job.py` so the local-only driver doesn't end up in the uploaded artifact.
+2. `zip -FS -j` wraps the tarball into `dist/scalar_udf_python-<ver>.zip`.
+3. The [cc_deploy terraform](../cc_deploy/setup-confluent-flink.tf) uploads the ZIP via `confluent_flink_artifact`, and `CREATE FUNCTION … AS 'scalar_udf.celsius_to_fahrenheit.celsius_to_fahrenheit' LANGUAGE PYTHON USING JAR 'confluent-artifact://…'` resolves the same `<package>.<module>.<symbol>` path as the CP deploy — **one source tree, one set of function addresses, two artifact formats**.
+
+> ⚠️ **Confluent Cloud Python UDFs are an [Early Access](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html) feature** at the time of writing. Your CC organization must have Python UDFs enabled for `terraform apply` on the `confluent_flink_artifact` with `runtime_language = "Python"` to succeed. See [`../cc_deploy/README.md`](../cc_deploy/README.md) §3.0 for the workaround when the feature isn't enabled.
+
+### **6.5 Secrets resolution: AWS Secrets Manager (LocalStack) with env-var fallback**
 
 `pseudonymize_pii` and `tokenize_pan` resolve their HMAC keys through [`src/scalar_udf/secrets_resolver.py`](src/scalar_udf/secrets_resolver.py), which checks two sources in order:
 

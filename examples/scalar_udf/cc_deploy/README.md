@@ -1,6 +1,6 @@
 # Confluent Cloud Terraform Deployment ─ Scalar UDFs
 
-> This example deploys **two scalar UDFs** ─ **`celsius_to_fahrenheit`** (converts Celsius to Fahrenheit) and **`fahrenheit_to_celsius`** (converts Fahrenheit to Celsius) ─ to **Confluent Cloud** using Terraform. The same two UDFs are provided in **two parallel implementations**: a **Java** path (uber JAR built from [examples/scalar_udf/java/](../java/)) and a **Python / PyFlink** path (sdist built from [examples/scalar_udf/python_cc/](../python_cc/), a CC-specific package pinned to `apache-flink==2.0.0`). Both paths share the same CC environment, Kafka cluster, Flink compute pool, service account, and source topics; only the sink topics, UDF names, and artifact format differ. All four streaming Flink statements (Java × 2, Python × 2) run side-by-side in the same compute pool, declared as `confluent_flink_statement` resources.
+> This example deploys **two scalar UDFs** ─ **`celsius_to_fahrenheit`** (converts Celsius to Fahrenheit) and **`fahrenheit_to_celsius`** (converts Fahrenheit to Celsius) ─ to **Confluent Cloud** using Terraform. The same two UDFs are provided in **two parallel implementations**: a **Java** path (uber JAR built from [examples/scalar_udf/java/](../java/)) and a **Python / PyFlink** path (sdist-in-ZIP built from [examples/scalar_udf/python/](../python/) — the same package the CP path uses, since CC's Python worker accepts `apache-flink==2.1.1`). Both paths share the same CC environment, Kafka cluster, Flink compute pool, service account, and source topics; only the sink topics, UDF names, and artifact format differ. All four streaming Flink statements (Java × 2, Python × 2) run side-by-side in the same compute pool, declared as `confluent_flink_statement` resources.
 >
 > ⚠️ **Confluent Cloud Python UDFs are an [Early Access](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html) feature.** Your Confluent Cloud organization must have Python UDFs enabled for the Python path of this example to succeed. The Java path works on every CC org regardless.
 
@@ -32,7 +32,7 @@
 | Where it runs | Confluent Cloud | Confluent Cloud | CP on Minikube | CP on Minikube |
 | How SQL is submitted | `confluent_flink_statement` Terraform resources | `confluent_flink_statement` Terraform resources | `sql-client.sh -f` on the JobManager pod | `sql-client.sh -f` on the JobManager pod |
 | UDF delivery | `confluent_flink_artifact` (JAR) uploaded to CC | `confluent_flink_artifact` (ZIP wrapping an sdist tarball) uploaded to CC | `kubectl exec` copies uber JAR onto Flink pods | Custom `cp-flink-python` image with venv + `.py` files baked in |
-| Language / runtime | Java 21 | Python 3.11 + `apache-flink==2.0.0` (CC's pinned runtime) | Java 21 | Python 3.11 + `apache-flink==2.1.1` (matched to CP image) |
+| Language / runtime | Java 21 | Python 3.11 + `apache-flink==2.1.1` (same package as the CP path) | Java 21 | Python 3.11 + `apache-flink==2.1.1` (matched to CP image) |
 | Entry point | `make deploy-cc-scalar-udf` (builds both JAR + ZIP, terraform apply) | `make deploy-cc-scalar-udf` (builds both JAR + ZIP, terraform apply) | `make deploy-cp-scalar-udf` | `make deploy-cp-scalar-udf-python` |
 | Requires code build | ✅ Java + Gradle (UDF JAR) | ✅ `uv build --sdist` + `zip` (UDF ZIP) | ✅ Java + Gradle (UDF JAR) | ✅ Docker build of `cp-flink-python` image |
 | Statement lifecycle | Managed by Terraform state | Managed by Terraform state | Managed by Flink session cluster | Managed by Flink session cluster |
@@ -69,12 +69,11 @@ Built from [examples/scalar_udf/java/](../java/) via `./gradlew clean shadowJar`
 
 #### **2.2.2 Python ─ sdist-in-ZIP via `confluent_flink_artifact`**
 
-Confluent Cloud's Python UDF runtime expects a **source distribution (`.tar.gz`) wrapped in a `.zip`**, with `runtime_language = "Python"` and `content_format = "ZIP"` on the `confluent_flink_artifact` resource. The ZIP is built from a thin CC-only wrapper, [examples/scalar_udf/python_cc/](../python_cc/):
+Confluent Cloud's Python UDF runtime expects a **source distribution (`.tar.gz`) wrapped in a `.zip`**, with `runtime_language = "Python"` and `content_format = "ZIP"` on the `confluent_flink_artifact` resource. Because CC's Python worker accepts `apache-flink==2.1.1` (the same version the CP session cluster runs), the ZIP is built **directly from the shared [examples/scalar_udf/python/](../python/) project** — no CC-specific wrapper directory is needed:
 
-1. **Separate pyproject** ─ `python_cc/pyproject.toml` (project name `scalar-udf-cc`) pins `apache-flink==2.0.0` (the exact version CC's Python worker runtime currently supports), independent of the main [examples/scalar_udf/python/](../python/) project (name `scalar-udf-python`) which pins `apache-flink==2.1.1` to match the Confluent Platform session cluster. This isolation is deliberate: the two runtimes ship different Flink Python wheels that cannot be satisfied by a single lock.
-2. **Single source of truth** ─ the `scalar_udf/` package tree lives at [examples/scalar_udf/python/src/scalar_udf/](../python/src/scalar_udf/) and is copied wholesale into `python_cc/src/scalar_udf/` by the `build-scalar-udf-cc-python` Makefile target at build time. `python_cc/.gitignore` excludes `src/`, so nothing under `python_cc/src/` is committed — the CP and CC paths cannot drift.
-3. **Package layout** ─ because both CP and CC ship the same `scalar_udf` package (only the apache-flink pin and packaging format differ), the CC `CREATE FUNCTION … AS 'scalar_udf.celsius_to_fahrenheit.celsius_to_fahrenheit'` address is byte-identical to the CP one. On CP the package is installed into the baked `.venv/`; on CC it is installed from the sdist at artifact-upload time into the Python worker.
-4. **Packaging step** ─ `uv build --sdist` produces `dist/scalar_udf_cc-0.1.0.tar.gz` (the tarball's name follows the project's distribution name `scalar-udf-cc`, normalized with underscores per PEP 503; the *package* inside the tarball is `scalar_udf`). `zip -FS -j` then wraps the tarball into `dist/scalar_udf_cc-0.1.0.zip`, which is what Terraform uploads.
+1. **Single project, single source of truth** ─ [python/pyproject.toml](../python/pyproject.toml) (project name `scalar-udf-python`) is the only Python project in the repo. Its `[tool.setuptools.packages.find]` config scopes the sdist to `scalar_udf*`, so the `src/run_job.py` local driver at the top of `src/` is excluded from the uploaded artifact.
+2. **Byte-identical CREATE FUNCTION address on CC and CP** ─ the package inside the sdist is `scalar_udf`, so `CREATE FUNCTION … AS 'scalar_udf.celsius_to_fahrenheit.celsius_to_fahrenheit'` resolves the same way on both platforms. On CP the package is installed into the baked `.venv/` by the [cp-flink-python Dockerfile](../../../k8s/images/cp-flink-python/Dockerfile); on CC it is installed from the sdist at artifact-upload time into the Python worker.
+3. **Packaging step** ─ `uv build --sdist` (run in `examples/scalar_udf/python/`) produces `dist/scalar_udf_python-0.20.0.0.tar.gz`. A `zip -FS -j` call then wraps that tarball into `dist/scalar_udf_python-0.20.0.0.zip`, which is what Terraform uploads. The sdist declares `apache-flink==2.1.1`, `presidio-analyzer`, `presidio-anonymizer`, and `boto3` as runtime deps; CC's Python worker resolves them against its constraint-deps (grpcio/protobuf pins from the Beam SDK harness) cleanly because none of those four packages touch the gRPC stack.
 
 Both Python `CREATE FUNCTION` statements (`celsius_to_fahrenheit_py` and `fahrenheit_to_celsius_py`) reference the **same** Python artifact ID ─ identical to how the Java path reuses the uber-JAR artifact across both Java `CREATE FUNCTION`s.
 
@@ -160,7 +159,7 @@ Once deployment completes, Terraform generates a visual **resource graph** at `e
 Python UDFs on Confluent Cloud for Apache Flink are currently an **Early Access Program feature** per the [Confluent docs](https://docs.confluent.io/cloud/current/flink/how-to-guides/create-udf.html). Concretely, this means:
 
 - Your CC organization must have the Python UDF feature **explicitly enabled** before `confluent_flink_artifact` with `runtime_language = "Python"` or `CREATE FUNCTION … LANGUAGE PYTHON` will succeed. If it is not enabled, the terraform apply will fail partway through with a permission or "unsupported" error on the Python-related resources (the Java resources and the topics will already exist by then).
-- The Python worker runtime on CC supports **Python 3.10–3.11 only**, and **exactly `apache-flink==2.0.0`**. Both pins are enforced in [`python_cc/pyproject.toml`](../python_cc/pyproject.toml); bumping them requires first checking the CC Python UDF release notes.
+- The Python worker runtime on CC accepts `apache-flink==2.1.1` (the same version the CP path uses); Python 3.10 and 3.11 are both supported. The pins that control the artifact build live in [`python/pyproject.toml`](../python/pyproject.toml); bumping them requires first checking the CC Python UDF release notes.
 - The feature is intended for evaluation / testing, not production workloads. Do not assume GA-level SLAs for the Python path until Confluent promotes the feature.
 
 If you need to deploy only the Java path on an org without Python UDF Early Access enabled, the cleanest workaround is to comment out the `confluent_flink_artifact "scalar_udf_python"` resource and the six Python `confluent_flink_statement` resources at the bottom of [`setup-confluent-flink.tf`](setup-confluent-flink.tf) before `terraform apply`.
@@ -178,7 +177,7 @@ If you need to deploy only the Java path on an org without Python UDF Early Acce
 
 ```bash
 make build-scalar-udf              # Java uber JAR from examples/scalar_udf/java/
-make build-scalar-udf-cc-python    # Python sdist-in-ZIP from examples/scalar_udf/python_cc/
+make build-scalar-udf-cc-python    # Python sdist-in-ZIP from examples/scalar_udf/python/
 ```
 
 The `deploy-cc-scalar-udf` target below builds both automatically; the standalone targets are only needed if you want to inspect the artifacts before deploying.
@@ -202,7 +201,7 @@ Behind the scenes this runs:
 | Step | What it does |
 |---|---|
 | 1 | `./gradlew clean shadowJar` ─ builds the Java UDF uber JAR from `examples/scalar_udf/java/` |
-| 2 | `uv build --sdist && zip -FS -j` ─ builds the Python sdist and wraps it in a ZIP (`examples/scalar_udf/python_cc/dist/scalar_udf_cc-0.1.0.zip`) |
+| 2 | `uv build --sdist && zip -FS -j` ─ builds the Python sdist and wraps it in a ZIP (`examples/scalar_udf/python/dist/scalar_udf_python-0.20.0.0.zip`) |
 | 3 | `terraform init` ─ initializes the Terraform working directory |
 | 4 | `terraform apply -auto-approve` ─ provisions all CC infrastructure, uploads both artifacts, and submits all Flink SQL statements |
 | 5 | Generates a Terraform visualization at `examples/scalar_udf/cc_deploy/terraform.png` |
