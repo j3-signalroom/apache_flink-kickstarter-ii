@@ -7,7 +7,7 @@
 > - **`fahrenheit_to_celsius`** ─ converts a `DOUBLE` Fahrenheit temperature to its Celsius equivalent using `C = (F − 32) × 5/9`.
 >
 > **PII & data-governance UDFs**
-> - **`pseudonymize_pii`** ─ deterministic, keyed HMAC-SHA256 pseudonym of a PII value, domain-separated by a namespace argument. The keying material is loaded from AWS Secrets Manager (with a plain-env fallback) via the shared [`secrets_resolver`](src/secrets_resolver.py) helper.
+> - **`pseudonymize_pii`** ─ deterministic, keyed HMAC-SHA256 pseudonym of a PII value, domain-separated by a namespace argument. The keying material is loaded from AWS Secrets Manager (with a plain-env fallback) via the shared [`secrets_resolver`](src/scalar_udf/secrets_resolver.py) helper.
 > - **`resolve_identity`** ─ un-keyed SHA-256 of a normalized identity signal (email trimmed+lower-cased, phone digits-only, etc.). Use as a portable join key across systems that don't share a secret.
 > - **`tokenize_pan`** ─ tokenizes a Primary Account Number (PAN) into a `{BIN}{HMAC-hex middle}{last-4}` shape, taking the Flink pipeline out of PCI DSS scope while preserving BIN and last-4 for fraud analytics and reconciliation. Same Secrets Manager / env-var resolution as `pseudonymize_pii`.
 > - **`mask_pii_regex`** ─ detects PII entities (emails, IPs, US SSNs, credit cards with Luhn) in free-form text using Microsoft Presidio's regex recognizers and masks every match with `****`. The sibling Java UDF `MaskPiiRegex` produces byte-identical output for the same input — the parity test is what keeps both implementations honest.
@@ -96,7 +96,7 @@ At SQL level you register the wrapped symbol as a function:
 
 ```sql
 CREATE FUNCTION celsius_to_fahrenheit
-    AS 'celsius_to_fahrenheit.celsius_to_fahrenheit'
+    AS 'scalar_udf.celsius_to_fahrenheit.celsius_to_fahrenheit'
     LANGUAGE PYTHON;
 ```
 
@@ -109,7 +109,7 @@ SELECT sensor_id,
   FROM celsius_reading;
 ```
 
-The `'<module>.<symbol>'` form is the key Python-vs-Java difference. In Java you reference a class (`scalar_udf.CelsiusToFahrenheit`); in Python you reference the **wrapped `udf(...)` symbol inside a module** because that wrapper carries the type information PyFlink needs.
+The `'<package>.<module>.<symbol>'` form is the key Python-vs-Java difference. In Java you reference a class (`scalar_udf.CelsiusToFahrenheit`); in Python you reference the **wrapped `udf(...)` symbol inside a module inside the `scalar_udf` package** because that wrapper carries the type information PyFlink needs.
 
 ### **1.3 Determinism and `NULL` handling**
 
@@ -121,7 +121,7 @@ Every `eval` method also preserves SQL `NULL` semantics by returning `None` when
 
 Several UDFs in this package (`pseudonymize_pii`, `tokenize_pan`, `resolve_identity`, `dedup_key`) override [`open(function_context)`](https://nightlies.apache.org/flink/flink-docs-stable/api/python/reference/pyflink.table/api/pyflink.table.udf.UserDefinedFunction.open.html) to set up state once per Python worker before the first `eval()` call. This is where you:
 
-- Load secrets via [`secrets_resolver.resolve(...)`](src/secrets_resolver.py) (AWS Secrets Manager via `*_SECRET_ID` env var, or plain `*_SECRET` env var fallback ─ used by `pseudonymize_pii` and `tokenize_pan`).
+- Load secrets via [`secrets_resolver.resolve(...)`](src/scalar_udf/secrets_resolver.py) (AWS Secrets Manager via `*_SECRET_ID` env var, or plain `*_SECRET` env var fallback ─ used by `pseudonymize_pii` and `tokenize_pan`).
 - Pre-construct cryptographic primitives (cached `bytes` keys for `hmac.new(...)`, reusable `hashlib.sha256()` factories) so each row doesn't pay the allocation cost.
 
 Because PyFlink runs each parallel instance in a single-threaded Python worker, cached state on `self` does not need synchronization ─ it is effectively process-confined.
@@ -145,7 +145,7 @@ These two UDFs are the teaching case: the smallest possible shape of a scalar UD
 
 Applies the standard formula `F = (C × 9/5) + 32`. The wrapped `udf(...)` declares `DataTypes.DOUBLE()` for both the input and the result, so the function plugs in wherever a `DOUBLE` column flows.
 
-Source: [`src/celsius_to_fahrenheit.py`](src/celsius_to_fahrenheit.py)
+Source: [`src/scalar_udf/celsius_to_fahrenheit.py`](src/scalar_udf/celsius_to_fahrenheit.py)
 
 ```
 Kafka (celsius_reading)
@@ -170,7 +170,7 @@ The UDF is invoked once per input row; no keying, no state, no windowing. Becaus
 
 Applies the inverse formula `C = (F − 32) × 5/9`. Same signature (`Double → Double`), same determinism and `NULL`-preservation guarantees as `celsius_to_fahrenheit` ─ only the arithmetic differs.
 
-Source: [`src/fahrenheit_to_celsius.py`](src/fahrenheit_to_celsius.py)
+Source: [`src/scalar_udf/fahrenheit_to_celsius.py`](src/scalar_udf/fahrenheit_to_celsius.py)
 
 ```
 Kafka (fahrenheit_reading)
@@ -203,15 +203,15 @@ The comparison table in [§5](#50-comparing-the-udfs-in-this-package) tabulates 
 
 ### **3.1 `pseudonymize_pii` ─ irreversibly hide PII while keeping joins intact**
 
-Computes `HMAC-SHA256(secret, namespace || 0x1F || value)` and returns a 64-character hex string. The HMAC key is loaded in `open()` via [`secrets_resolver.resolve("PII_PSEUDONYM")`](src/secrets_resolver.py): when `PII_PSEUDONYM_SECRET_ID` is set, the value is fetched from AWS Secrets Manager (honoring `AWS_ENDPOINT_URL_SECRETSMANAGER` so LocalStack works in dev); otherwise the resolver falls back to the `PII_PSEUDONYM_SECRET` env var. Either way the raw PII cannot be recovered by anyone who sees only the pseudonymized column ─ yet the same PII always pseudonymizes to the same value, so `JOIN`, `GROUP BY`, and `COUNT DISTINCT` continue to work on the pseudonymized column.
+Computes `HMAC-SHA256(secret, namespace || 0x1F || value)` and returns a 64-character hex string. The HMAC key is loaded in `open()` via [`secrets_resolver.resolve("PII_PSEUDONYM")`](src/scalar_udf/secrets_resolver.py): when `PII_PSEUDONYM_SECRET_ID` is set, the value is fetched from AWS Secrets Manager (honoring `AWS_ENDPOINT_URL_SECRETSMANAGER` so LocalStack works in dev); otherwise the resolver falls back to the `PII_PSEUDONYM_SECRET` env var. Either way the raw PII cannot be recovered by anyone who sees only the pseudonymized column ─ yet the same PII always pseudonymizes to the same value, so `JOIN`, `GROUP BY`, and `COUNT DISTINCT` continue to work on the pseudonymized column.
 
 The mandatory `namespace` argument (`'email'`, `'phone'`, `'ssn'`) provides **domain separation**: the same underlying string pseudonymizes to a different value in each namespace, which prevents an analyst from silently linking an email column to a contact-email column in a different table.
 
-Source: [`src/pseudonymize_pii.py`](src/pseudonymize_pii.py)
+Source: [`src/scalar_udf/pseudonymize_pii.py`](src/scalar_udf/pseudonymize_pii.py)
 
 ```sql
 CREATE FUNCTION pseudonymize_pii
-    AS 'pseudonymize_pii.pseudonymize_pii'
+    AS 'scalar_udf.pseudonymize_pii.pseudonymize_pii'
     LANGUAGE PYTHON;
 
 SELECT pseudonymize_pii('email', email_address) AS email_pseudonym,
@@ -228,11 +228,11 @@ Computes `SHA-256(type || 0x1F || normalized_value)` after normalizing the value
 
 The tradeoff: un-keyed means the output is feasible to brute-force if the plaintext domain is small (e.g., all US phone numbers), so a resolved identity key is a **linkage identifier**, not a privacy pseudonym. When you need both portability *and* irreversibility, you need an out-of-band mechanism (e.g., a shared secret via [DCR / clean-room infrastructure](https://docs.snowflake.com/en/user-guide/cleanrooms/overview)).
 
-Source: [`src/resolve_identity.py`](src/resolve_identity.py)
+Source: [`src/scalar_udf/resolve_identity.py`](src/scalar_udf/resolve_identity.py)
 
 ```sql
 CREATE FUNCTION resolve_identity
-    AS 'resolve_identity.resolve_identity'
+    AS 'scalar_udf.resolve_identity.resolve_identity'
     LANGUAGE PYTHON;
 
 -- Join customers from the CRM to events from the web analytics system
@@ -254,11 +254,11 @@ Tokenizes a Primary Account Number (PAN) into a token of the form `{BIN (first 6
 
 This is **irreversible deterministic tokenization**: the token cannot be converted back to a PAN without the secret (no vault lookup is involved), so downstream systems that hold only tokens fall out of PCI DSS scope. PCI DSS §3.3 permits displaying first-6 and last-4; preserving them keeps fraud models, card-type analytics, and statement-reconciliation UIs working without any code change. The HMAC secret is sourced through the same `secrets_resolver` helper as `pseudonymize_pii` (uses `PAN_TOKENIZATION_SECRET_ID` / `PAN_TOKENIZATION_SECRET`).
 
-Source: [`src/tokenize_pan.py`](src/tokenize_pan.py)
+Source: [`src/scalar_udf/tokenize_pan.py`](src/scalar_udf/tokenize_pan.py)
 
 ```sql
 CREATE FUNCTION tokenize_pan
-    AS 'tokenize_pan.tokenize_pan'
+    AS 'scalar_udf.tokenize_pan.tokenize_pan'
     LANGUAGE PYTHON;
 
 SELECT order_id,
@@ -278,11 +278,11 @@ Unlike the other PII UDFs in this package, `mask_pii_regex` is **destructive** (
 
 This Python implementation is the **reference** for the cross-language parity contract: it instantiates Presidio's predefined recognizers directly (no `AnalyzerEngine`, no spaCy NER) so the runtime stack is just `presidio-analyzer` + `presidio-anonymizer`. The sibling `MaskPiiRegex.java` ports those exact patterns into Java and runs a shared fixture set through both implementations to confirm byte-identical output.
 
-Source: [`src/mask_pii_regex.py`](src/mask_pii_regex.py) (Python, reference) and [`MaskPiiRegex.java`](../java/app/src/main/java/scalar_udf/MaskPiiRegex.java) (Java, port).
+Source: [`src/scalar_udf/mask_pii_regex.py`](src/scalar_udf/mask_pii_regex.py) (Python, reference) and [`MaskPiiRegex.java`](../java/app/src/main/java/scalar_udf/MaskPiiRegex.java) (Java, port).
 
 ```sql
 CREATE FUNCTION mask_pii_regex
-    AS 'mask_pii_regex.mask_pii_regex'
+    AS 'scalar_udf.mask_pii_regex.mask_pii_regex'
     LANGUAGE PYTHON;
 
 SELECT ticket_id,
@@ -310,11 +310,11 @@ The non-obvious design choice is **length-prefix encoding** rather than a naive 
 
 `None` fields are encoded as the length marker `0xFFFFFFFF` with no following bytes, making them distinct from empty strings (`0x00000000` with zero following bytes). The UDF does *not* normalize values (no trim, no case-folding) ─ normalization would hide real bugs from source systems that emit the "same" event with different formatting. The byte-level encoding is identical to the Java `DedupKey` sibling so both implementations produce the same digest for the same input.
 
-Source: [`src/dedup_key.py`](src/dedup_key.py)
+Source: [`src/scalar_udf/dedup_key.py`](src/scalar_udf/dedup_key.py)
 
 ```sql
 CREATE FUNCTION dedup_key
-    AS 'dedup_key.dedup_key'
+    AS 'scalar_udf.dedup_key.dedup_key'
     LANGUAGE PYTHON;
 
 -- Dedupe by keeping the earliest occurrence of each idempotency key:
@@ -347,11 +347,11 @@ Maps a string key to a non-negative bucket index in `[0, num_buckets)` using the
 
 "Consistent" here means **cross-system consistent**, not "consistent hashing" in the Karger / Dynamo sense. There is no universal best partition hash ─ the right hash is the one that matches the system you need to co-partition with. For Kafka producers and most JVM streaming tools, that is `murmur2`.
 
-Source: [`src/consistent_bucket.py`](src/consistent_bucket.py)
+Source: [`src/scalar_udf/consistent_bucket.py`](src/scalar_udf/consistent_bucket.py)
 
 ```sql
 CREATE FUNCTION consistent_bucket
-    AS 'consistent_bucket.consistent_bucket'
+    AS 'scalar_udf.consistent_bucket.consistent_bucket'
     LANGUAGE PYTHON;
 
 -- Database shard routing: same customer always lands on the same shard
@@ -402,7 +402,7 @@ Cross-cutting contract every UDF honors:
 | Rows in → rows out | 1 → 1 |
 | SQL registration | `CREATE FUNCTION <name> AS '<module>.<symbol>' LANGUAGE PYTHON` |
 
-All eight UDFs ship as plain `.py` files under [`src/`](src/) and are registered as separate Flink functions via `CREATE FUNCTION ... LANGUAGE PYTHON` statements that point at the same in-pod directory but reference different `module.symbol` paths.
+All eight UDFs ship as modules inside the [`src/scalar_udf/`](src/scalar_udf/) Python package and are registered as separate Flink functions via `CREATE FUNCTION ... LANGUAGE PYTHON` statements that reference different `scalar_udf.<module>.<symbol>` paths through the same installed package.
 
 ---
 
@@ -414,23 +414,26 @@ This section covers the bits that have no direct analog in the Java sibling pack
 
 ```
 python/
-├── pyproject.toml          # PEP 621 project metadata + dependency declarations
-├── uv.lock                 # Pinned, hash-verified resolution of every transitive dep
-├── .python-version         # Pins CPython 3.11 for `uv` and the Docker build
-└── src/                    # All UDF modules + the shared secrets resolver
-    ├── celsius_to_fahrenheit.py
-    ├── fahrenheit_to_celsius.py
-    ├── pseudonymize_pii.py
-    ├── resolve_identity.py
-    ├── tokenize_pan.py
-    ├── mask_pii_regex.py
-    ├── dedup_key.py
-    ├── consistent_bucket.py
-    ├── secrets_resolver.py # Shared helper for Secrets Manager + env-var fallback
-    └── run_job.py          # Local-only driver; not deployed to the cluster
+├── pyproject.toml              # PEP 621 project metadata, dependency decls, setuptools build config
+├── uv.lock                     # Pinned, hash-verified resolution of every transitive dep
+├── .python-version             # Pins CPython 3.11 for `uv` and the Docker build
+└── src/
+    ├── run_job.py              # Local-only driver; lives outside the package so
+    │                           #   `python run_job.py` still puts src/ on sys.path
+    └── scalar_udf/             # The installable Python package (all UDFs + secrets helper)
+        ├── __init__.py         # Marks scalar_udf as a package
+        ├── celsius_to_fahrenheit.py
+        ├── fahrenheit_to_celsius.py
+        ├── pseudonymize_pii.py
+        ├── resolve_identity.py
+        ├── tokenize_pan.py
+        ├── mask_pii_regex.py
+        ├── dedup_key.py
+        ├── consistent_bucket.py
+        └── secrets_resolver.py # Shared helper for Secrets Manager + env-var fallback
 ```
 
-[`uv`](https://docs.astral.sh/uv/) manages the venv, locks transitive dependencies, and reproduces the same environment in CI, in the Dockerfile, and on a developer laptop. The `cp-flink-python` Docker image runs `uv sync --frozen --no-install-project --no-dev` against the committed `uv.lock`, so the cluster's Python runtime matches what `uv run` produces locally.
+[`uv`](https://docs.astral.sh/uv/) manages the venv, locks transitive dependencies, and reproduces the same environment in CI, in the Dockerfile, and on a developer laptop. The `cp-flink-python` Docker image runs `uv sync --frozen --no-install-project --no-dev` against the committed `uv.lock` to build the deps-only venv layer, then a second `uv pip install --no-deps .` installs the `scalar_udf` package itself into the venv — so at SQL time `import scalar_udf.<module>` resolves the same way it does under `uv run` locally.
 
 Notable pinned versions in [`pyproject.toml`](pyproject.toml):
 - `apache-flink==2.1.1` ─ matched to the Flink runtime version in the cluster.
@@ -451,7 +454,7 @@ Use the same pattern to script ad-hoc tests of any other UDF in the package. Bec
 
 ### **6.3 Cluster deployment via the `cp-flink-python` image**
 
-For minikube/Confluent Platform deployment, the [`cp-flink-python`](../../../k8s/images/cp-flink-python/Dockerfile) image extends `confluentinc/cp-flink:2.1.1-cp1-java21` with Python 3.11, the prebuilt venv, and the `src/` UDF files copied into `/opt/flink/python-udf/` on every JM/TM pod. The image is built into the minikube docker daemon (no registry push needed):
+For minikube/Confluent Platform deployment, the [`cp-flink-python`](../../../k8s/images/cp-flink-python/Dockerfile) image extends `confluentinc/cp-flink:2.1.1-cp1-java21` with Python 3.11, the prebuilt venv, and the `scalar_udf` package installed into `/opt/flink/python-udf/.venv/lib/python3.11/site-packages/` on every JM/TM pod. The image is built into the minikube docker daemon (no registry push needed):
 
 ```bash
 make build-cp-flink-python-image
@@ -459,13 +462,13 @@ FLINK_IMAGE=cp-flink-python:2.1.1-cp1-java21 make flink-deploy
 make deploy-cp-scalar-udf-python
 ```
 
-The deploy script ([`scripts/deploy-cp-scalar-udf-python.sh`](../../../scripts/deploy-cp-scalar-udf-python.sh)) sets the Flink session-level `python.executable` and `python.files` SQL options to point at the baked-in venv and UDF files, then runs the `CREATE FUNCTION ... LANGUAGE PYTHON` + `INSERT INTO` statements through the SQL Client.
+The deploy script ([`scripts/deploy-cp-scalar-udf-python.sh`](../../../scripts/deploy-cp-scalar-udf-python.sh)) sets the Flink session-level `python.executable` and `python.client.executable` SQL options to point at the baked-in venv's interpreter, then runs the `CREATE FUNCTION ... LANGUAGE PYTHON` + `INSERT INTO` statements through the SQL Client. There is **no `python.files` SET** — the `scalar_udf` package lives in the venv's site-packages, so PyFlink's Python worker resolves `import scalar_udf.<module>` via the normal import system.
 
-> **Today the Dockerfile only copies `src/celsius_to_fahrenheit.py` and `src/fahrenheit_to_celsius.py`** ─ the two "Hello, UDF" examples. To deploy any other UDF in this package end-to-end on the cluster, extend the `COPY` line in the Dockerfile and add the new file(s) to the `python.files` setting at the top of `deploy-cp-scalar-udf-python.sh`. Source-only UDFs in `src/` still pass the local `uv run` path.
+> **The Dockerfile installs the whole `scalar_udf` package** via `uv pip install --no-deps .`, so every UDF in [`src/scalar_udf/`](src/scalar_udf/) is deployable end-to-end without touching the image build. To register a new UDF on a running cluster, just add `DROP FUNCTION` / `CREATE FUNCTION` / `INSERT INTO` blocks for it to [`scripts/deploy-cp-scalar-udf-python.sh`](../../../scripts/deploy-cp-scalar-udf-python.sh) — no Dockerfile edits required.
 
 ### **6.4 Secrets resolution: AWS Secrets Manager (LocalStack) with env-var fallback**
 
-`pseudonymize_pii` and `tokenize_pan` resolve their HMAC keys through [`src/secrets_resolver.py`](src/secrets_resolver.py), which checks two sources in order:
+`pseudonymize_pii` and `tokenize_pan` resolve their HMAC keys through [`src/scalar_udf/secrets_resolver.py`](src/scalar_udf/secrets_resolver.py), which checks two sources in order:
 
 1. **`<BASE_NAME>_SECRET_ID` set** → fetch the secret via boto3, honoring `AWS_ENDPOINT_URL_SECRETSMANAGER` so a LocalStack endpoint can be used in dev/minikube without changing UDF code.
 2. **Otherwise** → fall back to the `<BASE_NAME>_SECRET` env var (keeps unit tests and outside-of-Kubernetes runs working).

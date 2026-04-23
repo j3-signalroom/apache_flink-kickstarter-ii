@@ -90,3 +90,30 @@ resource "confluent_kafka_topic" "fahrenheit_to_celsius" {
     secret = module.kafka_api_key_rotation.active_api_key.secret
   }
 }
+
+# Separate sink topics for the Python UDF path so the Java and Python pipelines
+# don't interleave rows in a shared topic — the two paths share the source
+# topics (celsius_reading, fahrenheit_reading) but each writes to its own sink.
+resource "confluent_kafka_topic" "celsius_to_fahrenheit_py" {
+  kafka_cluster {
+    id = confluent_kafka_cluster.scalar_udf.id
+  }
+  topic_name    = "celsius_to_fahrenheit_py"
+  rest_endpoint = confluent_kafka_cluster.scalar_udf.rest_endpoint
+  credentials {
+    key    = module.kafka_api_key_rotation.active_api_key.id
+    secret = module.kafka_api_key_rotation.active_api_key.secret
+  }
+}
+
+resource "confluent_kafka_topic" "fahrenheit_to_celsius_py" {
+  kafka_cluster {
+    id = confluent_kafka_cluster.scalar_udf.id
+  }
+  topic_name    = "fahrenheit_to_celsius_py"
+  rest_endpoint = confluent_kafka_cluster.scalar_udf.rest_endpoint
+  credentials {
+    key    = module.kafka_api_key_rotation.active_api_key.id
+    secret = module.kafka_api_key_rotation.active_api_key.secret
+  }
+}
