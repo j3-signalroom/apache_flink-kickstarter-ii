@@ -10,7 +10,7 @@ from typing import Optional
 from pyflink.table.udf import ScalarFunction, udf
 from pyflink.table import DataTypes
 
-import secrets_resolver
+from . import secrets_resolver
 
 
 _SECRET_BASE_NAME = "PII_PSEUDONYM"

@@ -36,7 +36,7 @@
 | Entry point | `make deploy-cp-scalar-udf` | `make deploy-cp-scalar-udf-python` | `make deploy-cc-scalar-udf` |
 | Requires code build | ✅  Java + Gradle (UDF JAR) | ✅  Docker build of `cp-flink-python` image (bakes in venv + `.py` files) | ✅  Java + Gradle (UDF JAR) |
 | Statement lifecycle | Managed by Flink session cluster | Managed by Flink session cluster | Managed by Terraform state |
-| Same SQL shape? | `CREATE FUNCTION … USING JAR 'file:///…/scalar-udf.jar'` | `CREATE FUNCTION … LANGUAGE PYTHON` + `SET 'python.executable'` / `'python.files'` | `CREATE FUNCTION … USING JAR 'confluent-artifact://…'` |
+| Same SQL shape? | `CREATE FUNCTION … USING JAR 'file:///…/scalar-udf.jar'` | `CREATE FUNCTION … LANGUAGE PYTHON` + `SET 'python.executable'` (the `scalar_udf` package is installed into the venv — no `python.files` needed) | `CREATE FUNCTION … USING JAR 'confluent-artifact://…'` |
 
 ---
 
@@ -52,22 +52,20 @@ The deploy script copies the uber JAR (built from [examples/scalar_udf/java/](..
 
 #### **2.1.2 Python ─ custom `cp-flink-python` image**
 
-PyFlink cannot load a `.py` file via `USING JAR`; the Python interpreter, the `apache-flink` wheel, and the UDF source files must already be on every JM/TM pod before SQL is submitted. This example bakes them all into a custom Flink image ([k8s/images/cp-flink-python/Dockerfile](../../../k8s/images/cp-flink-python/Dockerfile)) built on top of `confluentinc/cp-flink`:
+PyFlink cannot load a `.py` file via `USING JAR`; the Python interpreter, the `apache-flink` wheel, and the UDF package must already be on every JM/TM pod before SQL is submitted. This example bakes them all into a custom Flink image ([k8s/images/cp-flink-python/Dockerfile](../../../k8s/images/cp-flink-python/Dockerfile)) built on top of `confluentinc/cp-flink`:
 
 1. **Python 3.11** is installed into the base image via `apt`.
 2. **A `uv`-built venv** is staged at `/opt/flink/python-udf/.venv/` containing the `apache-flink` wheel, resolved reproducibly from [examples/scalar_udf/python/uv.lock](../python/uv.lock).
-3. **The UDF source files** (`celsius_to_fahrenheit.py`, `fahrenheit_to_celsius.py`) are copied to `/opt/flink/python-udf/`.
+3. **The `scalar_udf` package** (source at [examples/scalar_udf/python/src/scalar_udf/](../python/src/scalar_udf/)) is installed into the venv's `site-packages/` via `uv pip install --no-deps .` during the image build, so `import scalar_udf.<module>` resolves on every JM/TM pod without any `python.files` hint.
 
-The deploy script then issues three `SET` statements at the top of its SQL session to point PyFlink at those baked-in paths:
+The deploy script then issues two `SET` statements at the top of its SQL session to point PyFlink at the baked-in interpreter:
 
 ```sql
 SET 'python.executable'        = '/opt/flink/python-udf/.venv/bin/python';
 SET 'python.client.executable' = '/opt/flink/python-udf/.venv/bin/python';
-SET 'python.files'             = '/opt/flink/python-udf/celsius_to_fahrenheit.py,
-                                  /opt/flink/python-udf/fahrenheit_to_celsius.py';
 ```
 
-and registers each function with `CREATE FUNCTION … AS '<module>.<function>' LANGUAGE PYTHON` (no `USING JAR` clause).
+and registers each function with `CREATE FUNCTION … AS '<package>.<module>.<symbol>' LANGUAGE PYTHON` (no `USING JAR` clause, no `python.files` hint — the package lookup goes straight through the venv's import system).
 
 ### **2.2 Kafka connector**
 
@@ -128,24 +126,24 @@ Steps 7 and 14 are **two long-running streaming jobs** running side-by-side in t
 
 The Python path submits the same 14 logical steps in the same order. Two differences only:
 
-1. **Three `SET` statements prepended** to the session, pointing PyFlink at the baked-in interpreter and UDF files (see [§2.1.2](#212-python--custom-cp-flink-python-image)).
+1. **Two `SET` statements prepended** to the session, pointing PyFlink at the baked-in interpreter (see [§2.1.2](#212-python--custom-cp-flink-python-image)). There is no `python.files` SET — the `scalar_udf` package is installed into the venv's site-packages, so PyFlink finds it via the normal import system.
 2. **`CREATE FUNCTION` uses `LANGUAGE PYTHON`** instead of `USING JAR`. Steps 6 and 13 become:
 
    ```sql
    -- Step 6 (Python):
    DROP FUNCTION IF EXISTS celsius_to_fahrenheit;
    CREATE FUNCTION celsius_to_fahrenheit
-       AS 'celsius_to_fahrenheit.celsius_to_fahrenheit'
+       AS 'scalar_udf.celsius_to_fahrenheit.celsius_to_fahrenheit'
        LANGUAGE PYTHON;
 
    -- Step 13 (Python):
    DROP FUNCTION IF EXISTS fahrenheit_to_celsius;
    CREATE FUNCTION fahrenheit_to_celsius
-       AS 'fahrenheit_to_celsius.fahrenheit_to_celsius'
+       AS 'scalar_udf.fahrenheit_to_celsius.fahrenheit_to_celsius'
        LANGUAGE PYTHON;
    ```
 
-   The `AS` value is `'<module>.<function>'` ─ the Python module name (matching the `.py` file name from `python.files`) and the function symbol inside it.
+   The `AS` value is `'<package>.<module>.<symbol>'` ─ the `scalar_udf` package installed into the venv, the `.py` file name inside it, and the `udf(...)`-wrapped symbol inside that module.
 
 Everything else ─ the four table DDLs, the sample-data `INSERT`s, and the two streaming `INSERT … SELECT` pipelines ─ is byte-for-byte identical to the Java path.
 
@@ -208,9 +206,9 @@ Behind the scenes this runs:
 
 | Step | What it does |
 |---|---|
-| 1 | **Verify image** ─ `kubectl exec` checks that `/opt/flink/python-udf/.venv/bin/python` and the UDF `.py` files exist on the JobManager pod; fails fast with a rebuild hint if not |
+| 1 | **Verify image** ─ `kubectl exec` probes the JobManager pod with `python -c "import scalar_udf.celsius_to_fahrenheit"` against the baked-in venv interpreter; fails fast with a rebuild hint if the package isn't importable |
 | 2 | `kafka-topics --create` ─ pre-creates the same four Kafka topics as the Java path |
-| 3 | `sql-client.sh -f` ─ executes `SET 'python.executable'` / `'python.client.executable'` / `'python.files'` plus all table DDLs, `CREATE FUNCTION … LANGUAGE PYTHON`, and streaming `INSERT`s in a single session |
+| 3 | `sql-client.sh -f` ─ executes `SET 'python.executable'` / `'python.client.executable'` plus all table DDLs, `CREATE FUNCTION … LANGUAGE PYTHON`, and streaming `INSERT`s in a single session |
 
 Note there is **no JAR build step** ─ the Python venv and source files are baked into the image at `make build-cp-flink-python-image` time, not at deploy time.
 

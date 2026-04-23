@@ -10,9 +10,9 @@
 # running in minikube.
 #
 # Prerequisite: the Flink cluster must use the cp-flink-python image
-# (built via `make build-cp-flink-python-image`) so that Python 3.11,
-# the apache-flink wheel, and the UDF source files are already present
-# on every JM/TM pod at /opt/flink/python-udf/.
+# (built via `make build-cp-flink-python-image`) so that Python 3.11 and
+# the scalar_udf package (installed into the venv at
+# /opt/flink/python-udf/.venv/) are already present on every JM/TM pod.
 #
 
 set -euo pipefail  # Stop on error, undefined variables, and pipeline errors
@@ -45,9 +45,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # In-pod locations (set by the cp-flink-python image).
+# The UDF source tree is installed into the venv's site-packages as the
+# `scalar_udf` package, so no python.files hint is needed — PyFlink resolves
+# `import scalar_udf.X` directly from the venv on every JM/TM pod.
 UDF_POD_DIR="/opt/flink/python-udf"
 PYTHON_EXECUTABLE="${UDF_POD_DIR}/.venv/bin/python"
-UDF_FILES_POD="${UDF_POD_DIR}/celsius_to_fahrenheit.py,${UDF_POD_DIR}/fahrenheit_to_celsius.py"
 
 # Defaults (overridable via arguments)
 NAMESPACE="confluent"
@@ -112,8 +114,14 @@ verify_python_image() {
         exit 1
     fi
 
-    if ! kubectl exec -n "$NAMESPACE" "$jm_pod" -- test -f "${UDF_POD_DIR}/celsius_to_fahrenheit.py" 2>/dev/null; then
-        print_error "UDF source files not found at ${UDF_POD_DIR} on pod ${jm_pod}."
+    # Probe for the installed `scalar_udf` package in the venv rather than a
+    # file on disk — the Dockerfile now installs the package via `uv pip
+    # install`, so the authoritative location is site-packages.
+    if ! kubectl exec -n "$NAMESPACE" "$jm_pod" -- \
+        "${PYTHON_EXECUTABLE}" -c "import scalar_udf.celsius_to_fahrenheit" 2>/dev/null; then
+        print_error "The scalar_udf package is not importable in the venv on pod ${jm_pod}."
+        print_error "The Flink cluster does not appear to be using an up-to-date cp-flink-python image."
+        print_error "Rebuild and redeploy with: make build-cp-flink-python-image flink-deploy"
         exit 1
     fi
 
@@ -188,10 +196,12 @@ do_create() {
     # Step 2: Run all SQL in a single sql-client session
     run_sql "Deploy Python Scalar UDF pipeline" \
         "
--- Point PyFlink at the baked-in interpreter + UDF files.
+-- Point PyFlink at the baked-in interpreter. The scalar_udf package is
+-- installed into this venv's site-packages by the cp-flink-python image
+-- build, so no python.files SET is needed — \`import scalar_udf.X\` resolves
+-- from site-packages directly.
 SET 'python.executable' = '${PYTHON_EXECUTABLE}';
 SET 'python.client.executable' = '${PYTHON_EXECUTABLE}';
-SET 'python.files' = '${UDF_FILES_POD}';
 
 -- ============================================================================
 -- UDF 1: CelsiusToFahrenheit (Python)
@@ -235,7 +245,7 @@ CREATE TABLE celsius_to_fahrenheit (
 DROP FUNCTION IF EXISTS celsius_to_fahrenheit;
 
 CREATE FUNCTION celsius_to_fahrenheit
-    AS 'celsius_to_fahrenheit.celsius_to_fahrenheit'
+    AS 'scalar_udf.celsius_to_fahrenheit.celsius_to_fahrenheit'
     LANGUAGE PYTHON;
 
 INSERT INTO celsius_to_fahrenheit (sensor_id, celsius_temperature, fahrenheit_temperature)
@@ -286,7 +296,7 @@ CREATE TABLE fahrenheit_to_celsius (
 DROP FUNCTION IF EXISTS fahrenheit_to_celsius;
 
 CREATE FUNCTION fahrenheit_to_celsius
-    AS 'fahrenheit_to_celsius.fahrenheit_to_celsius'
+    AS 'scalar_udf.fahrenheit_to_celsius.fahrenheit_to_celsius'
     LANGUAGE PYTHON;
 
 INSERT INTO fahrenheit_to_celsius (sensor_id, fahrenheit_temperature, celsius_temperature)

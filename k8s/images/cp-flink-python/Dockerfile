@@ -39,9 +39,16 @@ COPY pyproject.toml uv.lock .python-version ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev
 
-# Now copy the UDF source files (changes here don't bust the venv cache).
-# The build context is examples/scalar_udf/python — UDF .py files live under src/.
-COPY src/celsius_to_fahrenheit.py src/fahrenheit_to_celsius.py ./
+# Copy the UDF package tree and install it into the venv as a proper Python
+# package. Changes under src/ rebuild only this layer (not the deps layer
+# above), and installing the package makes `import scalar_udf.X` resolve
+# without needing PyFlink's `python.files` SET hint at SQL time.
+COPY src/scalar_udf ./src/scalar_udf
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --no-deps \
+        --python /opt/flink/python-udf/.venv/bin/python \
+        .
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 2 — final image: cp-flink + Python 3.11 + prebuilt venv + UDF files.

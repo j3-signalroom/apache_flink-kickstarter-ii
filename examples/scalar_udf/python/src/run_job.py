@@ -8,13 +8,11 @@ pipeline against them.
 
 Local run (embedded mini-cluster, no Flink/Kafka required)::
 
-    uv run run_job.py
+    uv run --directory src python run_job.py
 
-Cluster run (PyFlink job submitted to a Confluent Flink session cluster)::
-
-    uv run flink run \\
-        --python run_job.py \\
-        --pyFiles celsius_to_fahrenheit.py,fahrenheit_to_celsius.py
+The driver lives at ``src/run_job.py`` (outside the ``scalar_udf`` package);
+running it from ``src/`` puts that directory on ``sys.path``, which makes
+``from scalar_udf.<module> import ...`` resolve.
 
 When deployed via ``scripts/deploy-cp-scalar-udf-python.sh``, the UDFs are
 registered directly via SQL ``CREATE FUNCTION ... LANGUAGE PYTHON`` against
@@ -22,8 +20,8 @@ Kafka source/sink tables, and this driver is not used.
 """
 from pyflink.table import EnvironmentSettings, TableEnvironment
 
-from celsius_to_fahrenheit import celsius_to_fahrenheit
-from fahrenheit_to_celsius import fahrenheit_to_celsius
+from scalar_udf.celsius_to_fahrenheit import celsius_to_fahrenheit
+from scalar_udf.fahrenheit_to_celsius import fahrenheit_to_celsius
 
 
 def main() -> None:
